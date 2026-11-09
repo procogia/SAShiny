@@ -1,0 +1,49 @@
+{
+  "contract": "contracts/valid/dataset",
+  "today": "2026-11-11",
+  "cases": [
+    {
+      "name": "both_supplied",
+      "values": {},
+      "expected": {
+        "status": "ok",
+        "macros": {
+          "EXTRA_DS": "WORK.EXTRA"
+        }
+      },
+      "uploads": {
+        "adsl": true,
+        "extra": true
+      }
+    },
+    {
+      "name": "optional_absent",
+      "values": {},
+      "expected": {
+        "status": "ok",
+        "macros": {
+          "EXTRA_DS": ""
+        }
+      },
+      "uploads": {
+        "adsl": true
+      }
+    },
+    {
+      "name": "required_missing",
+      "values": {},
+      "expected": {
+        "status": "invalid",
+        "errors": [
+          {
+            "code": "V001",
+            "input": "adsl"
+          }
+        ]
+      },
+      "uploads": {
+        "extra": true
+      }
+    }
+  ]
+}

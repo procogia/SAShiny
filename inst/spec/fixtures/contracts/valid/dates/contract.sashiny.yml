@@ -1,0 +1,38 @@
+sashiny: 1
+program: program.sas
+title: Date inputs
+inputs:
+  cutoff:
+    type: date
+    label: Data cutoff
+    min: "2020-01-01"
+    max: today
+    default: today
+  as_date9:
+    type: date
+    label: date9
+    render: date9
+    optional: true
+  as_iso:
+    type: date
+    label: iso
+    render: iso
+    optional: true
+  as_num:
+    type: date
+    label: sasdate
+    render: sasdate
+    optional: true
+  period:
+    type: daterange
+    label: Period
+    default: ["2026-01-01", "2026-06-30"]
+  window:
+    type: daterange
+    label: Window
+    macro: [win_from, win_to]
+    render: sasdate
+    optional: true
+outputs:
+  log:
+    type: log

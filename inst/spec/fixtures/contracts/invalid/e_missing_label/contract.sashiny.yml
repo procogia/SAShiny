@@ -1,0 +1,9 @@
+sashiny: 1
+program: program.sas
+title: Invalid
+inputs:
+  n:
+    type: numeric
+outputs:
+  log:
+    type: log

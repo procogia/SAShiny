@@ -1,0 +1,11 @@
+sashiny: 1
+program: program.sas
+title: Invalid
+inputs:
+  p:
+    type: daterange
+    label: x
+    macro: [only_one]
+outputs:
+  log:
+    type: log

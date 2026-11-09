@@ -1,0 +1,15 @@
+sashiny: 1
+program: program.sas
+title: Invalid
+inputs:
+  a:
+    type: numeric
+    label: x
+    macro: val
+  b:
+    type: numeric
+    label: y
+    macro: VAL
+outputs:
+  log:
+    type: log

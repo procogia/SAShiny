@@ -1,0 +1,23 @@
+sashiny: 1
+program: program.sas
+title: Wrapper with program entry
+inputs:
+  min_msrp:
+    type: numeric
+    label: Minimum MSRP
+    default: 20000
+  origins:
+    type: multichoice
+    label: Origins
+    choices: [Asia, Europe, USA]
+    count_macro: n_origins
+  note:
+    type: text
+    label: Note
+    optional: true
+outputs:
+  stats:
+    type: table
+    from: work.stats
+  log:
+    type: log

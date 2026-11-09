@@ -1,0 +1,27 @@
+sashiny: 1
+program: program.sas
+title: Choice inputs
+inputs:
+  origin:
+    type: choice
+    label: Origin
+    choices: [Asia, Europe, USA]
+    default: Europe
+  flag:
+    type: choice
+    label: Safety population
+    widget: radio
+    render: quoted
+    choices:
+      - {value: "Y", label: "Yes"}
+      - {value: "N", label: "No"}
+    default: "Y"
+  make:
+    type: choice
+    label: Make
+    choices_from:
+      dataset: sashelp.cars
+      value_column: make
+outputs:
+  log:
+    type: log

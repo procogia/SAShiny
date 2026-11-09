@@ -1,0 +1,11 @@
+sashiny: 1
+program: program.sas
+title: Invalid
+inputs:
+  d:
+    type: text
+    label: x
+    macro: SYSDATE
+outputs:
+  log:
+    type: log

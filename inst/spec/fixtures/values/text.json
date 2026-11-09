@@ -1,0 +1,132 @@
+{
+  "contract": "contracts/valid/text",
+  "today": "2026-11-11",
+  "cases": [
+    {
+      "name": "rendering_modes",
+      "values": {
+        "company": "  O'Brien & Co  ",
+        "company_q": "O'Brien & Co",
+        "company_dq": "Say \"hi\" %nrstr(x)",
+        "study_id": "ABC-123"
+      },
+      "expected": {
+        "status": "ok",
+        "macros": {
+          "COMPANY": "O'Brien & Co",
+          "COMPANY_Q": "'O''Brien & Co'",
+          "COMPANY_DQ": "\"Say \"\"hi\"\" %nrstr(x)\"",
+          "STUDY_ID": "ABC-123"
+        }
+      }
+    },
+    {
+      "name": "injection_is_data",
+      "values": {
+        "company": "'; endsas; %sysexec rm -rf /; '",
+        "company_q": "&sysuserid",
+        "company_dq": "x",
+        "study_id": "XYZ-999"
+      },
+      "expected": {
+        "status": "ok",
+        "macros": {
+          "COMPANY": "'; endsas; %sysexec rm -rf /; '",
+          "COMPANY_Q": "'&sysuserid'",
+          "COMPANY_DQ": "\"x\"",
+          "STUDY_ID": "XYZ-999"
+        }
+      }
+    },
+    {
+      "name": "unicode",
+      "values": {
+        "company": "Café Ünïcode",
+        "company_q": "日本",
+        "company_dq": "x",
+        "study_id": "ABC-000"
+      },
+      "expected": {
+        "status": "ok",
+        "macros": {
+          "COMPANY": "Café Ünïcode",
+          "COMPANY_Q": "'日本'",
+          "COMPANY_DQ": "\"x\"",
+          "STUDY_ID": "ABC-000"
+        }
+      }
+    },
+    {
+      "name": "pattern_mismatch",
+      "values": {
+        "company": "a",
+        "company_q": "b",
+        "company_dq": "c",
+        "study_id": "abc-123"
+      },
+      "expected": {
+        "status": "invalid",
+        "errors": [
+          {
+            "code": "V005",
+            "input": "study_id"
+          }
+        ]
+      }
+    },
+    {
+      "name": "too_long",
+      "values": {
+        "company": "a",
+        "company_q": "b",
+        "company_dq": "c",
+        "study_id": "ABC-1234"
+      },
+      "expected": {
+        "status": "invalid",
+        "errors": [
+          {
+            "code": "V006",
+            "input": "study_id"
+          }
+        ]
+      }
+    },
+    {
+      "name": "control_character",
+      "values": {
+        "company": "line1\nline2",
+        "company_q": "b",
+        "company_dq": "c",
+        "study_id": "ABC-123"
+      },
+      "expected": {
+        "status": "invalid",
+        "errors": [
+          {
+            "code": "V007",
+            "input": "company"
+          }
+        ]
+      }
+    },
+    {
+      "name": "whitespace_only_is_missing",
+      "values": {
+        "company": "   ",
+        "company_q": "b",
+        "company_dq": "c",
+        "study_id": "ABC-123"
+      },
+      "expected": {
+        "status": "invalid",
+        "errors": [
+          {
+            "code": "V001",
+            "input": "company"
+          }
+        ]
+      }
+    }
+  ]
+}

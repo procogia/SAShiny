@@ -1,0 +1,13 @@
+sashiny: 1
+program: program.sas
+title: Invalid
+inputs:
+  m:
+    type: multichoice
+    label: x
+    choices: [a, b]
+    min_selected: 2
+    max_selected: 3
+outputs:
+  log:
+    type: log
