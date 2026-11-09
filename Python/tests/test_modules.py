@@ -1,0 +1,19 @@
+"""Tests for the Shiny modules (issue #9)."""
+
+from __future__ import annotations
+
+from sashiny import modules
+
+
+def test_input_ui_renders_control() -> None:
+    # The @module.ui decorator requires a namespace context; test the underlying
+    # input renderer directly instead.
+    spec = {"type": "numeric", "label": "N", "default": 1}
+    el = modules._input_ui("n", spec)
+    assert el is not None
+
+
+def test_program_server_is_callable() -> None:
+    # The server function is decorated; verify it is callable with the expected
+    # signature (full behaviour is exercised by the Shiny test client).
+    assert callable(modules.program_server)

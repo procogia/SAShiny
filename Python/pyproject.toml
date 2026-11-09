@@ -34,6 +34,7 @@ dependencies = [
 
 [project.optional-dependencies]
 saspy = ["saspy>=5.100"]
+shiny = ["shiny>=1.0"]
 
 [project.urls]
 Homepage = "https://github.com/meharpsingh/SAShiny"
@@ -41,7 +42,13 @@ Source = "https://github.com/meharpsingh/SAShiny/tree/main/Python"
 Issues = "https://github.com/meharpsingh/SAShiny/issues"
 
 [dependency-groups]
-dev = ["pytest>=8", "pytest-cov>=5", "ruff>=0.8", "mypy>=1.13"]
+dev = [
+    "pytest>=8",
+    "pytest-cov>=5",
+    "ruff>=0.8",
+    "mypy>=1.13",
+    "shiny>=1.9.0",
+]
 
 [tool.hatch.version]
 path = "src/sashiny/__init__.py"
