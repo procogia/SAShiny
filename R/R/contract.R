@@ -170,10 +170,13 @@ sas_validate <- function(contract, today = Sys.Date()) {
       return(what)
     }
   }
-  ok <- tryCatch({
-    grepl(pattern, "", perl = TRUE)
-    TRUE
-  }, error = function(e) FALSE)
+  ok <- tryCatch(
+    {
+      grepl(pattern, "", perl = TRUE)
+      TRUE
+    },
+    error = function(e) FALSE
+  )
   if (!ok) {
     return("does not compile")
   }
@@ -206,11 +209,11 @@ sas_validate <- function(contract, today = Sys.Date()) {
     }
     explicit <- !is.null(spec$macro)
     if (!(spec$type %in% c("dataset", "daterange")) && !explicit &&
-        grepl(.sashiny_reserved, iid, ignore.case = TRUE)) {
+      grepl(.sashiny_reserved, iid, ignore.case = TRUE)) {
       add("S002", paste0("/inputs/", iid), "default macro name is reserved")
     }
     if (identical(spec$type, "daterange") && !explicit &&
-        grepl(.sashiny_reserved, iid, ignore.case = TRUE)) {
+      grepl(.sashiny_reserved, iid, ignore.case = TRUE)) {
       add("S002", paste0("/inputs/", iid), "default macro names are reserved")
     }
   }
@@ -221,11 +224,11 @@ sas_validate <- function(contract, today = Sys.Date()) {
     kind <- spec$type
     # S003
     if (identical(kind, "numeric") && !is.null(spec$min) && !is.null(spec$max) &&
-        spec$min > spec$max) {
+      spec$min > spec$max) {
       add("S003", p, "min > max")
     }
     if (kind %in% c("date", "daterange") && !is.null(spec$min) && !is.null(spec$max) &&
-        .sashiny_resolve_date(spec$min, today) > .sashiny_resolve_date(spec$max, today)) {
+      .sashiny_resolve_date(spec$min, today) > .sashiny_resolve_date(spec$max, today)) {
       add("S003", p, "min > max")
     }
     # S005
@@ -274,7 +277,7 @@ sas_validate <- function(contract, today = Sys.Date()) {
     }
     # S013 (sample)
     if (identical(kind, "dataset") && !is.null(spec$sample) &&
-        !file.exists(file.path(contract$base_dir, spec$sample))) {
+      !file.exists(file.path(contract$base_dir, spec$sample))) {
       add("S013", paste0(p, "/sample"), "sample file not found")
     }
     # S004
@@ -282,14 +285,14 @@ sas_validate <- function(contract, today = Sys.Date()) {
       default <- spec$default
       if (kind %in% c("date", "daterange")) {
         iso <- format(today, "%Y-%m-%d")
-            if (is.list(default)) {
-              default <- lapply(default, function(x) if (identical(x, "today")) iso else x)
+        if (is.list(default)) {
+          default <- lapply(default, function(x) if (identical(x, "today")) iso else x)
         } else if (identical(default, "today")) {
           default <- iso
         }
       }
       errs <- .sashiny_render_values_for_default(d, stats::setNames(list(default), iid), today, only = iid)
-          for (e in errs$issues) {
+      for (e in errs$issues) {
         add("S004", paste0(p, "/default"), e$code)
       }
     }

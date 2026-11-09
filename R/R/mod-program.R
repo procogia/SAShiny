@@ -63,7 +63,8 @@ sas_program_ui <- function(id, contract, ui_override = NULL) {
   shiny::tagList(
     controls,
     shiny::actionButton(ns("run"), contract$data$ui$run_label %||% "Run",
-                        class = "btn-primary"),
+      class = "btn-primary"
+    ),
     shiny::hr(),
     shiny::verbatimTextOutput(ns("status")),
     shiny::verbatimTextOutput(ns("log")),
@@ -114,14 +115,18 @@ sas_program_server <- function(id, contract, engine, server_override = NULL) {
     output$table <- shiny::renderTable({
       r <- result()
       tbl <- r$outputs$table
-      if (is.null(tbl)) return(NULL)
+      if (is.null(tbl)) {
+        return(NULL)
+      }
       as.data.frame(tbl$rows, stringsAsFactors = FALSE)
     })
 
     output$plots <- shiny::renderUI({
       r <- result()
       plots <- r$outputs$plot
-      if (is.null(plots)) return(NULL)
+      if (is.null(plots)) {
+        return(NULL)
+      }
       shiny::tagList(lapply(seq_along(plots), function(i) {
         shiny::imageOutput(ns(paste0("plot_", i)))
       }))
@@ -129,20 +134,26 @@ sas_program_server <- function(id, contract, engine, server_override = NULL) {
 
     output$html <- shiny::renderUI({
       r <- result()
-      if (is.null(r$outputs$html)) return(NULL)
+      if (is.null(r$outputs$html)) {
+        return(NULL)
+      }
       shiny::HTML(r$outputs$html)
     })
 
     output$downloads <- shiny::renderUI({
       r <- result()
       dl <- r$outputs$download
-      if (is.null(dl)) return(NULL)
+      if (is.null(dl)) {
+        return(NULL)
+      }
       shiny::tagList(lapply(names(dl), function(n) {
         shiny::downloadButton(ns(paste0("dl_", n)), n)
       }))
     })
 
-    list(result = result, status = shiny::reactive(result()$status),
-         log = shiny::reactive(result()$log))
+    list(
+      result = result, status = shiny::reactive(result()$status),
+      log = shiny::reactive(result()$log)
+    )
   })
 }

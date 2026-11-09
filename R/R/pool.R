@@ -92,13 +92,18 @@ sas_pool_run <- function(pool, contract, values, today = Sys.Date(),
   session <- .sashiny_acquire(pool)
   discard <- FALSE
   result <- tryCatch(
-    sas_engine_run(session$engine, contract, values, today = today,
-                   uploads = uploads, run_id = run_id),
+    sas_engine_run(session$engine, contract, values,
+      today = today,
+      uploads = uploads, run_id = run_id
+    ),
     error = function(e) {
       discard <<- TRUE
       sashiny_result(run_id %||% .sashiny_run_id(), "error",
-                     metadata = .sashiny_metadata(run_id %||% .sashiny_run_id(),
-                                                  "error", engine = "pool"))
+        metadata = .sashiny_metadata(run_id %||% .sashiny_run_id(),
+          "error",
+          engine = "pool"
+        )
+      )
     }
   )
   session$runs <- session$runs + 1L

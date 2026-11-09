@@ -162,6 +162,8 @@ sas_engine_record <- function(engine, contract, macros, recording) {
   key <- .sashiny_recording_key(contract, macros)
   path <- file.path(engine$recordings_dir, paste0(key, ".json"))
   writeLines(jsonlite::toJSON(recording, auto_unbox = TRUE, null = "null", pretty = TRUE),
-             path, useBytes = TRUE)
+    path,
+    useBytes = TRUE
+  )
   invisible(path)
 }
