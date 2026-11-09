@@ -1,6 +1,8 @@
 # Tests for the custom-module override.
 
 test_that("sas_program_ui accepts a custom override", {
+  skip_on_cran()
+  skip_if_not_installed("shiny")
   contract <- sas_contract(file.path(.sashiny_fixtures(), "contracts", "valid",
                                      "minimal", "contract.sashiny.yml"))
   custom_ui <- function(id, contract) {
