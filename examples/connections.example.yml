@@ -1,0 +1,48 @@
+# SAShiny connection profiles - EXAMPLE / PLACEHOLDERS ONLY.
+# Draft format (engine phase); not yet part of the normative contract spec.
+#
+# Copy to ~/.config/sashiny/connections.yml (or point SASHINY_CONNECTIONS at it).
+# Never put passwords here: credentials come from ~/.authinfo (keyed by `authkey`)
+# or the hosting platform's secret store.
+
+default: oda
+
+profiles:
+  oda:
+    label: SAS OnDemand for Academics
+    method: iom
+    oda_region: <ODA_REGION>          # placeholder: us1 | us2 | eu1 | ap1 | ap2 (account not created yet)
+    iomport: 8591
+    authkey: oda
+    encoding: utf-8
+    requires_vpn: false
+
+  procogia_viya:
+    label: ProCogia SAS Viya
+    method: http
+    url: https://<PROCOGIA_VIYA_HOST>
+    context: SAS Studio compute context
+    authkey: viya
+    requires_vpn: true
+
+  procogia_sas94_iom:
+    label: ProCogia SAS 9.4 (workspace server)
+    method: iom
+    iomhost: <PROCOGIA_SAS94_HOST>
+    iomport: 8591
+    authkey: iom
+    encoding: utf-8
+    requires_vpn: true
+
+  procogia_sas94_ssh:
+    label: ProCogia SAS 9.4 (SSH)
+    method: ssh
+    host: <PROCOGIA_SAS94_HOST>
+    saspath: <PATH_TO_SAS>            # e.g. /opt/sas/SASHome/SASFoundation/9.4/bin/sas_u8
+    encoding: utf-8
+    requires_vpn: true
+
+  offline:
+    label: Offline (recorded results)
+    method: mock
+    recordings: recordings/           # produced by a live run in recording mode

@@ -13,3 +13,5 @@ defaults with `%if not %symexist(...)`, so the values SAShiny injects take prece
 
 The sample data are entirely synthetic. They are regenerated deterministically by the `make_data.py`
 script in each `data/` folder.
+
+`connections.example.yml` shows the draft connection-profile format with placeholders (ODA, ProCogia Viya, ProCogia SAS 9.4 IOM/SSH, offline).

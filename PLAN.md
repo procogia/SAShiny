@@ -47,7 +47,9 @@ Mental model: `ui.R` stays in R/Python; `server.R` becomes `analysis.sas` + `ana
 | D24 | Demo SAS | **Live SAS with an offline fallback** (recorded results replayed by the mock engine) |
 | D25 | SAS connections | **All of SAS OnDemand (ODA), ProCogia SAS Viya and ProCogia SAS 9.4** as selectable connection profiles (saspy IOM / HTTP / SSH); the user picks one per app or session |
 | D26 | Live verification | Mehar runs `spec/tools/live_sas_check.py` locally against each profile and shares the JSON report |
-| D27 | Demo hosting | **Both**: local apps on Mehar's Mac as primary, plus a hosted URL for the audience |
+| D27 | Demo hosting | **Both**: local apps on Mehar's Mac (primary) plus a hosted URL on **Daytona** (Docker image, signed preview URL with expiry for the audience) |
+| D28 | ODA account | Not created yet. Region is a **placeholder** (`<ODA_REGION>`) in `examples/connections.example.yml` |
+| D29 | Network | ProCogia Viya and SAS 9.4 need the **ProCogia VPN**. The hosted Daytona app therefore uses ODA (if outbound TCP 8591 is allowed on our Daytona tier) or the offline recordings. The local Mac app on VPN demos Viya and 9.4 live |
 | D21 | Scope | **Standalone**; no PolyKode/ProCogia product coupling for now (can merge later) |
 | D22 | Injection model | Values reach SAS only as single-quoted `call symputx` literals, then re-stored with `%superq` (spec §6.3) |
 | D23 | Conformance | Hand-specified fixtures in `spec/fixtures` are the acceptance test for both languages, including byte-exact generated SAS |
@@ -233,6 +235,18 @@ built only for the demo. Scope, in priority order:
    auto-UI modules, and the three example apps in one multi-tab app per language.
 3. **Day 3 (Nov 10–11):** live dry-run against SAS, results recorded for the offline fallback, and a
    run-sheet that shows the R and Python apps side by side on the same SAS programs.
+
+Demo topology:
+
+| Where | Connection profiles available | Fallback |
+|---|---|---|
+| Mehar's Mac, on ProCogia VPN | ProCogia Viya, ProCogia 9.4 (IOM/SSH), ODA | Offline recordings |
+| Daytona hosted URL (audience) | ODA, only if our Daytona tier allows outbound TCP 8591 | Offline recordings (default) |
+
+Demo risks and mitigations:
+- VPN drops in the venue → switch profile to ODA or Offline in the app; recordings are made the day before.
+- Daytona Tier 1/2 blocks outbound non-HTTP traffic → hosted app defaults to Offline; verify the tier early.
+- ODA account not yet created → create it before the live check, otherwise ODA is skipped for the demo.
 
 ## 11. Prior art
 
