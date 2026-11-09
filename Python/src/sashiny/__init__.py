@@ -6,13 +6,20 @@ endorsed by either company.
 """
 
 from .contract import Contract, Issue, load, validate
+from .engines import Engine, MockEngine
 from .lint import lint
+from .result import LogLine, Result, TableResult
 from .values import render_values
 from .wrapper import reset_code, wrapper_code
 
 __all__ = [
     "Contract",
+    "Engine",
     "Issue",
+    "LogLine",
+    "MockEngine",
+    "Result",
+    "TableResult",
     "__version__",
     "lint",
     "load",
