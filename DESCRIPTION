@@ -23,6 +23,7 @@ Depends:
 Imports:
     jsonlite,
     jsonvalidate,
+    openssl,
     yaml
 Suggests:
     testthat (>= 3.0.0)
