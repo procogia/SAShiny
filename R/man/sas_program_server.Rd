@@ -4,7 +4,7 @@
 \alias{sas_program_server}
 \title{The server for a SAS program module}
 \usage{
-sas_program_server(id, contract, engine)
+sas_program_server(id, contract, engine, server_override = NULL)
 }
 \arguments{
 \item{id}{The module id.}
@@ -12,6 +12,9 @@ sas_program_server(id, contract, engine)
 \item{contract}{A \code{sashiny_contract} object.}
 
 \item{engine}{An engine object (e.g. from \code{\link[=sas_engine_mock]{sas_engine_mock()}}).}
+
+\item{server_override}{An optional function \verb{function(id, contract, engine)}
+that returns a custom server, replacing the auto-generated server.}
 }
 \value{
 A list of reactives: \code{result}, \code{status}, \code{log}.

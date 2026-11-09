@@ -42,8 +42,20 @@ def _input_ui(iid: str, spec: dict[str, Any]) -> TagChild:  # noqa: PLR0911 - sw
 
 
 @module.ui
-def program_ui(contract: Contract) -> TagChild:
-    """Generate the UI for a SAS program module."""
+def program_ui(
+    contract: Contract,
+    ui_override: Any | None = None,
+) -> TagChild:
+    """Generate the UI for a SAS program module.
+
+    Args:
+        contract: The loaded contract.
+        ui_override: An optional callable ``(contract) -> TagChild`` that
+            replaces the auto-generated UI.
+
+    """
+    if ui_override is not None:
+        return ui_override(contract)  # type: ignore[no-any-return]
     inputs = contract.data.get("inputs") or {}
     controls = [_input_ui(iid, spec) for iid, spec in inputs.items()]
     return ui.TagList(
@@ -60,14 +72,28 @@ def program_ui(contract: Contract) -> TagChild:
 
 
 @module.server
-def program_server(
+def program_server(  # noqa: PLR0913, PLR0917 - Shiny module signature + override
     input: Inputs,
     output: Outputs,
     session: Session,
     contract: Contract,
     engine: Engine,
+    server_override: Any | None = None,
 ) -> dict[str, Any]:
-    """Serve a SAS program module (run the contract and render outputs)."""
+    """Serve a SAS program module (run the contract and render outputs).
+
+    Args:
+        input: Shiny inputs.
+        output: Shiny outputs.
+        session: Shiny session.
+        contract: The loaded contract.
+        engine: The engine to run on.
+        server_override: An optional callable ``(input, output, session,
+            contract, engine)`` that replaces the auto-generated server.
+
+    """
+    if server_override is not None:
+        return server_override(input, output, session, contract, engine)  # type: ignore[no-any-return]
     inputs = contract.data.get("inputs") or {}
 
     @reactive.calc

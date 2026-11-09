@@ -4,12 +4,15 @@
 \alias{sas_program_ui}
 \title{Generate the UI for a SAS program module}
 \usage{
-sas_program_ui(id, contract)
+sas_program_ui(id, contract, ui_override = NULL)
 }
 \arguments{
 \item{id}{The module id.}
 
 \item{contract}{A \code{sashiny_contract} object.}
+
+\item{ui_override}{An optional function \verb{function(id, contract)} that returns
+a custom UI, replacing the auto-generated UI.}
 }
 \value{
 A Shiny UI definition.
