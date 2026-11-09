@@ -1,0 +1,383 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/meharpsingh/SAShiny/spec/sashiny.schema.json",
+  "title": "SAShiny sidecar contract",
+  "description": "Schema for <program>.sashiny.yml files. Version 1. Structural rules only; semantic rules (S-codes) are defined in CONTRACT.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["sashiny", "program", "title", "outputs"],
+  "properties": {
+    "sashiny": {
+      "description": "Contract schema version.",
+      "const": 1
+    },
+    "program": {
+      "description": "Path to the SAS program, relative to this YAML file. Forward slashes only; no absolute paths; no parent-directory segments.",
+      "type": "string",
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!.*(^|/)\\.\\.(/|$))[^\\\\]+\\.[Ss][Aa][Ss]$"
+    },
+    "id": {
+      "description": "Module id. Defaults to the program file name without extension, lower-cased, with invalid characters replaced by '_'.",
+      "$ref": "#/$defs/identifier"
+    },
+    "title": {"type": "string", "minLength": 1, "maxLength": 200},
+    "description": {"type": "string", "maxLength": 5000},
+    "version": {
+      "description": "Free-form version of this contract, chosen by its author.",
+      "type": "string",
+      "maxLength": 64
+    },
+    "inputs": {
+      "type": "object",
+      "propertyNames": {"$ref": "#/$defs/identifier"},
+      "additionalProperties": {"$ref": "#/$defs/input"}
+    },
+    "outputs": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {"$ref": "#/$defs/identifier"},
+      "additionalProperties": {"$ref": "#/$defs/output"}
+    },
+    "run": {"$ref": "#/$defs/run"},
+    "ui": {"$ref": "#/$defs/ui"}
+  },
+
+  "$defs": {
+    "identifier": {
+      "description": "Input/output/module identifier. Also used as a Shiny id.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{0,31}$"
+    },
+    "sas_name": {
+      "description": "SAS name (macro variable, macro, column). 1-32 chars. Names starting with SYS, SASHINY or _SX_ (any case) are reserved.",
+      "type": "string",
+      "pattern": "^(?![Ss][Yy][Ss])(?![Ss][Aa][Ss][Hh][Ii][Nn][Yy])(?!_[Ss][Xx]_)[A-Za-z_][A-Za-z0-9_]{0,31}$"
+    },
+    "libref_member": {
+      "description": "Two-level SAS dataset name: libref.member.",
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,7}\\.[A-Za-z_][A-Za-z0-9_]{0,31}$"
+    },
+    "work_member": {
+      "description": "Two-level dataset name in the WORK library.",
+      "type": "string",
+      "pattern": "^[Ww][Oo][Rr][Kk]\\.[A-Za-z_][A-Za-z0-9_]{0,31}$"
+    },
+    "iso_date": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+    },
+    "date_value": {
+      "description": "ISO date or the keyword 'today' (resolved by the client when the session starts).",
+      "anyOf": [{"$ref": "#/$defs/iso_date"}, {"const": "today"}]
+    },
+    "relative_path": {
+      "type": "string",
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!.*(^|/)\\.\\.(/|$))[^\\\\]+$"
+    },
+    "text_render": {"enum": ["raw", "quoted", "dquoted"]},
+    "list_render": {"enum": ["quoted", "dquoted", "bare"]},
+    "date_render": {"enum": ["literal", "date9", "iso", "sasdate"]},
+
+    "choice_list": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1000,
+      "items": {
+        "anyOf": [
+          {"type": "string", "minLength": 1, "maxLength": 1000},
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["value"],
+            "properties": {
+              "value": {"type": "string", "minLength": 1, "maxLength": 1000},
+              "label": {"type": "string", "minLength": 1, "maxLength": 200}
+            }
+          }
+        ]
+      }
+    },
+    "choices_from": {
+      "description": "Choices read from a SAS dataset when the session starts.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dataset", "value_column"],
+      "properties": {
+        "dataset": {"$ref": "#/$defs/libref_member"},
+        "value_column": {"$ref": "#/$defs/column_name"},
+        "label_column": {"$ref": "#/$defs/column_name"},
+        "max_choices": {"type": "integer", "minimum": 1, "maximum": 1000, "default": 1000}
+      }
+    },
+    "column_name": {
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,31}$"
+    },
+
+    "input_common": {
+      "type": "object",
+      "required": ["type", "label"],
+      "properties": {
+        "type": {"enum": ["numeric", "text", "choice", "multichoice", "date", "daterange", "dataset"]},
+        "label": {"type": "string", "minLength": 1, "maxLength": 200},
+        "help": {"type": "string", "maxLength": 1000},
+        "optional": {"type": "boolean", "default": false}
+      }
+    },
+
+    "input": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {"type": {"enum": ["numeric", "text", "choice", "multichoice", "date", "daterange", "dataset"]}},
+      "allOf": [
+        {"if": {"properties": {"type": {"const": "numeric"}}}, "then": {"$ref": "#/$defs/input_numeric"}},
+        {"if": {"properties": {"type": {"const": "text"}}}, "then": {"$ref": "#/$defs/input_text"}},
+        {"if": {"properties": {"type": {"const": "choice"}}}, "then": {"$ref": "#/$defs/input_choice"}},
+        {"if": {"properties": {"type": {"const": "multichoice"}}}, "then": {"$ref": "#/$defs/input_multichoice"}},
+        {"if": {"properties": {"type": {"const": "date"}}}, "then": {"$ref": "#/$defs/input_date"}},
+        {"if": {"properties": {"type": {"const": "daterange"}}}, "then": {"$ref": "#/$defs/input_daterange"}},
+        {"if": {"properties": {"type": {"const": "dataset"}}}, "then": {"$ref": "#/$defs/input_dataset"}}
+      ]
+    },
+
+    "input_numeric": {
+      "allOf": [{"$ref": "#/$defs/input_common"}],
+      "unevaluatedProperties": false,
+      "properties": {
+        "type": {"const": "numeric"},
+        "macro": {"$ref": "#/$defs/sas_name"},
+        "min": {"type": "number"},
+        "max": {"type": "number"},
+        "step": {"type": "number", "exclusiveMinimum": 0},
+        "integer": {"type": "boolean", "default": false},
+        "default": {"type": "number"}
+      }
+    },
+    "input_text": {
+      "allOf": [{"$ref": "#/$defs/input_common"}],
+      "unevaluatedProperties": false,
+      "properties": {
+        "type": {"const": "text"},
+        "macro": {"$ref": "#/$defs/sas_name"},
+        "max_length": {"type": "integer", "minimum": 1, "maximum": 32000, "default": 256},
+        "pattern": {
+          "description": "Regular expression the whole value must match. Use only the portable subset defined in CONTRACT.md.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "placeholder": {"type": "string", "maxLength": 200},
+        "render": {"$ref": "#/$defs/text_render", "default": "raw"},
+        "default": {"type": "string", "maxLength": 32000}
+      }
+    },
+    "input_choice": {
+      "allOf": [
+        {"$ref": "#/$defs/input_common"},
+        {"oneOf": [{"required": ["choices"]}, {"required": ["choices_from"]}]}
+      ],
+      "unevaluatedProperties": false,
+      "properties": {
+        "type": {"const": "choice"},
+        "macro": {"$ref": "#/$defs/sas_name"},
+        "choices": {"$ref": "#/$defs/choice_list"},
+        "choices_from": {"$ref": "#/$defs/choices_from"},
+        "widget": {"enum": ["select", "radio"], "default": "select"},
+        "render": {"$ref": "#/$defs/text_render", "default": "raw"},
+        "default": {"type": "string", "minLength": 1, "maxLength": 1000}
+      }
+    },
+    "input_multichoice": {
+      "allOf": [
+        {"$ref": "#/$defs/input_common"},
+        {"oneOf": [{"required": ["choices"]}, {"required": ["choices_from"]}]}
+      ],
+      "unevaluatedProperties": false,
+      "properties": {
+        "type": {"const": "multichoice"},
+        "macro": {"$ref": "#/$defs/sas_name"},
+        "choices": {"$ref": "#/$defs/choice_list"},
+        "choices_from": {"$ref": "#/$defs/choices_from"},
+        "widget": {"enum": ["select", "checkbox"], "default": "select"},
+        "render": {"$ref": "#/$defs/list_render", "default": "quoted"},
+        "separator": {"enum": ["space", "comma"], "default": "space"},
+        "count_macro": {"$ref": "#/$defs/sas_name"},
+        "min_selected": {"type": "integer", "minimum": 0, "default": 1},
+        "max_selected": {"type": "integer", "minimum": 1},
+        "default": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1, "maxLength": 1000}
+        }
+      }
+    },
+    "input_date": {
+      "allOf": [{"$ref": "#/$defs/input_common"}],
+      "unevaluatedProperties": false,
+      "properties": {
+        "type": {"const": "date"},
+        "macro": {"$ref": "#/$defs/sas_name"},
+        "min": {"$ref": "#/$defs/date_value"},
+        "max": {"$ref": "#/$defs/date_value"},
+        "render": {"$ref": "#/$defs/date_render", "default": "literal"},
+        "default": {"$ref": "#/$defs/date_value"}
+      }
+    },
+    "input_daterange": {
+      "allOf": [{"$ref": "#/$defs/input_common"}],
+      "unevaluatedProperties": false,
+      "properties": {
+        "type": {"const": "daterange"},
+        "macro": {
+          "description": "Exactly two macro variable names: [start, end]. Defaults to [<id>_start, <id>_end].",
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {"$ref": "#/$defs/sas_name"}
+        },
+        "min": {"$ref": "#/$defs/date_value"},
+        "max": {"$ref": "#/$defs/date_value"},
+        "render": {"$ref": "#/$defs/date_render", "default": "literal"},
+        "default": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {"$ref": "#/$defs/date_value"}
+        }
+      }
+    },
+    "input_dataset": {
+      "allOf": [{"$ref": "#/$defs/input_common"}],
+      "unevaluatedProperties": false,
+      "required": ["target"],
+      "properties": {
+        "type": {"const": "dataset"},
+        "macro": {
+          "description": "Optional macro variable set to the upper-cased target name when a file is supplied, or to an empty value otherwise.",
+          "$ref": "#/$defs/sas_name"
+        },
+        "target": {"$ref": "#/$defs/work_member"},
+        "accept": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"enum": ["csv", "xlsx", "xpt", "sas7bdat"]},
+          "default": ["csv", "xlsx", "xpt", "sas7bdat"]
+        },
+        "max_size_mb": {"type": "number", "exclusiveMinimum": 0, "maximum": 2048, "default": 50},
+        "columns": {
+          "description": "Columns the uploaded file must contain, with the SAS type they are converted to.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "type"],
+            "properties": {
+              "name": {"$ref": "#/$defs/column_name"},
+              "type": {"enum": ["numeric", "character", "date"]}
+            }
+          }
+        },
+        "sample": {
+          "description": "Path, relative to this YAML, of a sample file the UI may offer as 'Use sample data'.",
+          "$ref": "#/$defs/relative_path"
+        }
+      }
+    },
+
+    "output": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {"type": {"enum": ["table", "plot", "html", "log", "download"]}},
+      "allOf": [
+        {"if": {"properties": {"type": {"const": "table"}}}, "then": {"$ref": "#/$defs/output_table"}},
+        {"if": {"properties": {"type": {"const": "plot"}}}, "then": {"$ref": "#/$defs/output_plot"}},
+        {"if": {"properties": {"type": {"const": "html"}}}, "then": {"$ref": "#/$defs/output_html"}},
+        {"if": {"properties": {"type": {"const": "log"}}}, "then": {"$ref": "#/$defs/output_log"}},
+        {"if": {"properties": {"type": {"const": "download"}}}, "then": {"$ref": "#/$defs/output_download"}}
+      ]
+    },
+    "output_common": {
+      "type": "object",
+      "properties": {
+        "label": {"type": "string", "minLength": 1, "maxLength": 200},
+        "help": {"type": "string", "maxLength": 1000}
+      }
+    },
+    "output_table": {
+      "allOf": [{"$ref": "#/$defs/output_common"}],
+      "unevaluatedProperties": false,
+      "required": ["from"],
+      "properties": {
+        "type": {"const": "table"},
+        "from": {"$ref": "#/$defs/libref_member"},
+        "columns": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/column_name"}},
+        "max_rows": {"type": "integer", "minimum": 1, "maximum": 1000000, "default": 10000},
+        "formatted": {"type": "boolean", "default": false}
+      }
+    },
+    "output_plot": {
+      "allOf": [{"$ref": "#/$defs/output_common"}],
+      "unevaluatedProperties": false,
+      "properties": {
+        "type": {"const": "plot"},
+        "select": {
+          "description": "1-based position of the graph among all ODS graphs produced by the run. Omit to show all graphs.",
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "output_html": {
+      "allOf": [{"$ref": "#/$defs/output_common"}],
+      "unevaluatedProperties": false,
+      "properties": {"type": {"const": "html"}}
+    },
+    "output_log": {
+      "allOf": [{"$ref": "#/$defs/output_common"}],
+      "unevaluatedProperties": false,
+      "properties": {
+        "type": {"const": "log"},
+        "scope": {"enum": ["program", "full"], "default": "program"}
+      }
+    },
+    "output_download": {
+      "allOf": [{"$ref": "#/$defs/output_common"}],
+      "unevaluatedProperties": false,
+      "required": ["format"],
+      "properties": {
+        "type": {"const": "download"},
+        "format": {"enum": ["csv", "xlsx", "xpt", "sas7bdat", "rtf", "pdf"]},
+        "from": {"$ref": "#/$defs/libref_member"},
+        "filename": {
+          "description": "Download file name without extension.",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        }
+      }
+    },
+
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "entry": {"enum": ["program", "macro"], "default": "program"},
+        "macro": {"$ref": "#/$defs/sas_name"},
+        "timeout_seconds": {"type": "integer", "minimum": 1, "maximum": 86400, "default": 300},
+        "reset_work": {"type": "boolean", "default": true}
+      }
+    },
+    "ui": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "layout": {"enum": ["sidebar", "top"], "default": "sidebar"},
+        "order": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/identifier"}},
+        "run_label": {"type": "string", "minLength": 1, "maxLength": 50, "default": "Run"},
+        "auto_run": {"type": "boolean", "default": false}
+      }
+    }
+  }
+}
