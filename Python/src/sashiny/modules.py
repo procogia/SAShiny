@@ -14,8 +14,53 @@ from shiny.ui import TagChild
 
 from .contract import Contract
 from .engines import Engine
+from .result import Result
 
 __all__ = ["program_server", "program_ui"]
+
+
+def _render_status(result: Result) -> str:
+    """Render the run status text for a result."""
+    lines = [f"status: {result.status}", f"run_id: {result.run_id}"]
+    sas = result.metadata.get("sas_version", "")
+    if sas:
+        lines.append(f"SAS: {sas}")
+    return "\n".join(lines)
+
+
+def _render_log(result: Result) -> str:
+    """Render the log text for a result."""
+    return result.log or "(no log)"
+
+
+def _render_table(result: Result) -> dict[str, Any] | None:
+    """Render the table output for a result."""
+    tbl = result.outputs.get("table")
+    if tbl is None:
+        return None
+    return {"columns": tbl.columns, "rows": tbl.rows}
+
+
+def _render_plots(result: Result) -> TagChild | None:
+    """Render the plot outputs for a result."""
+    plots = result.outputs.get("plot")
+    if not plots:
+        return None
+    return ui.TagList(*[ui.img(src=f"data:image/png;base64,{p}") for p in plots])
+
+
+def _render_html(result: Result) -> TagChild | None:
+    """Render the HTML output for a result."""
+    html = result.outputs.get("html")
+    return ui.HTML(html) if html else None
+
+
+def _render_downloads(result: Result) -> TagChild | None:
+    """Render the download buttons for a result."""
+    dl = result.outputs.get("download")
+    if not dl:
+        return None
+    return ui.TagList(*[ui.download_button(f"dl_{n}", n) for n in dl])
 
 
 def _input_ui(iid: str, spec: dict[str, Any]) -> TagChild:  # noqa: PLR0911 - switch over input types
@@ -105,52 +150,32 @@ def program_server(  # noqa: PLR0913, PLR0917 - Shiny module signature + overrid
     @output
     @render.text
     def status() -> str:
-        r = result()
-        lines = [f"status: {r.status}", f"run_id: {r.run_id}"]
-        sas = r.metadata.get("sas_version", "")
-        if sas:
-            lines.append(f"SAS: {sas}")
-        return "\n".join(lines)
+        return _render_status(result())
 
     @output
     @render.text
     def log() -> str:
-        r = result()
-        return r.log or "(no log)"
+        return _render_log(result())
 
     @output
     @render.table
-    def table() -> object:
-        r = result()
-        tbl = r.outputs.get("table")
-        if tbl is None:
-            return None
-        return {"columns": tbl.columns, "rows": tbl.rows}
+    def table() -> dict[str, Any] | None:
+        return _render_table(result())
 
     @output
     @render.ui
     def plots() -> TagChild | None:
-        r = result()
-        plots = r.outputs.get("plot")
-        if not plots:
-            return None
-        return ui.TagList(*[ui.img(src=f"data:image/png;base64,{p}") for p in plots])
+        return _render_plots(result())
 
     @output
     @render.ui
     def html() -> TagChild | None:
-        r = result()
-        html = r.outputs.get("html")
-        return ui.HTML(html) if html else None
+        return _render_html(result())
 
     @output
     @render.ui
     def downloads() -> TagChild | None:
-        r = result()
-        dl = r.outputs.get("download")
-        if not dl:
-            return None
-        return ui.TagList(*[ui.download_button(f"dl_{n}", n) for n in dl])
+        return _render_downloads(result())
 
     return {
         "result": result,
