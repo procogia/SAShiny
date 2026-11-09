@@ -21,7 +21,7 @@ jobs:
       - name: Check schema, fixtures and example contracts
         run: uv run --no-project --with "jsonschema>=4.23" --with "pyyaml>=6" python spec/tools/check_spec.py
       - name: Lint reference tools
-        run: uvx ruff check spec/tools --line-length 140 --select E,F,W,I,UP,B,SIM
+        run: uvx ruff check spec/tools --target-version py310 --line-length 140 --select E,F,W,I,UP,B,SIM
       - name: Sample data is reproducible
         run: |
           python examples/pharma/data/make_data.py

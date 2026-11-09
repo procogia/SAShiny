@@ -45,6 +45,9 @@ Mental model: `ui.R` stays in R/Python; `server.R` becomes `analysis.sas` + `ana
 | D19 | Sequencing | R and Python **developed in parallel**, each released when ready; the Lisbon demo shows **both side by side** |
 | D20 | Timeline | **Lisbon demo on 2026-11-11**; CRAN/PyPI submission **quality-gated** (no fixed date) |
 | D24 | Demo SAS | **Live SAS with an offline fallback** (recorded results replayed by the mock engine) |
+| D25 | SAS connections | **All of SAS OnDemand (ODA), ProCogia SAS Viya and ProCogia SAS 9.4** as selectable connection profiles (saspy IOM / HTTP / SSH); the user picks one per app or session |
+| D26 | Live verification | Mehar runs `spec/tools/live_sas_check.py` locally against each profile and shares the JSON report |
+| D27 | Demo hosting | **Both**: local apps on Mehar's Mac as primary, plus a hosted URL for the audience |
 | D21 | Scope | **Standalone**; no PolyKode/ProCogia product coupling for now (can merge later) |
 | D22 | Injection model | Values reach SAS only as single-quoted `call symputx` literals, then re-stored with `%superq` (spec §6.3) |
 | D23 | Conformance | Hand-specified fixtures in `spec/fixtures` are the acceptance test for both languages, including byte-exact generated SAS |
