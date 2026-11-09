@@ -1,0 +1,9 @@
+# Force LF line endings for files where the spec requires byte-exact LF output.
+# The generated SAS wrapper (spec/CONTRACT.md section 6.3) and the expected
+# fixture files must use LF, never CRLF, regardless of the checkout platform.
+*.sas text eol=lf
+spec/fixtures/wrapper/**/expected_*.sas text eol=lf
+
+# This fixture is intentionally CRLF with a BOM and no final newline
+# (spec/fixtures/README.md). Do not normalise it.
+spec/fixtures/wrapper/program_entry/program.sas -text
