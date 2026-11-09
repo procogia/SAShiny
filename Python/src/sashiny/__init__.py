@@ -6,7 +6,7 @@ endorsed by either company.
 """
 
 from .contract import Contract, Issue, load, validate
-from .engines import Engine, MockEngine, SaspyEngine, load_profiles
+from .engines import Engine, MockEngine, SaspyEngine, connect, load_profiles
 from .lint import lint
 from .pool import Pool
 from .result import LogLine, Result, TableResult
@@ -24,6 +24,7 @@ __all__ = [
     "SaspyEngine",
     "TableResult",
     "__version__",
+    "connect",
     "lint",
     "load",
     "load_profiles",

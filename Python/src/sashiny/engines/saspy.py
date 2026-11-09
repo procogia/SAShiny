@@ -11,6 +11,7 @@ module implements the interface and profile loading.
 
 from __future__ import annotations
 
+import os
 import re
 import time
 import uuid
@@ -24,11 +25,127 @@ from ..values import render_values
 from ..wrapper import reset_code, wrapper_code
 from .base import Engine
 
-__all__ = ["SaspyEngine", "load_profiles"]
+__all__ = ["SaspyEngine", "connect", "load_profiles"]
 
 CONTROL = re.compile(r"[\x00-\x1f\x7f-\x9f]")
 # syscc threshold above which a run is an error (spec §6.5).
 SYSCC_ERROR = 4
+
+# ODA hosts by region (spec/tools/live_sas_check.py).
+ODA_HOSTS = {
+    "us1": ["odaws01-usw2.oda.sas.com", "odaws02-usw2.oda.sas.com"],
+    "us2": ["odaws01-usw2-2.oda.sas.com", "odaws02-usw2-2.oda.sas.com"],
+    "eu1": ["odaws01-euw1.oda.sas.com", "odaws02-euw1.oda.sas.com"],
+    "ap1": ["odaws01-apse1.oda.sas.com", "odaws02-apse1.oda.sas.com"],
+    "ap2": ["odaws01-apse1-2.oda.sas.com", "odaws02-apse1-2.oda.sas.com"],
+}
+
+
+def connect(  # noqa: PLR0913 - explicit connection parameters per backend
+    profile: str,
+    *,
+    region: str = "us1",
+    url: str | None = None,
+    context: str | None = None,
+    verify: bool = True,
+    host: str | None = None,
+    port: int = 8591,
+    saspath: str | None = None,
+    ssh_user: str | None = None,
+    java: str | None = None,
+) -> SaspyEngine:
+    """Build a SAS engine for one of three connection types.
+
+    The consumer chooses the backend explicitly and supplies its connection
+    details. SAShiny does not auto-detect or validate the SAS version: the
+    responsibility for pointing at the correct endpoint/version rests with the
+    caller. Credentials are never passed here — they come from ``~/.authinfo``
+    keyed by the profile's ``authkey``.
+
+    Args:
+        profile: One of ``"oda"``, ``"viya"`` or ``"sas94"``. Required; there is
+            no default.
+        region: ODA region (``us1``/``us2``/``eu1``/``ap1``/``ap2``). Defaults
+            to ``us1``.
+        url: Viya base URL (required for ``viya``).
+        context: Viya compute context name (optional).
+        verify: Viya TLS verification (default ``True``).
+        host: SAS 9.4 host (required for ``sas94``).
+        port: SAS 9.4 IOM port (default ``8591``).
+        saspath: SAS 9.4 executable path for SSH (optional; when given, SSH is
+            used instead of IOM).
+        ssh_user: SSH login user (optional).
+        java: Path to the Java executable for IOM (optional; auto-detected when
+            omitted).
+
+    Returns:
+        A :class:`SaspyEngine` configured for the chosen backend.
+
+    Raises:
+        ValueError: If ``profile`` is unknown or a required parameter is missing.
+
+    """
+    if profile == "oda":
+        if region not in ODA_HOSTS:
+            raise ValueError(f"unknown ODA region {region!r}; expected one of {sorted(ODA_HOSTS)}")
+        cfg: dict[str, Any] = {
+            "java": java or _find_java(),
+            "iomhost": ODA_HOSTS[region],
+            "iomport": 8591,
+            "authkey": "oda",
+            "encoding": "utf-8",
+        }
+    elif profile == "viya":
+        if not url:
+            raise ValueError("url is required for profile 'viya'")
+        cfg = {"url": url, "authkey": "viya", "options": ["fullstimer"]}
+        if context:
+            cfg["context"] = context
+        if not verify:
+            cfg["verify"] = False
+    elif profile == "sas94":
+        if not host:
+            raise ValueError("host is required for profile 'sas94'")
+        if saspath:
+            cfg = {
+                "saspath": saspath,
+                "ssh": _find_ssh(),
+                "host": host,
+                "encoding": "utf-8",
+                "options": ["-fullstimer"],
+            }
+            if ssh_user:
+                cfg["luser"] = ssh_user
+        else:
+            cfg = {
+                "java": java or _find_java(),
+                "iomhost": host,
+                "iomport": port,
+                "authkey": "iom",
+                "encoding": "utf-8",
+            }
+    else:
+        raise ValueError(f"unknown profile {profile!r}; expected 'oda', 'viya' or 'sas94'")
+
+    return SaspyEngine(cfg)
+
+
+def _find_java() -> str | None:
+    """Locate the Java executable, or ``None`` when not found."""
+    import shutil  # noqa: PLC0415
+
+    if os.environ.get("JAVA_HOME"):
+        cand = Path(os.environ["JAVA_HOME"]) / "bin" / ("java.exe" if os.name == "nt" else "java")
+        if cand.exists():
+            return str(cand)
+    return shutil.which("java")
+
+
+def _find_ssh() -> str:
+    """Locate the SSH executable."""
+    import shutil  # noqa: PLC0415
+
+    return shutil.which("ssh") or "/usr/bin/ssh"
 
 
 def load_profiles(path: str | Path | None = None) -> dict[str, Any]:
