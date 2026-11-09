@@ -162,7 +162,15 @@ Install from GitHub before release:
 
 ## 10. Open decisions
 
-See the questions issued with this plan; answers will be recorded here.
+Decided:
+
+| # | Decision | Choice |
+|---|---|---|
+| D1 | Contract location | **Sidecar YAML** (`analysis.sashiny.yml`) next to the `.sas` file; the SAS program is never modified |
+| D2 | First engine | **saspy** (R via `reticulate`, Python native) |
+| D3 | SAS targets for v1 | **SAS 9.4** (IOM/STDIO/SSH) and **SAS Viya** (HTTP) via saspy |
+
+Pending: remaining questions (interactive round).
 
 ## 11. Prior art to study and differentiate from
 
