@@ -1,0 +1,27 @@
+sashiny: 1
+program: program.sas
+title: Macro entry point
+inputs:
+  arm:
+    type: choice
+    label: Arm
+    choices: [Placebo, Drug A]
+    render: quoted
+    default: Placebo
+  min_pct:
+    type: numeric
+    label: Minimum percent
+    min: 0
+    max: 100
+    default: 5
+outputs:
+  log:
+    type: log
+run:
+  entry: macro
+  macro: ae_table
+  timeout_seconds: 120
+ui:
+  layout: top
+  order: [min_pct, arm]
+  run_label: Build table

@@ -1,0 +1,12 @@
+sashiny: 1
+program: program.sas
+title: Invalid
+inputs:
+  n:
+    type: numeric
+    label: x
+    integer: true
+    default: 2.5
+outputs:
+  log:
+    type: log

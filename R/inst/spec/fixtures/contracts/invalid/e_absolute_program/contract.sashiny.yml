@@ -1,0 +1,6 @@
+sashiny: 1
+program: /opt/sas/program.sas
+title: Invalid
+outputs:
+  log:
+    type: log

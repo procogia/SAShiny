@@ -1,0 +1,6 @@
+sashiny: 2
+program: program.sas
+title: Invalid
+outputs:
+  log:
+    type: log

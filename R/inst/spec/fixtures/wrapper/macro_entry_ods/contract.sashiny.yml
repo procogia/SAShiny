@@ -1,0 +1,28 @@
+sashiny: 1
+program: program.sas
+title: Wrapper with macro entry and ODS downloads
+inputs:
+  adsl:
+    type: dataset
+    label: ADSL
+    target: work.adsl
+    macro: adsl_ds
+  arm:
+    type: choice
+    label: Arm
+    choices: [Placebo, Drug A]
+    render: quoted
+outputs:
+  rtf_a:
+    type: download
+    format: rtf
+  pdf_a:
+    type: download
+    format: pdf
+  rtf_b:
+    type: download
+    format: rtf
+run:
+  entry: macro
+  macro: ae_table
+  reset_work: false

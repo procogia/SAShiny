@@ -1,0 +1,20 @@
+{
+  "contract": "contracts/valid/macro_entry",
+  "today": "2026-11-11",
+  "cases": [
+    {
+      "name": "defaults",
+      "values": {
+        "arm": "Drug A",
+        "min_pct": 5
+      },
+      "expected": {
+        "status": "ok",
+        "macros": {
+          "ARM": "'Drug A'",
+          "MIN_PCT": "5"
+        }
+      }
+    }
+  ]
+}

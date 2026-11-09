@@ -1,0 +1,28 @@
+sashiny: 1
+program: program.sas
+title: Multichoice inputs
+inputs:
+  origins:
+    type: multichoice
+    label: Origins
+    choices: [Asia, Europe, USA]
+    default: [Asia, Europe, USA]
+    count_macro: n_origins
+  types:
+    type: multichoice
+    label: Types
+    choices: [SUV, Sedan, Wagon]
+    render: bare
+    separator: comma
+    min_selected: 0
+    max_selected: 2
+  arms:
+    type: multichoice
+    label: Arms
+    choices: [Placebo, Drug A]
+    render: dquoted
+    optional: true
+    count_macro: n_arms
+outputs:
+  log:
+    type: log

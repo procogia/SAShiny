@@ -1,0 +1,31 @@
+sashiny: 1
+program: program.sas
+title: All output types
+outputs:
+  stats:
+    type: table
+    label: Statistics
+    from: work.stats
+    columns: [origin, mean_msrp]
+    max_rows: 500
+    formatted: true
+  first_plot:
+    type: plot
+    select: 1
+  all_plots:
+    type: plot
+  report:
+    type: html
+  log:
+    type: log
+    scope: full
+  stats_csv:
+    type: download
+    format: csv
+    from: work.stats
+    filename: stats
+  stats_xlsx: {type: download, format: xlsx, from: work.stats}
+  stats_xpt: {type: download, format: xpt, from: work.stats}
+  stats_sas: {type: download, format: sas7bdat, from: work.stats}
+  report_rtf: {type: download, format: rtf, label: RTF report}
+  report_pdf: {type: download, format: pdf, label: PDF report}

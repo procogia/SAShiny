@@ -7,3 +7,4 @@ spec/fixtures/wrapper/**/expected_*.sas text eol=lf
 # This fixture is intentionally CRLF with a BOM and no final newline
 # (spec/fixtures/README.md). Do not normalise it.
 spec/fixtures/wrapper/program_entry/program.sas -text
+R/inst/spec/fixtures/wrapper/program_entry/program.sas -text

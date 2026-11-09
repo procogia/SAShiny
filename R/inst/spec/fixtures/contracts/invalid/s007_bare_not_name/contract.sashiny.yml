@@ -1,0 +1,12 @@
+sashiny: 1
+program: program.sas
+title: Invalid
+inputs:
+  m:
+    type: multichoice
+    label: x
+    choices: [Drug A, Placebo]
+    render: bare
+outputs:
+  log:
+    type: log

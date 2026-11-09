@@ -1,0 +1,12 @@
+sashiny: 1
+program: program.sas
+title: Invalid
+inputs:
+  c:
+    type: choice
+    label: x
+    choices: [a]
+    choices_from: {dataset: sashelp.cars, value_column: make}
+outputs:
+  log:
+    type: log

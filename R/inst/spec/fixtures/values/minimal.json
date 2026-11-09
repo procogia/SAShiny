@@ -1,0 +1,14 @@
+{
+  "contract": "contracts/valid/minimal",
+  "today": "2026-11-11",
+  "cases": [
+    {
+      "name": "no_inputs",
+      "values": {},
+      "expected": {
+        "status": "ok",
+        "macros": {}
+      }
+    }
+  ]
+}

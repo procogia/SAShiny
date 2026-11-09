@@ -1,0 +1,22 @@
+/* SAShiny 1 wrapper: generated, do not edit */
+%put NOTE: SASHINY-BEGIN run=fixture;
+%let syscc = 0;
+data _null_;
+  call symputx('ADSL_DS', 'WORK.ADSL', 'G');
+  call symputx('ARM', '''Drug A''', 'G');
+run;
+%let ADSL_DS = %superq(ADSL_DS);
+%let ARM = %superq(ARM);
+ods rtf(id=rtf_a) file="%sysfunc(pathname(work))/sashiny_rtf_a.rtf";
+ods pdf(id=pdf_a) file="%sysfunc(pathname(work))/sashiny_pdf_a.pdf";
+ods rtf(id=rtf_b) file="%sysfunc(pathname(work))/sashiny_rtf_b.rtf";
+%put NOTE: SASHINY-BEGIN-PROGRAM;
+%macro ae_table(adsl_ds=, arm=);
+  %put NOTE: &adsl_ds &arm;
+%mend ae_table;
+%ae_table(ADSL_DS=&ADSL_DS, ARM=&ARM);
+%put NOTE: SASHINY-END-PROGRAM;
+ods rtf(id=rtf_a) close;
+ods pdf(id=pdf_a) close;
+ods rtf(id=rtf_b) close;
+%put NOTE: SASHINY-END run=fixture syscc=&syscc;
