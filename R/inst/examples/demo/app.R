@@ -1,9 +1,9 @@
-# SAShiny Lisbon demo app skeleton (R).
+# SAShiny Lisbon demo app (R).
 #
-# A minimal multi-tab Shiny app that loads the three example contracts
-# (general / pharma / aml) and renders a placeholder UI. The "Run" action
-# validates the inputs and shows the rendered macro values, standing in for the
-# mock engine until the full engine and Shiny modules land (issues #5, #8).
+# A multi-tab Shiny app (General / Pharma / AML) that runs the three example
+# contracts through the mock engine (offline mode). The connection-profile
+# picker and live/offline toggle are present; live SAS is stubbed until the
+# saspy engine (issue #6) and live SAS reports (issue #11) land.
 #
 # Run from the repository root:
 #
@@ -27,69 +27,30 @@ tracks <- list(
 contracts <- lapply(tracks, function(p) if (file.exists(p)) sas_contract(p) else NULL)
 contracts <- contracts[!vapply(contracts, is.null, logical(1))]
 
-input_ui <- function(iid, spec) {
-  kind <- spec$type
-  label <- spec$label %||% iid
-  switch(kind,
-    numeric = numericInput(iid, label, spec$default %||% 0),
-    text = textInput(iid, label, spec$default %||% ""),
-    choice = textInput(iid, label, spec$default %||% ""),
-    multichoice = checkboxGroupInput(
-      iid, label,
-      choices = vapply(spec$choices %||% list(), function(c) {
-        if (is.character(c)) c else c$value
-      }, character(1))
-    ),
-    date = textInput(iid, label, ""),
-    daterange = textInput(iid, label, ""),
-    dataset = fileInput(iid, label),
-    textInput(iid, label, "")
-  )
-}
-
-track_ui <- function(name, contract) {
-  inputs <- contract$data$inputs %||% list()
-  controls <- lapply(names(inputs), function(iid) input_ui(iid, inputs[[iid]]))
-  tabPanel(
-    name,
-    h3(contract$data$title %||% name),
-    controls,
-    actionButton("run", "Run", class = "btn-primary"),
-    verbatimTextOutput("result")
-  )
-}
+profiles <- c("Offline", "ODA", "ProCogia Viya", "ProCogia 9.4")
 
 ui <- navbarPage(
   "SAShiny demo",
   tabPanel("About", markdown(
     "SAShiny demo: unchanged SAS programs as the server of a Shiny app. ",
-    "Select a track, set inputs, and press Run."
+    "Select a track, choose a connection profile, set inputs, and press Run."
   )),
-  !!!lapply(names(contracts), function(n) track_ui(n, contracts[[n]]))
+  tabPanel("General", sas_program_ui("general", contracts$General)),
+  tabPanel("Pharma", sas_program_ui("pharma", contracts$Pharma)),
+  tabPanel("AML", sas_program_ui("aml", contracts$AML)),
+  sidebar = sidebarPanel(
+    selectInput("profile", "Connection profile", profiles, selected = "Offline"),
+    checkboxInput("live", "Live SAS", value = FALSE),
+    markdown("Live SAS requires the saspy engine (issue #6).")
+  )
 )
 
 server <- function(input, output, session) {
-  output$result <- renderPrint({
-    req(input$run)
-    # Simplified: render the first track that has any inputs. The full app
-    # tracks the active tab explicitly.
-    for (name in names(contracts)) {
-      contract <- contracts[[name]]
-      inputs <- contract$data$inputs %||% list()
-      values <- lapply(names(inputs), function(iid) input[[iid]])
-      names(values) <- names(inputs)
-      if (length(values) > 0L) {
-        res <- sas_render_values(contract$data, values)
-        if (length(res$issues) > 0L) {
-          return(paste(vapply(res$issues, function(i) paste(i$code, i$path, i$message),
-                              character(1)), collapse = "\n"))
-        }
-        return(paste(paste(names(res$macros), unlist(res$macros), sep = " = "),
-                     collapse = "\n"))
-      }
-    }
-    "Set inputs and press Run."
-  })
+  # Offline mode uses the mock engine; live SAS is stubbed until #6.
+  engine <- sas_engine_mock()
+  sas_program_server("general", contracts$General, engine)
+  sas_program_server("pharma", contracts$Pharma, engine)
+  sas_program_server("aml", contracts$AML, engine)
 }
 
 shinyApp(ui, server)
