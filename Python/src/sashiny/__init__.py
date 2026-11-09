@@ -10,6 +10,7 @@ from .engines import Engine, MockEngine, SaspyEngine, connect, load_profiles
 from .lint import lint
 from .pool import Pool
 from .result import LogLine, Result, TableResult
+from .run import run
 from .values import render_values
 from .wrapper import reset_code, wrapper_code
 
@@ -30,6 +31,7 @@ __all__ = [
     "load_profiles",
     "render_values",
     "reset_code",
+    "run",
     "validate",
     "wrapper_code",
 ]
