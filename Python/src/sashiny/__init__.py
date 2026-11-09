@@ -5,6 +5,7 @@ trademark of Posit Software, PBC. This project is not affiliated with or
 endorsed by either company.
 """
 
+from .app import app
 from .contract import Contract, Issue, load, validate
 from .engines import Engine, MockEngine, SaspyEngine, connect, load_profiles
 from .lint import lint
@@ -25,6 +26,7 @@ __all__ = [
     "SaspyEngine",
     "TableResult",
     "__version__",
+    "app",
     "connect",
     "lint",
     "load",
