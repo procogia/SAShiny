@@ -215,9 +215,9 @@ Install before release:
 |---|---|---|---|
 | 0. Plan | This document, scaffold, license | Approved | ✅ Done |
 | 1. Spec | `spec/` schema, CONTRACT.md, reference oracle, 50+ fixtures, 3 example tracks, CI | All fixtures pass; examples validate | ✅ Done (2026-11-08) |
-| 2. Core (R ∥ Py) | contract loader/validator, value renderer, wrapper generator, lint, mock engine, result object | Both pass every fixture; `R CMD check --as-cran` clean; ruff/mypy strict clean; ≥ 90% coverage | Next |
-| 3. saspy engine + pool | 9.4 + Viya via saspy; bounded pool; timeouts; upload conversion | Live runs on SAS ODA and ProCogia Viya | |
-| 4. Shiny modules | auto-UI, custom-module override, log panel, downloads, multi-program app | `testServer` / Python test-client suites | |
+| 2. Core (R ∥ Py) | contract loader/validator, value renderer, wrapper generator, lint, mock engine, result object | Both pass every fixture; `R CMD check --as-cran` clean; ruff/mypy strict clean; ≥ 90% coverage | ✅ Done (2026-11-09) |
+| 3. saspy engine + pool | 9.4 + Viya via saspy; bounded pool; timeouts; upload conversion | Live runs on SAS ODA and ProCogia Viya | ✅ Implemented; live verification pending #11 |
+| 4. Shiny modules | auto-UI, custom-module override, log panel, downloads, multi-program app | `testServer` / Python test-client suites | ✅ Done (2026-11-09) |
 | 5. **Lisbon demo (2026-11-11)** | Demo build of the three example apps | See section 10.1 | |
 | 6. Templates + docs | `use_sashiny_app()`, golem template, `sashiny new`; vignettes; pkgdown + Python docs | A new user ships an app from the docs alone | |
 | 7. Hardening | security review, pool stress tests, audit run metadata | Threat model + tests green | |

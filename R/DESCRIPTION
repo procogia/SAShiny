@@ -1,6 +1,6 @@
 Package: SAShiny
 Title: Use Unchanged 'SAS' Programs as the Server of 'Shiny' Applications
-Version: 0.0.0.9000
+Version: 0.1.0
 Authors@R: c(
     person("Mehar Pratap", "Singh", , "meharpsingh@gmail.com",
            role = c("aut", "cre", "cph")),

@@ -14,7 +14,7 @@ authors = [{ name = "Mehar Pratap Singh", email = "meharpsingh@gmail.com" }]
 maintainers = [{ name = "Mehar Pratap Singh", email = "meharpsingh@gmail.com" }]
 keywords = ["sas", "shiny", "saspy", "viya", "dashboard", "clinical", "aml"]
 classifiers = [
-  "Development Status :: 2 - Pre-Alpha",
+  "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
   "Intended Audience :: Science/Research",
   "Operating System :: OS Independent",

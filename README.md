@@ -3,7 +3,7 @@
 Use an **unchanged SAS program** as the **server** of a Shiny app, with Shiny (R or Python) handling the UI.
 A sidecar YAML contract declares the program's inputs and outputs, and SAShiny does the rest.
 
-> Status: pre-alpha. Phase 1 (contract specification) is complete. See [PLAN.md](PLAN.md).
+> Status: beta. Phase 2 (core) complete; saspy engine and Shiny modules implemented. See [PLAN.md](PLAN.md).
 
 ```
 analysis.sas            # your SAS program — never modified
