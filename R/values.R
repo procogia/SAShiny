@@ -6,8 +6,10 @@
 # (that happens in wrapper.R).
 
 .sashiny_sas_epoch <- as.Date("1960-01-01")
-.sashiny_months <- c("JAN", "FEB", "MAR", "APR", "MAY", "JUN",
-                     "JUL", "AUG", "SEP", "OCT", "NOV", "DEC")
+.sashiny_months <- c(
+  "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
+  "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"
+)
 # Control characters U+0000-U+001F and U+007F-U+009F (spec section 4 V007).
 # Written as literal \xNN escapes (PCRE), since R source cannot contain NUL.
 .sashiny_control <- "[\\x00-\\x1f\\x7f-\\x9f]"
@@ -50,9 +52,11 @@
 #' @noRd
 .sashiny_render_date <- function(dt, mode) {
   if (identical(mode, "date9")) {
-    return(sprintf("%02d%s%04d", as.integer(format(dt, "%d")),
-                   .sashiny_months[as.integer(format(dt, "%m"))],
-                   as.integer(format(dt, "%Y"))))
+    return(sprintf(
+      "%02d%s%04d", as.integer(format(dt, "%d")),
+      .sashiny_months[as.integer(format(dt, "%m"))],
+      as.integer(format(dt, "%Y"))
+    ))
   }
   if (identical(mode, "iso")) {
     return(format(dt, "%Y-%m-%d"))
@@ -60,16 +64,20 @@
   if (identical(mode, "sasdate")) {
     return(as.character(as.integer(difftime(dt, .sashiny_sas_epoch, units = "days"))))
   }
-  sprintf("'%02d%s%04d'd", as.integer(format(dt, "%d")),
-          .sashiny_months[as.integer(format(dt, "%m"))],
-          as.integer(format(dt, "%Y")))
+  sprintf(
+    "'%02d%s%04d'd", as.integer(format(dt, "%d")),
+    .sashiny_months[as.integer(format(dt, "%m"))],
+    as.integer(format(dt, "%Y"))
+  )
 }
 
 #' Trim Unicode White_Space from both ends of a string.
 #' @noRd
 .sashiny_ws_strip <- function(v) {
-  sub(paste0("^[", .sashiny_ws, "]+"), "",
-      sub(paste0("[", .sashiny_ws, "]+$"), "", v))
+  sub(
+    paste0("^[", .sashiny_ws, "]+"), "",
+    sub(paste0("[", .sashiny_ws, "]+$"), "", v)
+  )
 }
 
 #' Validate and render values
@@ -116,17 +124,17 @@ sas_render_values <- function(data, values, today = Sys.Date(), only = NULL,
     names <- .sashiny_macro_names(iid, spec)
     raw <- values[[iid]]
 
-        # Normalise JSON arrays (lists) to character vectors for list-valued inputs.
-        # A scalar (non-list) value for these types is a type error (V002).
-        if (kind %in% c("multichoice", "daterange") && !is.null(raw) && !is.list(raw)) {
-          add("V002", iid)
-          next
-        }
-        if (kind %in% c("multichoice", "daterange") && is.list(raw)) {
-          raw <- if (length(raw) == 0L) character() else unlist(raw, use.names = FALSE)
-        }
+    # Normalise JSON arrays (lists) to character vectors for list-valued inputs.
+    # A scalar (non-list) value for these types is a type error (V002).
+    if (kind %in% c("multichoice", "daterange") && !is.null(raw) && !is.list(raw)) {
+      add("V002", iid)
+      next
+    }
+    if (kind %in% c("multichoice", "daterange") && is.list(raw)) {
+      raw <- if (length(raw) == 0L) character() else unlist(raw, use.names = FALSE)
+    }
 
-        if (identical(kind, "dataset")) {
+    if (identical(kind, "dataset")) {
       present <- isTRUE(uploads[[iid]])
       if (!present && !isTRUE(spec$optional)) {
         add("V001", iid)
@@ -240,13 +248,13 @@ sas_render_values <- function(data, values, today = Sys.Date(), only = NULL,
   }
 
   if (identical(kind, "multichoice")) {
-      if (!is.character(raw)) {
-        return(err("V002"))
-      }
-      if (any(grepl(.sashiny_control, raw, perl = TRUE))) {
-        return(err("V007"))
-      }
-        allowed <- if ("choices" %in% names(spec)) .sashiny_choice_values(spec) else override[[iid]]
+    if (!is.character(raw)) {
+      return(err("V002"))
+    }
+    if (any(grepl(.sashiny_control, raw, perl = TRUE))) {
+      return(err("V007"))
+    }
+    allowed <- if ("choices" %in% names(spec)) .sashiny_choice_values(spec) else override[[iid]]
     if (!is.null(allowed) && any(!(raw %in% allowed))) {
       return(err("V004"))
     }
@@ -267,24 +275,27 @@ sas_render_values <- function(data, values, today = Sys.Date(), only = NULL,
   }
 
   if (kind %in% c("date", "daterange")) {
-      items <- if (identical(kind, "date")) list(raw) else raw
-      if (identical(kind, "daterange") && (!is.character(raw) || length(raw) != 2L)) {
-        return(err("V002"))
-      }
+    items <- if (identical(kind, "date")) list(raw) else raw
+    if (identical(kind, "daterange") && (!is.character(raw) || length(raw) != 2L)) {
+      return(err("V002"))
+    }
     dates <- list()
     for (it in items) {
       if (!is.character(it)) {
         return(err("V002"))
       }
-      dt <- tryCatch({
-        if (!grepl("^\\d{4}-\\d{2}-\\d{2}$", it)) stop("bad date")
-        .sashiny_resolve_date(it, today)
-      }, error = function(e) NULL)
+      dt <- tryCatch(
+        {
+          if (!grepl("^\\d{4}-\\d{2}-\\d{2}$", it)) stop("bad date")
+          .sashiny_resolve_date(it, today)
+        },
+        error = function(e) NULL
+      )
       if (is.null(dt)) {
         return(err("V009"))
       }
       if ((!is.null(spec$min) && dt < .sashiny_resolve_date(spec$min, today)) ||
-          (!is.null(spec$max) && dt > .sashiny_resolve_date(spec$max, today))) {
+        (!is.null(spec$max) && dt > .sashiny_resolve_date(spec$max, today))) {
         return(err("V009"))
       }
       dates[[length(dates) + 1L]] <- dt

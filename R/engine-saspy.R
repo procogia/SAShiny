@@ -53,8 +53,10 @@ sas_load_profiles <- function(path = NULL) {
   if (m == -1L) {
     return(list(status = "error", syscc = NULL))
   }
-  syscc <- as.integer(sub(".*syscc=([0-9]+).*", "\\1",
-                          regmatches(log, m)))
+  syscc <- as.integer(sub(
+    ".*syscc=([0-9]+).*", "\\1",
+    regmatches(log, m)
+  ))
   counts <- .sashiny_classify_log(log)
   if (syscc > 4L || counts[["error"]] > 0L) {
     return(list(status = "error", syscc = syscc))
@@ -118,8 +120,10 @@ sas_connect <- function(profile, region = "us1", url = NULL, context = NULL,
                         saspath = NULL, ssh_user = NULL, java = NULL) {
   if (identical(profile, "oda")) {
     if (!(region %in% names(.sashiny_oda_hosts))) {
-      stop("unknown ODA region '", region, "'; expected one of ",
-           paste(names(.sashiny_oda_hosts), collapse = ", "))
+      stop(
+        "unknown ODA region '", region, "'; expected one of ",
+        paste(names(.sashiny_oda_hosts), collapse = ", ")
+      )
     }
     cfg <- list(
       java = java %||% .sashiny_find_java(),
@@ -209,10 +213,12 @@ sas_engine_saspy_run <- function(engine, contract, values, today = Sys.Date(),
   macros <- res$macros
   if (length(res$issues) > 0L) {
     return(sashiny_result(run_id, "error",
-                          metadata = .sashiny_metadata(run_id, "error",
-                                                       macros = macros,
-                                                       engine = "saspy",
-                                                       engine_version = "0.0.1")))
+      metadata = .sashiny_metadata(run_id, "error",
+        macros = macros,
+        engine = "saspy",
+        engine_version = "0.0.1"
+      )
+    ))
   }
 
   sas <- .sashiny_saspy_session(engine)
@@ -220,15 +226,19 @@ sas_engine_saspy_run <- function(engine, contract, values, today = Sys.Date(),
     sas$submit(sas_reset_code(data), results = "TEXT")
   }
   program <- readBin(file.path(contract$base_dir, data$program), "raw",
-                     n = file.info(file.path(contract$base_dir, data$program))$size)
+    n = file.info(file.path(contract$base_dir, data$program))$size
+  )
   res <- sas$submit(sas_wrapper_code(data, macros, program, run_id = run_id),
-                    results = "HTML")
+    results = "HTML"
+  )
   status <- .sashiny_run_status(res$LOG, run_id)
   result <- sashiny_result(
     run_id, status$status,
     log = res$LOG,
-    metadata = .sashiny_metadata(run_id, status$status, macros = macros,
-                                 engine = "saspy", engine_version = "0.0.1")
+    metadata = .sashiny_metadata(run_id, status$status,
+      macros = macros,
+      engine = "saspy", engine_version = "0.0.1"
+    )
   )
   result$metadata$syscc <- status$syscc
   result
@@ -241,7 +251,9 @@ sas_engine_saspy_run <- function(engine, contract, values, today = Sys.Date(),
     return(engine$sas)
   }
   saspy <- reticulate::import("saspy")
-  engine$sas <- saspy$SASsession(cfgfile = engine$cfg, cfgname = engine$cfgname,
-                                 results = "HTML")
+  engine$sas <- saspy$SASsession(
+    cfgfile = engine$cfg, cfgname = engine$cfgname,
+    results = "HTML"
+  )
   engine$sas
 }

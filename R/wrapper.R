@@ -70,8 +70,8 @@ sas_wrapper_code <- function(data, macros, program_bytes, run_id = "fixture") {
   }
   for (o in ods) {
     out <- c(out, paste0(
-      'ods ', o$fmt, '(id=', o$oid, ') file="%sysfunc(pathname(work))/sashiny_',
-      o$oid, '.', o$fmt, '";'
+      "ods ", o$fmt, "(id=", o$oid, ') file="%sysfunc(pathname(work))/sashiny_',
+      o$oid, ".", o$fmt, '";'
     ))
   }
   out <- c(out, "%put NOTE: SASHINY-BEGIN-PROGRAM;")

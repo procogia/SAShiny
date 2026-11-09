@@ -17,8 +17,10 @@
 sashiny_result <- function(run_id, status, outputs = list(), log = "",
                            metadata = list()) {
   structure(
-    list(run_id = run_id, status = status, outputs = outputs, log = log,
-         metadata = metadata),
+    list(
+      run_id = run_id, status = status, outputs = outputs, log = log,
+      metadata = metadata
+    ),
     class = "sashiny_result"
   )
 }

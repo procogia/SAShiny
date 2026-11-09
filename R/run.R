@@ -21,6 +21,8 @@ sas_run <- function(contract, values, engine, today = Sys.Date(),
   if (!inherits(contract, "sashiny_contract")) {
     contract <- sas_contract(contract)
   }
-  sas_engine_run(engine, contract, values, today = today,
-                 uploads = uploads, run_id = run_id)
+  sas_engine_run(engine, contract, values,
+    today = today,
+    uploads = uploads, run_id = run_id
+  )
 }
