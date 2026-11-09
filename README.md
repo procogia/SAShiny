@@ -30,6 +30,14 @@ cd Python && uv sync && uv run ruff check . && uv run mypy && uv run pytest
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
 
+## Maintainers
+
+- Mehar Pratap Singh (author, maintainer)
+- Shreya Sharma
+- Love ProCogia
+
+See [docs/HANDOFF.md](docs/HANDOFF.md) for the current state and the path to CRAN/PyPI.
+
 ## License
 
 MIT © 2026 Mehar Pratap Singh. Development funded by ProCogia.

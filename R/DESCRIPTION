@@ -4,6 +4,8 @@ Version: 0.1.0
 Authors@R: c(
     person("Mehar Pratap", "Singh", , "meharpsingh@gmail.com",
            role = c("aut", "cre", "cph")),
+    person("Shreya", "Sharma", role = "ctb"),
+    person("Love", "ProCogia", role = "ctb"),
     person("ProCogia", role = "fnd")
   )
 Description: Pairs an unmodified 'SAS' program with a declarative 'YAML'

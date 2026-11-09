@@ -11,7 +11,11 @@ requires-python = ">=3.10"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Mehar Pratap Singh", email = "meharpsingh@gmail.com" }]
-maintainers = [{ name = "Mehar Pratap Singh", email = "meharpsingh@gmail.com" }]
+maintainers = [
+  { name = "Mehar Pratap Singh", email = "meharpsingh@gmail.com" },
+  { name = "Shreya Sharma" },
+  { name = "Love ProCogia" },
+]
 keywords = ["sas", "shiny", "saspy", "viya", "dashboard", "clinical", "aml"]
 classifiers = [
   "Development Status :: 4 - Beta",
