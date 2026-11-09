@@ -19,7 +19,7 @@ License: MIT + file LICENSE
 URL: https://github.com/meharpsingh/SAShiny
 BugReports: https://github.com/meharpsingh/SAShiny/issues
 Depends:
-    R (>= 4.0)
+    R (>= 4.1)
 Suggests:
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
