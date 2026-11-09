@@ -8,6 +8,10 @@ Use an unchanged SAS program as the **server** of a Shiny app, with Shiny (R or 
 |---|---|
 | [`R/`](R) | R package (target: CRAN) |
 | [`Python/`](Python) | Python library (target: PyPI) |
+| [`spec/`](spec) | Shared YAML contract schema and conformance fixtures |
+| [`examples/`](examples) | Demo SAS programs: general, pharma (CDISC), AML |
+
+License: MIT.
 
 ---
 SAS is a registered trademark of SAS Institute Inc. Shiny is a registered trademark of Posit Software, PBC.
