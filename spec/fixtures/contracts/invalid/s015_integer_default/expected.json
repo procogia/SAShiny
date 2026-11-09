@@ -1,0 +1,12 @@
+{
+  "errors": [
+    {
+      "code": "S015",
+      "path": "/inputs/n/default"
+    },
+    {
+      "code": "S004",
+      "path": "/inputs/n/default"
+    }
+  ]
+}

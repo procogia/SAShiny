@@ -1,0 +1,25 @@
+sashiny: 1
+program: program.sas
+title: Text inputs
+inputs:
+  company:
+    type: text
+    label: Company
+    default: Acme
+  company_q:
+    type: text
+    label: Company (single-quoted)
+    render: quoted
+  company_dq:
+    type: text
+    label: Company (double-quoted)
+    render: dquoted
+  study_id:
+    type: text
+    label: Study id
+    pattern: "[A-Z]{3}-\\d{3}"
+    max_length: 7
+    placeholder: ABC-123
+outputs:
+  log:
+    type: log

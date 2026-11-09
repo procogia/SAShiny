@@ -1,0 +1,31 @@
+Package: SAShiny
+Title: Use Unchanged 'SAS' Programs as the Server of 'Shiny' Applications
+Version: 0.0.0.9000
+Authors@R: c(
+    person("Mehar Pratap", "Singh", , "meharpsingh@gmail.com",
+           role = c("aut", "cre", "cph")),
+    person("ProCogia", role = "fnd")
+  )
+Description: Pairs an unmodified 'SAS' program with a declarative 'YAML'
+    sidecar contract so that 'SAS' performs the analysis while 'Shiny'
+    renders the user interface. The contract declares typed inputs, which
+    are validated and safely passed to 'SAS' as macro variables, and outputs
+    such as datasets, 'ODS' graphics, listings, logs and downloads.
+    Connections to 'SAS' 9.4 and 'SAS Viya' are made through 'SASPy'.
+    'SAS' is a registered trademark of SAS Institute Inc. and 'Shiny' is a
+    registered trademark of Posit Software, PBC; this package is not
+    affiliated with or endorsed by either company.
+License: MIT + file LICENSE
+URL: https://github.com/meharpsingh/SAShiny
+BugReports: https://github.com/meharpsingh/SAShiny/issues
+Depends:
+    R (>= 4.0)
+Suggests:
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+Encoding: UTF-8
+Language: en-GB
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+SystemRequirements: Optional: 'SAS' 9.4 or 'SAS Viya', 'Python' (>= 3.10)
+    with 'saspy', and 'Java' for 'SAS' 9.4 IOM connections.

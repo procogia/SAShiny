@@ -1,0 +1,157 @@
+{
+  "contract": "contracts/valid/numeric",
+  "today": "2026-11-11",
+  "cases": [
+    {
+      "name": "defaults",
+      "values": {
+        "min_msrp": 20000,
+        "ratio": 0.5
+      },
+      "expected": {
+        "status": "ok",
+        "macros": {
+          "MIN_MSRP": "20000",
+          "RATIO_VALUE": "0.5",
+          "BIG": ""
+        }
+      }
+    },
+    {
+      "name": "float_integer_accepted",
+      "values": {
+        "min_msrp": 30000.0,
+        "ratio": -1,
+        "big": 1e+20
+      },
+      "expected": {
+        "status": "ok",
+        "macros": {
+          "MIN_MSRP": "30000",
+          "RATIO_VALUE": "-1",
+          "BIG": "1E+20"
+        }
+      }
+    },
+    {
+      "name": "small_and_negative_zero",
+      "values": {
+        "min_msrp": 0,
+        "ratio": -0.0,
+        "big": 1.5e-07
+      },
+      "expected": {
+        "status": "ok",
+        "macros": {
+          "MIN_MSRP": "0",
+          "RATIO_VALUE": "0",
+          "BIG": "1.5E-07"
+        }
+      }
+    },
+    {
+      "name": "fifteen_digits",
+      "values": {
+        "min_msrp": 1,
+        "ratio": 0.1,
+        "big": 3.141592653589793
+      },
+      "expected": {
+        "status": "ok",
+        "macros": {
+          "MIN_MSRP": "1",
+          "RATIO_VALUE": "0.1",
+          "BIG": "3.14159265358979"
+        }
+      }
+    },
+    {
+      "name": "out_of_range",
+      "values": {
+        "min_msrp": 200001,
+        "ratio": 2
+      },
+      "expected": {
+        "status": "invalid",
+        "errors": [
+          {
+            "code": "V003",
+            "input": "min_msrp"
+          },
+          {
+            "code": "V003",
+            "input": "ratio"
+          }
+        ]
+      }
+    },
+    {
+      "name": "not_integer",
+      "values": {
+        "min_msrp": 1.5,
+        "ratio": 0
+      },
+      "expected": {
+        "status": "invalid",
+        "errors": [
+          {
+            "code": "V012",
+            "input": "min_msrp"
+          }
+        ]
+      }
+    },
+    {
+      "name": "wrong_type",
+      "values": {
+        "min_msrp": "100",
+        "ratio": true
+      },
+      "expected": {
+        "status": "invalid",
+        "errors": [
+          {
+            "code": "V002",
+            "input": "min_msrp"
+          },
+          {
+            "code": "V002",
+            "input": "ratio"
+          }
+        ]
+      }
+    },
+    {
+      "name": "missing_required",
+      "values": {
+        "ratio": 0
+      },
+      "expected": {
+        "status": "invalid",
+        "errors": [
+          {
+            "code": "V001",
+            "input": "min_msrp"
+          }
+        ]
+      }
+    },
+    {
+      "name": "unknown_input",
+      "values": {
+        "min_msrp": 1,
+        "ratio": 0,
+        "nope": 1
+      },
+      "expected": {
+        "status": "invalid",
+        "errors": [
+          {
+            "code": "V011",
+            "input": "nope"
+          }
+        ]
+      }
+    }
+  ]
+}

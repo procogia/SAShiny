@@ -1,0 +1,26 @@
+sashiny: 1
+program: program.sas
+title: Numeric inputs
+inputs:
+  min_msrp:
+    type: numeric
+    label: Minimum MSRP
+    min: 0
+    max: 200000
+    step: 1000
+    integer: true
+    default: 20000
+  ratio:
+    type: numeric
+    label: Ratio
+    min: -1
+    max: 1
+    default: 0.5
+    macro: Ratio_Value
+  big:
+    type: numeric
+    label: Unbounded
+    optional: true
+outputs:
+  log:
+    type: log

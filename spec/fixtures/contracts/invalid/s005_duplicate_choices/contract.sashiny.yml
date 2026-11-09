@@ -1,0 +1,11 @@
+sashiny: 1
+program: program.sas
+title: Invalid
+inputs:
+  c:
+    type: choice
+    label: x
+    choices: [a, {value: a, label: A}]
+outputs:
+  log:
+    type: log

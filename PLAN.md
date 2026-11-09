@@ -1,6 +1,7 @@
 # SAShiny — Project Plan (v1.0)
 
-> Status: **plan approved, pre-alpha**. Repo is private until the first CRAN submission.
+> Status: **phase 1 (contract spec) delivered, pre-alpha**. Repo is private until the first CRAN submission.
+> Normative contract: [`spec/CONTRACT.md`](spec/CONTRACT.md). Where this plan and the spec differ, the spec wins.
 
 ## 1. Vision
 
@@ -27,7 +28,7 @@ Mental model: `ui.R` stays in R/Python; `server.R` becomes `analysis.sas` + `ana
 | D2 | Engine | **saspy** (Python native; R via `reticulate`) |
 | D3 | SAS targets | **SAS 9.4** (IOM / STDIO / SSH) and **SAS Viya** (HTTP) |
 | D4 | Name | **SAShiny** on GitHub, CRAN and PyPI (PyPI normalises to `sashiny`) |
-| D5 | Ownership | Mehar = author, maintainer, copyright holder (`aut`, `cre`, `cph`); ProCogia = funder (`fnd`) |
+| D5 | Ownership | Mehar Pratap Singh <meharpsingh@gmail.com> = author, maintainer, copyright holder (`aut`, `cre`, `cph`); ProCogia = funder (`fnd`) |
 | D6 | License | **MIT** (CRAN form: `MIT + file LICENSE`) |
 | D7 | Concurrency | **Bounded SAS session pool** |
 | D8 | Test SAS | **SAS OnDemand for Academics** (public demos, 9.4) + **ProCogia SAS 9.4 / Viya** (internal) |
@@ -42,7 +43,10 @@ Mental model: `ui.R` stays in R/Python; `server.R` becomes `analysis.sas` + `ana
 | D17 | R structure | Plain package (roxygen2/testthat/pkgdown) **+** app template generator **+** golem-compatible modules |
 | D18 | Python toolchain | **uv + hatchling + ruff** (+ mypy, pytest) |
 | D19 | Sequencing | R and Python **developed in parallel**, each released when ready |
-| D20 | Timeline | **Alpha demo for Lisbon**; CRAN/PyPI submission **quality-gated** (no fixed date) |
+| D20 | Timeline | **Lisbon demo on 2026-11-11**; CRAN/PyPI submission **quality-gated** (no fixed date) |
+| D21 | Scope | **Standalone**; no PolyKode/ProCogia product coupling for now (can merge later) |
+| D22 | Injection model | Values reach SAS only as single-quoted `call symputx` literals, then re-stored with `%superq` (spec §6.3) |
+| D23 | Conformance | Hand-specified fixtures in `spec/fixtures` are the acceptance test for both languages, including byte-exact generated SAS |
 
 ## 3. Business cases
 
@@ -54,8 +58,8 @@ Mental model: `ui.R` stays in R/Python; `server.R` becomes `analysis.sas` + `ana
   binding) and the UI are new. The SAS log is captured per run for traceability.
 - **Value:** interactive TLF review, safety-signal exploration and ad-hoc subgroup analyses without
   revalidating the analysis code; a bridge period while organisations adopt R/Python.
-- **Demo:** ADSL/ADAE from the public CDISC pilot data → demographics table, AE summary by SOC/PT, KM plot;
-  inputs: population flag, arm, date range, upload of ADSL.
+- **Demo:** synthetic ADSL/ADAE (CDISC ADaM naming) → demographics table, TEAE incidence by SOC/PT, incidence plot;
+  inputs: population flag, arms, AE date window, minimum incidence, ADSL/ADAE upload or sample data.
 - **Watch-outs:** GxP use needs the deployment (not just the package) to be qualified; the package will
   provide run metadata (program hash, YAML hash, inputs, SAS log, timestamps) to support that.
 
@@ -82,86 +86,17 @@ Mental model: `ui.R` stays in R/Python; `server.R` becomes `analysis.sas` + `ana
 
 ## 4. The sidecar YAML contract
 
-`examples/general/cars_summary.sas` stays untouched. Next to it: `cars_summary.sashiny.yml`.
+Specified in full in [`spec/CONTRACT.md`](spec/CONTRACT.md) and [`spec/sashiny.schema.json`](spec/sashiny.schema.json).
+Worked examples: [`examples/`](examples). Summary:
 
-```yaml
-sashiny: 1                        # contract schema version
-program: cars_summary.sas
-title: Car prices by origin
-description: Summary statistics and plot from sashelp.cars
-
-inputs:
-  origin:
-    type: multichoice
-    label: Origin
-    choices: [Asia, Europe, USA]
-    default: [Asia, Europe, USA]
-    macro: origin_list            # becomes %let origin_list = "Asia" "Europe" "USA";
-    render: quoted_list
-  min_msrp:
-    type: numeric
-    label: Minimum MSRP
-    min: 0
-    max: 200000
-    default: 20000
-    macro: min_msrp
-  period:
-    type: daterange
-    label: Model year window
-    macro: [start_dt, end_dt]     # rendered as SAS date literals "01JAN2004"d
-  extra_data:
-    type: dataset
-    label: Optional extra cars file
-    accept: [csv, xlsx, xpt, sas7bdat]
-    target: work.extra_cars
-    optional: true
-
-outputs:
-  stats:
-    type: table
-    from: work.cars_stats
-  price_plot:
-    type: plot
-    ods: graphics                 # captured ODS graphics (SVG preferred, PNG fallback)
-  report:
-    type: html                    # full ODS HTML listing
-  log:
-    type: log
-  downloads:
-    - {type: csv,  from: work.cars_stats}
-    - {type: xpt,  from: work.cars_stats}
-    - {type: rtf,  source: ods}
-
-run:
-  entry: include                  # include | macro  (see 4.1)
-  timeout_seconds: 300
-```
-
-### 4.1 How inputs reach an unmodified program
-The `.sas` file is never edited, so SAShiny wraps it at submit time:
-
-```sas
-/* generated by SAShiny — not saved into the program */
-%let min_msrp = 20000;
-%let origin_list = %nrstr("Asia" "Europe" "USA");
-ods html5 ...;                       /* capture */
-%include "<path>/cars_summary.sas";  /* the untouched program */
-ods _all_ close;
-```
-
-Supported entry styles:
-- `entry: include` — for programs reading **global macro variables**.
-- `entry: macro` — for programs that define a macro, e.g. `%macro report(origin=, min_msrp=);`;
-  SAShiny calls `%report(origin=..., min_msrp=...)`.
-
-Known constraint (documented): if a program **hard-sets** a macro variable with its own `%let` after our
-injection, the program's value wins. SAShiny's `sashiny_lint()` will detect this and warn, without editing
-the program.
-
-### 4.2 Safety
-All values are type-validated against the YAML (ranges, choice membership, date formats), then quoted
-with macro quoting (`%nrstr` / `%str`) so user text can never execute as SAS code or macro logic.
-Dataset uploads are type-checked and column names sanitised to valid SAS names.
+- **Inputs:** `numeric`, `text`, `choice`, `multichoice`, `date`, `daterange`, `dataset`. Each sets named macro variables.
+  Rendering is exact and specified: SAS date literals, quoted lists in choice order, counts and so on.
+- **Outputs:** `table`, `plot`, `html`, `log`, `download` (csv, xlsx, xpt, sas7bdat, rtf, pdf).
+- **Entry points:** `program` (submit the file verbatim) or `macro` (submit the macro library, then call it).
+- **Wrapper:** a byte-exact generated preamble and postamble around the untouched program text, with
+  sentinel log lines so the log can be scoped and the run status determined.
+- **Validation:** schema errors (`E000`), 16 semantic rules (`S001`–`S016`), 14 value rules (`V001`–`V014`)
+  and advisory lint (`L001`–`L005`).
 
 ## 5. Architecture layers (identical in both languages)
 
@@ -220,7 +155,8 @@ SAShiny/
 ├── spec/                      # single source of truth for the contract
 │   ├── sashiny.schema.json    # JSON Schema for the YAML
 │   ├── CONTRACT.md            # human-readable spec
-│   └── fixtures/              # YAML + expected generated SAS + mock results, used by BOTH test suites
+│   ├── fixtures/              # hand-specified conformance fixtures, used by BOTH test suites
+│   └── tools/                 # reference oracle + check_spec.py (CI only, never shipped)
 ├── examples/
 │   ├── general/               # sashelp demos
 │   ├── pharma/                # CDISC pilot demos
@@ -269,17 +205,31 @@ Install before release:
 
 ## 10. Roadmap
 
-| Phase | Deliverable | Exit criteria |
-|---|---|---|
-| 0. Plan | This document, scaffold, license | ✅ Done |
-| 1. Spec | `spec/` schema, CONTRACT.md, 15+ fixtures, 3 example tracks | Schema reviewed; fixtures cover every input/output type |
-| 2. Core (R ∥ Py) | contract, lint, mock engine, runner, results | Both pass shared fixtures; R CMD check clean |
-| 3. saspy engine + pool | 9.4 + Viya via saspy; bounded pool | Live runs on ODA and ProCogia Viya |
-| 4. Shiny modules | auto-UI, custom-module override, log panel, downloads, multi-program app | testServer suites; demo apps for all 3 tracks |
-| 5. **Lisbon alpha** | Demo build: general + pharma + AML apps on live SAS | Demo runs end-to-end in < 10 min setup |
-| 6. Templates + docs | `use_sashiny_app()`, golem template, `sashiny new`; vignettes; pkgdown + Python docs | New user ships an app from docs alone |
-| 7. Hardening | security review, pool stress tests, run metadata for audit | Threat model + tests green |
-| 8. Release | CRAN submission (repo goes public), PyPI release | Accepted on CRAN; published on PyPI |
+| Phase | Deliverable | Exit criteria | Status |
+|---|---|---|---|
+| 0. Plan | This document, scaffold, license | Approved | ✅ Done |
+| 1. Spec | `spec/` schema, CONTRACT.md, reference oracle, 50+ fixtures, 3 example tracks, CI | All fixtures pass; examples validate | ✅ Done (2026-11-08) |
+| 2. Core (R ∥ Py) | contract loader/validator, value renderer, wrapper generator, lint, mock engine, result object | Both pass every fixture; `R CMD check --as-cran` clean; ruff/mypy strict clean; ≥ 90% coverage | Next |
+| 3. saspy engine + pool | 9.4 + Viya via saspy; bounded pool; timeouts; upload conversion | Live runs on SAS ODA and ProCogia Viya | |
+| 4. Shiny modules | auto-UI, custom-module override, log panel, downloads, multi-program app | `testServer` / Python test-client suites | |
+| 5. **Lisbon demo (2026-11-11)** | Demo build of the three example apps | See section 10.1 | |
+| 6. Templates + docs | `use_sashiny_app()`, golem template, `sashiny new`; vignettes; pkgdown + Python docs | A new user ships an app from the docs alone | |
+| 7. Hardening | security review, pool stress tests, audit run metadata | Threat model + tests green | |
+| 8. Release | CRAN submission (repo goes public), PyPI release | Accepted on CRAN; published on PyPI | |
+
+### 10.1 Lisbon demo plan (3 days)
+
+The demo date falls before phases 2–4 can be finished to release quality. The demo is therefore cut as
+a **tagged pre-release** (`v0.0.1-demo`) built from the same code that continues to release. Nothing is
+built only for the demo. Scope, in priority order:
+
+1. **Day 1 (Nov 8–9):** phase 2 core in R (validator, renderer, wrapper, mock engine) passing all fixtures.
+2. **Day 2 (Nov 9–10):** saspy engine (single session first, pool behind the same interface) and the
+   auto-UI module; the three example apps in one multi-tab app.
+3. **Day 3 (Nov 10–11):** live dry-run against SAS, a recorded mock fallback (so the demo works offline),
+   and a run-sheet.
+
+Python parity follows the same order, immediately after the demo build, against the same fixtures.
 
 ## 11. Prior art
 
@@ -293,9 +243,7 @@ with auto-generated, module-based UI, a bounded session pool, and identical R an
 
 ## 12. Open items
 
-- Maintainer full legal name and email for `Authors@R` / `LICENSE` (placeholder `<MAINTAINER NAME>` for now).
-- Lisbon demo date (sets the alpha deadline).
-- Whether SAShiny should later integrate with ProCogia products (e.g. PolyKode) or remain standalone.
+Tracked as GitHub issues once the repo has them. See also the demo questions in the latest plan review.
 
 ---
 SAS is a registered trademark of SAS Institute Inc. Shiny is a registered trademark of Posit Software, PBC.

@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2026 <MAINTAINER NAME>
+Copyright (c) 2026 Mehar Pratap Singh
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

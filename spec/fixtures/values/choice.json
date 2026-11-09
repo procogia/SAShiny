@@ -1,0 +1,78 @@
+{
+  "contract": "contracts/valid/choice",
+  "today": "2026-11-11",
+  "cases": [
+    {
+      "name": "static_and_labelled",
+      "values": {
+        "origin": "USA",
+        "flag": "N",
+        "make": "Audi"
+      },
+      "expected": {
+        "status": "ok",
+        "macros": {
+          "ORIGIN": "USA",
+          "FLAG": "'N'",
+          "MAKE": "Audi"
+        }
+      },
+      "choices_from": {
+        "make": [
+          "Acura",
+          "Audi",
+          "BMW"
+        ]
+      }
+    },
+    {
+      "name": "not_in_static",
+      "values": {
+        "origin": "Mars",
+        "flag": "Yes",
+        "make": "Audi"
+      },
+      "expected": {
+        "status": "invalid",
+        "errors": [
+          {
+            "code": "V004",
+            "input": "origin"
+          },
+          {
+            "code": "V004",
+            "input": "flag"
+          }
+        ]
+      },
+      "choices_from": {
+        "make": [
+          "Audi"
+        ]
+      }
+    },
+    {
+      "name": "not_in_choices_from",
+      "values": {
+        "origin": "USA",
+        "flag": "Y",
+        "make": "Tesla"
+      },
+      "expected": {
+        "status": "invalid",
+        "errors": [
+          {
+            "code": "V004",
+            "input": "make"
+          }
+        ]
+      },
+      "choices_from": {
+        "make": [
+          "Acura",
+          "Audi"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+sashiny: 1
+program: program.sas
+title: Invalid
+outputs:
+  dl:
+    type: download
+    format: csv

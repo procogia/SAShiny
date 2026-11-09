@@ -1,0 +1,132 @@
+{
+  "contract": "contracts/valid/dates",
+  "today": "2026-11-11",
+  "cases": [
+    {
+      "name": "all_renders",
+      "values": {
+        "cutoff": "2026-11-11",
+        "as_date9": "2025-01-01",
+        "as_iso": "2025-06-30",
+        "as_num": "1959-12-31",
+        "period": [
+          "2026-01-01",
+          "2026-06-30"
+        ],
+        "window": [
+          "1960-01-01",
+          "2026-11-11"
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "macros": {
+          "CUTOFF": "'11NOV2026'd",
+          "AS_DATE9": "01JAN2025",
+          "AS_ISO": "2025-06-30",
+          "AS_NUM": "-1",
+          "PERIOD_START": "'01JAN2026'd",
+          "PERIOD_END": "'30JUN2026'd",
+          "WIN_FROM": "0",
+          "WIN_TO": "24421"
+        }
+      }
+    },
+    {
+      "name": "optional_absent",
+      "values": {
+        "cutoff": "2020-01-01",
+        "period": [
+          "2026-02-28",
+          "2026-02-28"
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "macros": {
+          "CUTOFF": "'01JAN2020'd",
+          "AS_DATE9": "",
+          "AS_ISO": "",
+          "AS_NUM": "",
+          "PERIOD_START": "'28FEB2026'd",
+          "PERIOD_END": "'28FEB2026'd",
+          "WIN_FROM": "",
+          "WIN_TO": ""
+        }
+      }
+    },
+    {
+      "name": "after_max_today",
+      "values": {
+        "cutoff": "2026-11-12",
+        "period": [
+          "2026-01-01",
+          "2026-01-02"
+        ]
+      },
+      "expected": {
+        "status": "invalid",
+        "errors": [
+          {
+            "code": "V009",
+            "input": "cutoff"
+          }
+        ]
+      }
+    },
+    {
+      "name": "not_a_calendar_date",
+      "values": {
+        "cutoff": "2026-02-30",
+        "period": [
+          "2026-01-01",
+          "2026-01-02"
+        ]
+      },
+      "expected": {
+        "status": "invalid",
+        "errors": [
+          {
+            "code": "V009",
+            "input": "cutoff"
+          }
+        ]
+      }
+    },
+    {
+      "name": "range_reversed",
+      "values": {
+        "cutoff": "2026-01-01",
+        "period": [
+          "2026-06-30",
+          "2026-01-01"
+        ]
+      },
+      "expected": {
+        "status": "invalid",
+        "errors": [
+          {
+            "code": "V010",
+            "input": "period"
+          }
+        ]
+      }
+    },
+    {
+      "name": "wrong_shape",
+      "values": {
+        "cutoff": "2026-01-01",
+        "period": "2026-01-01"
+      },
+      "expected": {
+        "status": "invalid",
+        "errors": [
+          {
+            "code": "V002",
+            "input": "period"
+          }
+        ]
+      }
+    }
+  ]
+}

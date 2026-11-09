@@ -1,0 +1,24 @@
+sashiny: 1
+program: program.sas
+title: Dataset inputs
+inputs:
+  adsl:
+    type: dataset
+    label: ADSL
+    target: work.adsl
+    accept: [csv, xpt, sas7bdat]
+    max_size_mb: 20
+    columns:
+      - {name: USUBJID, type: character}
+      - {name: AGE, type: numeric}
+      - {name: TRTSDT, type: date}
+    sample: sample.csv
+  extra:
+    type: dataset
+    label: Extra
+    target: WORK.Extra
+    macro: extra_ds
+    optional: true
+outputs:
+  log:
+    type: log

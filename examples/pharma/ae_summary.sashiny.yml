@@ -1,0 +1,104 @@
+sashiny: 1
+program: ae_summary.sas
+title: Treatment-emergent adverse events
+description: >
+  TEAE incidence by system organ class and preferred term, with a demographics
+  summary, from ADSL and ADAE. The validated macro library is used unchanged;
+  SAShiny only supplies its parameters.
+version: "1.0"
+
+inputs:
+  adsl:
+    type: dataset
+    label: ADSL (subject-level)
+    target: work.adsl
+    accept: [csv, xpt, sas7bdat]
+    columns:
+      - {name: USUBJID, type: character}
+      - {name: TRT01A, type: character}
+      - {name: SAFFL, type: character}
+      - {name: AGE, type: numeric}
+      - {name: SEX, type: character}
+    sample: data/adsl.csv
+  adae:
+    type: dataset
+    label: ADAE (adverse events)
+    target: work.adae
+    accept: [csv, xpt, sas7bdat]
+    columns:
+      - {name: USUBJID, type: character}
+      - {name: AEBODSYS, type: character}
+      - {name: AEDECOD, type: character}
+      - {name: ASTDT, type: date}
+      - {name: TRTEMFL, type: character}
+    sample: data/adae.csv
+  arms:
+    type: multichoice
+    label: Actual treatment
+    choices: [Placebo, Xanomeline Low Dose, Xanomeline High Dose]
+    default: [Placebo, Xanomeline Low Dose, Xanomeline High Dose]
+    widget: checkbox
+  saffl:
+    type: choice
+    label: Safety population flag
+    choices:
+      - {value: "Y", label: "Safety population (SAFFL = Y)"}
+      - {value: "N", label: "Excluded subjects (SAFFL = N)"}
+    default: "Y"
+    render: quoted
+    widget: radio
+  period:
+    type: daterange
+    label: AE start date window
+    macro: [start_dt, end_dt]
+    min: "2024-12-01"
+    max: "2026-12-31"
+    default: ["2025-01-01", "2025-12-31"]
+  min_pct:
+    type: numeric
+    label: Minimum incidence in any arm (%)
+    min: 0
+    max: 100
+    step: 1
+    default: 5
+
+outputs:
+  ae_plot:
+    type: plot
+    label: TEAE incidence by preferred term
+  ae_table:
+    type: table
+    label: TEAE incidence (SOC / PT)
+    from: work.ae_soc_pt
+    formatted: true
+  demog:
+    type: table
+    label: Demographics
+    from: work.demog
+    formatted: true
+  report:
+    type: html
+    label: Tables (SAS output)
+  log:
+    type: log
+    label: SAS log
+  ae_rtf:
+    type: download
+    label: Tables and figure (RTF)
+    format: rtf
+    filename: teae_summary
+  ae_xpt:
+    type: download
+    label: AE summary dataset (XPT)
+    format: xpt
+    from: work.ae_soc_pt
+    filename: ae_soc_pt
+
+run:
+  entry: macro
+  macro: ae_summary
+  timeout_seconds: 300
+
+ui:
+  order: [adsl, adae, arms, saffl, period, min_pct]
+  run_label: Build safety tables

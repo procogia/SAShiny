@@ -1,0 +1,29 @@
+name: spec
+
+on:
+  push:
+    branches: [main]
+    paths: ["spec/**", "examples/**", ".github/workflows/spec.yml"]
+  pull_request:
+    paths: ["spec/**", "examples/**", ".github/workflows/spec.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  conformance-fixtures:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - name: Check schema, fixtures and example contracts
+        run: uv run --no-project --with "jsonschema>=4.23" --with "pyyaml>=6" python spec/tools/check_spec.py
+      - name: Lint reference tools
+        run: uvx ruff check spec/tools --line-length 140 --select E,F,W,I,UP,B,SIM
+      - name: Sample data is reproducible
+        run: |
+          python examples/pharma/data/make_data.py
+          python examples/aml/data/make_data.py
+          git diff --exit-code -- examples

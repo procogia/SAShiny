@@ -1,0 +1,15 @@
+sashiny: 1
+program: program.sas
+title: Invalid
+inputs:
+  a:
+    type: dataset
+    label: x
+    target: work.adsl
+  b:
+    type: dataset
+    label: y
+    target: WORK.ADSL
+outputs:
+  log:
+    type: log

@@ -1,0 +1,11 @@
+sashiny: 1
+program: program.sas
+title: Invalid
+inputs:
+  t:
+    type: text
+    label: x
+    pattern: "(?=a)a+"
+outputs:
+  log:
+    type: log

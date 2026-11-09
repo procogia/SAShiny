@@ -1,0 +1,64 @@
+sashiny: 1
+program: cars_explorer.sas
+title: Car price explorer
+description: >
+  Filters SASHELP.CARS by origin, vehicle type and minimum price, then summarises
+  price and fuel economy. Runs on any SAS 9.4M5+ or SAS Viya session.
+version: "1.0"
+
+inputs:
+  origins:
+    type: multichoice
+    label: Origin
+    choices: [Asia, Europe, USA]
+    default: [Asia, Europe, USA]
+    widget: checkbox
+  types:
+    type: multichoice
+    label: Vehicle type
+    choices: [Hybrid, Sedan, Sports, SUV, Truck, Wagon]
+    default: [Sedan, SUV, Sports, Truck, Wagon]
+  min_msrp:
+    type: numeric
+    label: Minimum MSRP (USD)
+    min: 0
+    max: 200000
+    step: 5000
+    integer: true
+    default: 20000
+
+outputs:
+  stats:
+    type: table
+    label: Summary by origin and type
+    from: work.cars_stats
+    formatted: true
+  price_vs_mpg:
+    type: plot
+    label: MSRP versus city MPG
+    select: 1
+  price_by_type:
+    type: plot
+    label: Mean MSRP by type
+    select: 2
+  report:
+    type: html
+    label: Full SAS output
+  log:
+    type: log
+    label: SAS log
+  stats_csv:
+    type: download
+    label: Summary (CSV)
+    format: csv
+    from: work.cars_stats
+    filename: cars_summary
+  report_pdf:
+    type: download
+    label: Report (PDF)
+    format: pdf
+    filename: cars_report
+
+ui:
+  order: [origins, types, min_msrp]
+  run_label: Summarise

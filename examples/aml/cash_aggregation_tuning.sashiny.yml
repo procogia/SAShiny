@@ -1,0 +1,90 @@
+sashiny: 1
+program: cash_aggregation_tuning.sas
+title: AML scenario tuning - large cash aggregation
+description: >
+  Above/below-the-line threshold analysis for a rolling cash-deposit
+  aggregation scenario. The governed scenario code runs unchanged; analysts
+  adjust only its parameters, and every run is logged with them.
+version: "1.0"
+
+inputs:
+  transactions:
+    type: dataset
+    label: Transactions
+    target: work.transactions
+    macro: txn_data
+    accept: [csv, xlsx, sas7bdat, xpt]
+    max_size_mb: 200
+    columns:
+      - {name: CUSTOMER_ID, type: character}
+      - {name: SEGMENT, type: character}
+      - {name: TXN_TYPE, type: character}
+      - {name: TXN_DATE, type: date}
+      - {name: AMOUNT, type: numeric}
+      - {name: SAR_FLAG, type: numeric}
+    sample: data/transactions.csv
+  segments:
+    type: multichoice
+    label: Customer segments
+    choices: [Retail, SME, Corporate]
+    default: [Retail, SME, Corporate]
+    widget: checkbox
+  threshold:
+    type: numeric
+    label: Alert threshold
+    help: Sum of cash deposits within the look-back window that triggers an alert.
+    min: 1000
+    max: 1000000
+    step: 1000
+    integer: true
+    default: 10000
+  lookback_days:
+    type: numeric
+    label: Look-back window (days)
+    min: 1
+    max: 90
+    step: 1
+    integer: true
+    default: 30
+  period:
+    type: daterange
+    label: Transaction dates
+    macro: [start_dt, end_dt]
+    min: "2026-01-01"
+    max: "2026-06-30"
+    default: ["2026-01-01", "2026-06-30"]
+
+outputs:
+  atl_btl_plot:
+    type: plot
+    label: Alert volume and hit rate by threshold
+  atl_btl:
+    type: table
+    label: Threshold sensitivity
+    from: work.atl_btl
+    formatted: true
+  alerts:
+    type: table
+    label: Alerted customers
+    from: work.alerts
+    formatted: true
+    max_rows: 5000
+  log:
+    type: log
+    label: SAS log
+  alerts_xlsx:
+    type: download
+    label: Alerts (Excel)
+    format: xlsx
+    from: work.alerts
+    filename: alerts
+  sensitivity_csv:
+    type: download
+    label: Threshold sensitivity (CSV)
+    format: csv
+    from: work.atl_btl
+    filename: atl_btl
+
+ui:
+  order: [transactions, segments, threshold, lookback_days, period]
+  run_label: Run scenario

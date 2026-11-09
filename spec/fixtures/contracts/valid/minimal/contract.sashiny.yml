@@ -1,0 +1,6 @@
+sashiny: 1
+program: program.sas
+title: Minimal contract
+outputs:
+  log:
+    type: log

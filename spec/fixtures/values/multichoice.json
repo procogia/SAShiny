@@ -1,0 +1,124 @@
+{
+  "contract": "contracts/valid/multichoice",
+  "today": "2026-11-11",
+  "cases": [
+    {
+      "name": "choice_order_not_selection_order",
+      "values": {
+        "origins": [
+          "USA",
+          "Asia"
+        ],
+        "types": [
+          "Wagon",
+          "SUV"
+        ],
+        "arms": [
+          "Drug A"
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "macros": {
+          "ORIGINS": "'Asia' 'USA'",
+          "N_ORIGINS": "2",
+          "TYPES": "SUV, Wagon",
+          "ARMS": "\"Drug A\"",
+          "N_ARMS": "1"
+        }
+      }
+    },
+    {
+      "name": "empty_allowed_and_optional_absent",
+      "values": {
+        "origins": [
+          "Europe"
+        ],
+        "types": []
+      },
+      "expected": {
+        "status": "ok",
+        "macros": {
+          "ORIGINS": "'Europe'",
+          "N_ORIGINS": "1",
+          "TYPES": "",
+          "ARMS": "",
+          "N_ARMS": "0"
+        }
+      }
+    },
+    {
+      "name": "empty_when_required",
+      "values": {
+        "origins": [],
+        "types": []
+      },
+      "expected": {
+        "status": "invalid",
+        "errors": [
+          {
+            "code": "V001",
+            "input": "origins"
+          }
+        ]
+      }
+    },
+    {
+      "name": "too_many",
+      "values": {
+        "origins": [
+          "Asia"
+        ],
+        "types": [
+          "SUV",
+          "Sedan",
+          "Wagon"
+        ]
+      },
+      "expected": {
+        "status": "invalid",
+        "errors": [
+          {
+            "code": "V008",
+            "input": "types"
+          }
+        ]
+      }
+    },
+    {
+      "name": "duplicates",
+      "values": {
+        "origins": [
+          "Asia",
+          "Asia"
+        ],
+        "types": []
+      },
+      "expected": {
+        "status": "invalid",
+        "errors": [
+          {
+            "code": "V008",
+            "input": "origins"
+          }
+        ]
+      }
+    },
+    {
+      "name": "not_a_list",
+      "values": {
+        "origins": "Asia",
+        "types": []
+      },
+      "expected": {
+        "status": "invalid",
+        "errors": [
+          {
+            "code": "V002",
+            "input": "origins"
+          }
+        ]
+      }
+    }
+  ]
+}
