@@ -39,11 +39,12 @@ Mental model: `ui.R` stays in R/Python; `server.R` becomes `analysis.sas` + `ana
 | D13 | Programs per app | **Multiple independent** programs, each its own module |
 | D14 | Repo layout | `R/`, `Python/`, plus shared `spec/` and `examples/` |
 | D15 | Visibility | **Private until first CRAN submission** |
-| D16 | Min versions | **R ≥ 4.0**, **Python ≥ 3.10** (current Shiny for Python requires 3.10+) |
+| D16 | Min versions | **R ≥ 4.1** (current testthat and Shiny ecosystem require it; changed from 4.0 on 2026-11-08), **Python ≥ 3.10** (current Shiny for Python requires it) |
 | D17 | R structure | Plain package (roxygen2/testthat/pkgdown) **+** app template generator **+** golem-compatible modules |
 | D18 | Python toolchain | **uv + hatchling + ruff** (+ mypy, pytest) |
-| D19 | Sequencing | R and Python **developed in parallel**, each released when ready |
+| D19 | Sequencing | R and Python **developed in parallel**, each released when ready; the Lisbon demo shows **both side by side** |
 | D20 | Timeline | **Lisbon demo on 2026-11-11**; CRAN/PyPI submission **quality-gated** (no fixed date) |
+| D24 | Demo SAS | **Live SAS with an offline fallback** (recorded results replayed by the mock engine) |
 | D21 | Scope | **Standalone**; no PolyKode/ProCogia product coupling for now (can merge later) |
 | D22 | Injection model | Values reach SAS only as single-quoted `call symputx` literals, then re-stored with `%superq` (spec §6.3) |
 | D23 | Conformance | Hand-specified fixtures in `spec/fixtures` are the acceptance test for both languages, including byte-exact generated SAS |
@@ -174,7 +175,7 @@ Install before release:
 - `R CMD check --as-cran`: 0 errors / 0 warnings / 0 notes (except "New submission").
 - DESCRIPTION: Title Case title; software names quoted (`'SAS'`, `'Shiny'`, `'SASPy'`);
   `Authors@R` with `aut`, `cre`, `cph` (Mehar) and `fnd` (ProCogia); `License: MIT + file LICENSE`;
-  `Depends: R (>= 4.0)`; `URL`, `BugReports`; `SystemRequirements` noting optional SAS + Python/saspy.
+  `Depends: R (>= 4.1)`; `URL`, `BugReports`; `SystemRequirements` noting optional SAS + Python/saspy.
 - Hard `Imports` kept minimal (`shiny`, `yaml`, `jsonvalidate` or hand validator, `rlang`, `cli`);
   `reticulate`, `mirai`, `bslib`, `DT`, `golem`, `haven`, `readxl` in `Suggests` with `rlang::check_installed()`.
 - No SAS, Python or internet needed for checks: mock engine everywhere; `skip_if_not(sas_available())`,
@@ -223,13 +224,12 @@ The demo date falls before phases 2–4 can be finished to release quality. The 
 a **tagged pre-release** (`v0.0.1-demo`) built from the same code that continues to release. Nothing is
 built only for the demo. Scope, in priority order:
 
-1. **Day 1 (Nov 8–9):** phase 2 core in R (validator, renderer, wrapper, mock engine) passing all fixtures.
-2. **Day 2 (Nov 9–10):** saspy engine (single session first, pool behind the same interface) and the
-   auto-UI module; the three example apps in one multi-tab app.
-3. **Day 3 (Nov 10–11):** live dry-run against SAS, a recorded mock fallback (so the demo works offline),
-   and a run-sheet.
-
-Python parity follows the same order, immediately after the demo build, against the same fixtures.
+1. **Day 1 (Nov 8–9):** phase 2 core in R **and** Python (validator, renderer, wrapper, mock engine),
+   both passing every fixture.
+2. **Day 2 (Nov 9–10):** saspy engine in both (single session first, pool behind the same interface),
+   auto-UI modules, and the three example apps in one multi-tab app per language.
+3. **Day 3 (Nov 10–11):** live dry-run against SAS, results recorded for the offline fallback, and a
+   run-sheet that shows the R and Python apps side by side on the same SAS programs.
 
 ## 11. Prior art
 
