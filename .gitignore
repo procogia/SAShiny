@@ -1,0 +1,26 @@
+# R
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+*.Rcheck/
+R/*.tar.gz
+R/docs/
+renv/library/
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+dist/
+build/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+# SAS / secrets
+sascfg_personal.py
+*.authinfo
+.Renviron
+.env
+# OS
+.DS_Store
