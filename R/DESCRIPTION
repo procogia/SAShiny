@@ -27,6 +27,8 @@ Imports:
     yaml
 Suggests:
     bslib,
+    reticulate,
+    rlang,
     shiny,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3

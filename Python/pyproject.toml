@@ -77,7 +77,7 @@ strict = true
 files = ["src"]
 
 [[tool.mypy.overrides]]
-module = ["yaml", "jsonschema"]
+module = ["yaml", "jsonschema", "saspy", "pandas"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
