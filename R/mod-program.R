@@ -47,9 +47,14 @@
 #'
 #' @param id The module id.
 #' @param contract A `sashiny_contract` object.
+#' @param ui_override An optional function `function(id, contract)` that returns
+#'   a custom UI, replacing the auto-generated UI.
 #' @return A Shiny UI definition.
 #' @export
-sas_program_ui <- function(id, contract) {
+sas_program_ui <- function(id, contract, ui_override = NULL) {
+  if (!is.null(ui_override)) {
+    return(ui_override(id, contract))
+  }
   ns <- shiny::NS(id)
   inputs <- contract$data$inputs %||% list()
   controls <- lapply(names(inputs), function(iid) {
@@ -74,9 +79,14 @@ sas_program_ui <- function(id, contract) {
 #' @param id The module id.
 #' @param contract A `sashiny_contract` object.
 #' @param engine An engine object (e.g. from [sas_engine_mock()]).
+#' @param server_override An optional function `function(id, contract, engine)`
+#'   that returns a custom server, replacing the auto-generated server.
 #' @return A list of reactives: `result`, `status`, `log`.
 #' @export
-sas_program_server <- function(id, contract, engine) {
+sas_program_server <- function(id, contract, engine, server_override = NULL) {
+  if (!is.null(server_override)) {
+    return(server_override(id, contract, engine))
+  }
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
     inputs <- contract$data$inputs %||% list()
