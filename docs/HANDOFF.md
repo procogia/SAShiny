@@ -10,7 +10,8 @@ state, the path to CRAN/PyPI, and the rules you must follow.
 | Mehar Pratap Singh | `meharpsingh` | author, copyright holder, CRAN maintainer (`cre`) |
 | Shreya Sharma | `shreya-sharma-procogia` | contributor (`ctb`), repo collaborator |
 | Love ProCogia | `love-procogia` | contributor (`ctb`), repo collaborator |
-| Igor | (to be added later) | — |
+| Igor | `igor-procogia` | contributor (`ctb`), repo collaborator |
+| Ahmer Khan | `ahmer-khan-0077` | contributor (`ctb`), repo collaborator |
 
 > Note: the repo is **user-owned** (`meharpsingh/SAShiny`), so collaborators get
 > `write` (not `admin`). To grant `admin`, transfer the repo to the `procogia`

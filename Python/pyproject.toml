@@ -15,6 +15,8 @@ maintainers = [
   { name = "Mehar Pratap Singh", email = "meharpsingh@gmail.com" },
   { name = "Shreya Sharma" },
   { name = "Love ProCogia" },
+  { name = "Igor ProCogia" },
+  { name = "Ahmer Khan" },
 ]
 keywords = ["sas", "shiny", "saspy", "viya", "dashboard", "clinical", "aml"]
 classifiers = [

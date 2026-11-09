@@ -35,6 +35,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 - Mehar Pratap Singh (author, maintainer)
 - Shreya Sharma
 - Love ProCogia
+- Igor ProCogia
+- Ahmer Khan
 
 See [docs/HANDOFF.md](docs/HANDOFF.md) for the current state and the path to CRAN/PyPI.
 
