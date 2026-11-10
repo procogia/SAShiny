@@ -26,3 +26,7 @@ sascfg_personal.py
 .env
 # OS
 .DS_Store
+
+# testthat failure snapshots
+R/tests/testthat/_problems/
+R/tests/testthat/testthat-problems.rds
