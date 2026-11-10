@@ -370,10 +370,11 @@ class SaspyEngine(Engine):
             if self._factory is not None:
                 self._sas = self._factory()
             else:
+                if isinstance(self.cfg, dict):
+                    preflight(self.cfg)
                 import saspy  # noqa: PLC0415 - optional dependency
 
                 if isinstance(self.cfg, dict):
-                    preflight(self.cfg)
                     self._tmp = tempfile.TemporaryDirectory(prefix="sashiny-cfg-")
                     cfgfile = str(_write_cfgfile(self.cfg, self.cfgname, Path(self._tmp.name)))
                 else:
