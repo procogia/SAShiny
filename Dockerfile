@@ -18,6 +18,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
 # Java 17 (for SAS 9.4 IOM connections via saspy).
 RUN apt-get update && apt-get install -y --no-install-recommends \
         openjdk-17-jre-headless \
+        build-essential \
+        python3-dev \
         libcurl4-openssl-dev \
         libssl-dev \
         libxml2-dev \
@@ -65,4 +67,4 @@ ENV SASHINY_CONNECTIONS=/app/examples/connections.example.yml \
 EXPOSE 8000
 
 # Run the Python demo app (Shiny for Python) by default.
-CMD ["sh", "-c", "cd Python && uv run --with shiny python examples/demo/app.py --host 0.0.0.0 --port 8000"]
+CMD ["sh", "-c", "cd Python && uv run --with shiny shiny run examples/demo/app.py --host 0.0.0.0 --port 8000"]
