@@ -25,7 +25,7 @@ analysis.sashiny.yml    # the contract: inputs → macro variables, outputs → 
 
 ```sh
 # contract fixtures
-uv run --no-project --with jsonschema --with pyyaml python spec/tools/check_spec.py
+uv run --no-project --python 3.12 --with jsonschema --with pyyaml python spec/tools/check_spec.py
 # R package
 R CMD build R && R CMD check --as-cran SAShiny_*.tar.gz
 # Python library

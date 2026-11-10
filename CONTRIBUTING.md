@@ -20,5 +20,5 @@
 ## Adding a fixture
 
 Write the expected output **by hand** from CONTRACT.md, then run
-`uv run --no-project --with jsonschema --with pyyaml python spec/tools/check_spec.py`.
+`uv run --no-project --python 3.12 --with jsonschema --with pyyaml python spec/tools/check_spec.py`.
 Never generate expected files from an implementation.
