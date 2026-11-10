@@ -42,6 +42,6 @@ VignetteBuilder: knitr
 Encoding: UTF-8
 Language: en-GB
 Roxygen: list(markdown = TRUE)
-SystemRequirements: Optional: 'SAS' 9.4 or 'SAS Viya', 'Python' (>= 3.10)
-    with 'saspy', and 'Java' for 'SAS' 9.4 IOM connections.
+SystemRequirements: Optional: 'SAS' 9.4 or 'SAS Viya', and 'Python' (>= 3.10)
+    with 'saspy' (live connections only).
 Config/roxygen2/version: 8.1.1
