@@ -4,19 +4,25 @@
 \alias{sas_engine_mock}
 \title{Create a mock engine}
 \usage{
-sas_engine_mock(recordings_dir = NULL, record = FALSE)
+sas_engine_mock(recordings_dir = NULL, record = FALSE, choices = NULL)
 }
 \arguments{
 \item{recordings_dir}{Directory holding recording files (\verb{<key>.json}).}
 
-\item{record}{When \code{TRUE}, write recordings instead of replaying.}
+\item{record}{Kept for backward compatibility; record live runs with
+\code{sas_connect(..., record_to = )} instead.}
+
+\item{choices}{Choices for \code{choices_from} inputs, a named list keyed by input
+id of character vectors or \code{list(value, label)} items, standing in for the
+SAS query of spec section 6.4.}
 }
 \value{
-A \code{sashiny_engine_mock} object (a named list).
+A \code{sashiny_engine_mock} object.
 }
 \description{
-A mock engine that replays recorded results (issue #5). When \code{recordings_dir}
-is \code{NULL}, it returns an empty successful result for any run.
+A mock engine that replays recorded runs (spec section 8.3). When no
+recording matches, it returns an empty successful result with
+\code{metadata$recording} set to \code{"missing"}.
 }
 \examples{
 engine <- sas_engine_mock()

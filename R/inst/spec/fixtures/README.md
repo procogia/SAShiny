@@ -26,3 +26,13 @@ uv run --with jsonschema --with pyyaml python spec/tools/check_spec.py
 ```
 
 When adding a fixture, write the expected output by hand from CONTRACT.md first, then run the check.
+
+### Collection fixtures (`collect/`)
+
+| File | Pins down (CONTRACT.md §8) |
+|---|---|
+| `log_scope.json` | Log splitting, trailing-whitespace removal, `program`/`full` scope, level classification (§8.2 log) |
+| `plots.json` | Plot extraction from the ODS HTML: data-URI `<img>` and inline `<svg>`, document order, `select` (§8.2 plot) |
+| `recording_key.json` | The recording key text and its SHA-256 (§8.3) |
+
+`key_text` in `recording_key.json` is hand-written from §8.3. `key` is its SHA-256.

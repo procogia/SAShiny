@@ -4,7 +4,7 @@
 \alias{sas_program_ui}
 \title{Generate the UI for a SAS program module}
 \usage{
-sas_program_ui(id, contract, ui_override = NULL)
+sas_program_ui(id, contract, ui_override = NULL, today = Sys.Date())
 }
 \arguments{
 \item{id}{The module id.}
@@ -13,10 +13,13 @@ sas_program_ui(id, contract, ui_override = NULL)
 
 \item{ui_override}{An optional function \verb{function(id, contract)} that returns
 a custom UI, replacing the auto-generated UI.}
+
+\item{today}{A \code{Date} used to resolve \code{"today"} defaults.}
 }
 \value{
 A Shiny UI definition.
 }
 \description{
-Generate the UI for a SAS program module
+One control per contract input (with the contract's defaults), a Run
+button, a Run card with the status and full log, and one card per output.
 }

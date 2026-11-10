@@ -2,9 +2,9 @@
 % Please edit documentation in R/engine-mock.R
 \name{sas_engine_record}
 \alias{sas_engine_record}
-\title{Save a recording for later replay (recording mode).}
+\title{Save a recording for later replay}
 \usage{
-sas_engine_record(engine, contract, macros, recording)
+sas_engine_record(engine, contract, macros, recording, files = list())
 }
 \arguments{
 \item{engine}{A \code{sashiny_engine_mock} object.}
@@ -14,10 +14,14 @@ sas_engine_record(engine, contract, macros, recording)
 \item{macros}{A named list of rendered macro values.}
 
 \item{recording}{A named list to record.}
+
+\item{files}{A named list of upload files or paths for dataset inputs.}
 }
 \value{
 Invisibly, the path written.
 }
 \description{
-Save a recording for later replay (recording mode).
+Writes a raw recording list as \verb{<key>.json} in the engine's
+\code{recordings_dir}. Live engines record complete runs automatically with
+\code{sas_connect(..., record_to = )}.
 }

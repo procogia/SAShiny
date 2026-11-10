@@ -11,7 +11,10 @@ sashiny_result(run_id, status, outputs = list(), log = "", metadata = list())
 
 \item{status}{\code{success}, \code{warning} or \code{error} (spec section 6.5).}
 
-\item{outputs}{A named list of collected outputs keyed by output id.}
+\item{outputs}{A named list of collected outputs keyed by output id. Each
+value is the language-neutral value of spec section 8.1 (tables, plots,
+HTML, log lines and base64 downloads), or \code{list(error = message)} when
+that output could not be collected.}
 
 \item{log}{The full main-submission log text.}
 

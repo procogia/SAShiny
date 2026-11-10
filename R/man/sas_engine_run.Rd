@@ -2,7 +2,7 @@
 % Please edit documentation in R/engine-mock.R
 \name{sas_engine_run}
 \alias{sas_engine_run}
-\title{Run a contract with the mock engine}
+\title{Run a contract on an engine}
 \usage{
 sas_engine_run(
   engine,
@@ -14,21 +14,41 @@ sas_engine_run(
 )
 }
 \arguments{
-\item{engine}{A \code{sashiny_engine_mock} object.}
+\item{engine}{An engine object.}
 
 \item{contract}{A \code{sashiny_contract} object.}
 
-\item{values}{A named list of input values.}
+\item{values}{A named list of input values in the contract's JSON form.}
 
 \item{today}{A \code{Date} used to resolve \code{"today"}.}
 
-\item{uploads}{A named list mapping dataset input ids to \code{TRUE}.}
+\item{uploads}{A named list mapping dataset input ids to the supplied file:
+a path, a Shiny \code{fileInput} value, or \code{TRUE} for the input's \code{sample}.}
 
 \item{run_id}{The run identifier (defaults to a generated UUID).}
 }
 \value{
-A \code{sashiny_result} object.
+A \code{sashiny_result} object. Its \code{outputs} hold the language-neutral
+values of spec section 8.1, keyed by output id.
 }
 \description{
-Run a contract with the mock engine
+Validates and renders the inputs, runs the SAS program and collects the
+outputs. Methods exist for the mock engine (\code{\link[=sas_engine_mock]{sas_engine_mock()}}), the saspy
+engine (\code{\link[=sas_connect]{sas_connect()}}, \code{\link[=sas_engine_saspy]{sas_engine_saspy()}}) and session pools
+(\code{\link[=sas_pool]{sas_pool()}}).
+}
+\examples{
+dir <- tempfile("sashiny-")
+dir.create(dir)
+writeLines(c(
+  "sashiny: 1",
+  "program: program.sas",
+  "outputs:",
+  "  log:",
+  "    type: log"
+), file.path(dir, "contract.sashiny.yml"))
+writeLines("proc print data=sashelp.class; run;", file.path(dir, "program.sas"))
+contract <- sas_contract(file.path(dir, "contract.sashiny.yml"))
+result <- sas_engine_run(sas_engine_mock(), contract, list())
+result$metadata$recording
 }

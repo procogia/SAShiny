@@ -6,8 +6,8 @@
 # profiles are chosen per app or session; credentials come only from
 # ~/.authinfo or environment variables, never from the contract.
 #
-# Live verification is deferred to the live SAS check reports (issue #11); this
-# module implements the interface and profile loading.
+# This file holds profile loading, run status and the connection builder; the
+# engine itself is in engine-saspy-run.R.
 
 #' Load connection profiles from a YAML file
 #'
@@ -67,22 +67,6 @@ sas_load_profiles <- function(path = NULL) {
   list(status = "success", syscc = syscc)
 }
 
-#' Create a saspy engine
-#'
-#' A live SAS engine backed by saspy, reached through reticulate. Requires the
-#' `reticulate` and `saspy` packages (optional).
-#'
-#' @param cfg The saspy configuration (a list or a path to a config file).
-#' @param cfgname The saspy config name.
-#' @return A `sashiny_engine_saspy` object (a named list).
-#' @export
-sas_engine_saspy <- function(cfg, cfgname = "sashiny") {
-  structure(
-    list(cfg = cfg, cfgname = cfgname, sas = NULL),
-    class = "sashiny_engine_saspy"
-  )
-}
-
 # ODA hosts by region (spec/tools/live_sas_check.py).
 .sashiny_oda_hosts <- list(
   us1 = c("odaws01-usw2.oda.sas.com", "odaws02-usw2.oda.sas.com"),
@@ -113,6 +97,8 @@ sas_engine_saspy <- function(cfg, cfgname = "sashiny") {
 #' @param ssh_user SSH login user (optional).
 #' @param java Path to the Java executable for IOM (optional; auto-detected when
 #'   omitted).
+#' @param record_to Directory where every run is also saved as a recording
+#'   (spec section 8.3) for offline replay with [sas_engine_mock()].
 #' @return A `sashiny_engine_saspy` object configured for the chosen backend.
 #' @examples
 #' # Build the config for an ODA connection (no live SAS session is started).
@@ -121,7 +107,8 @@ sas_engine_saspy <- function(cfg, cfgname = "sashiny") {
 #' @export
 sas_connect <- function(profile, region = "us1", url = NULL, context = NULL,
                         verify = TRUE, host = NULL, port = 8591L,
-                        saspath = NULL, ssh_user = NULL, java = NULL) {
+                        saspath = NULL, ssh_user = NULL, java = NULL,
+                        record_to = NULL) {
   if (identical(profile, "oda")) {
     if (!(region %in% names(.sashiny_oda_hosts))) {
       stop(
@@ -175,7 +162,7 @@ sas_connect <- function(profile, region = "us1", url = NULL, context = NULL,
     stop("unknown profile '", profile, "'; expected 'oda', 'viya' or 'sas94'")
   }
 
-  sas_engine_saspy(cfg)
+  sas_engine_saspy(cfg, record_to = record_to)
 }
 
 #' Locate the Java executable, or NULL when not found.
@@ -196,68 +183,4 @@ sas_connect <- function(profile, region = "us1", url = NULL, context = NULL,
 .sashiny_find_ssh <- function() {
   ssh <- Sys.which("ssh")
   if (nzchar(ssh)) ssh else "/usr/bin/ssh"
-}
-
-#' Run a contract with the saspy engine
-#'
-#' @param engine A `sashiny_engine_saspy` object.
-#' @param contract A `sashiny_contract` object.
-#' @param values A named list of input values.
-#' @param today A `Date` used to resolve `"today"`.
-#' @param uploads A named list mapping dataset input ids to `TRUE`.
-#' @param run_id The run identifier.
-#' @return A `sashiny_result` object.
-#' @export
-sas_engine_saspy_run <- function(engine, contract, values, today = Sys.Date(),
-                                 uploads = NULL, run_id = NULL) {
-  rlang::check_installed("reticulate", reason = "to run live SAS via saspy")
-  run_id <- run_id %||% .sashiny_run_id()
-  data <- contract$data
-  res <- sas_render_values(data, values, today, uploads = uploads)
-  macros <- res$macros
-  if (length(res$issues) > 0L) {
-    return(sashiny_result(run_id, "error",
-      metadata = .sashiny_metadata(run_id, "error",
-        macros = macros,
-        engine = "saspy",
-        engine_version = "0.0.1"
-      )
-    ))
-  }
-
-  sas <- .sashiny_saspy_session(engine)
-  if ((data$run %||% list())$reset_work %||% TRUE) {
-    sas$submit(sas_reset_code(data), results = "TEXT")
-  }
-  program <- readBin(file.path(contract$base_dir, data$program), "raw",
-    n = file.info(file.path(contract$base_dir, data$program))$size
-  )
-  res <- sas$submit(sas_wrapper_code(data, macros, program, run_id = run_id),
-    results = "HTML"
-  )
-  status <- .sashiny_run_status(res$LOG, run_id)
-  result <- sashiny_result(
-    run_id, status$status,
-    log = res$LOG,
-    metadata = .sashiny_metadata(run_id, status$status,
-      macros = macros,
-      engine = "saspy", engine_version = "0.0.1"
-    )
-  )
-  result$metadata$syscc <- status$syscc
-  result
-}
-
-#' Get (or create) the underlying saspy session via reticulate.
-#' @noRd
-.sashiny_saspy_session <- function(engine) {
-  if (!is.null(engine$sas)) {
-    return(engine$sas)
-  }
-  saspy <- reticulate::import("saspy")
-  engine$sas <- saspy$SASsession(
-    cfgfile = engine$cfg, cfgname = engine$cfgname,
-    results = "HTML"
-  )
-  engine$sas
 }
