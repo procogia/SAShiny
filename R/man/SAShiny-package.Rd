@@ -11,8 +11,8 @@ Pairs an unmodified 'SAS' program with a declarative 'YAML' sidecar contract so 
 \seealso{
 Useful links:
 \itemize{
-  \item \url{https://github.com/meharpsingh/SAShiny}
-  \item Report bugs at \url{https://github.com/meharpsingh/SAShiny/issues}
+  \item \url{https://github.com/procogia/SAShiny}
+  \item Report bugs at \url{https://github.com/procogia/SAShiny/issues}
 }
 
 }

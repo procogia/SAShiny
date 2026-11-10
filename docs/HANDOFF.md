@@ -13,9 +13,9 @@ the current state, the path to CRAN/PyPI, and the rules you must follow.
 | Igor | `igor-procogia` | contributor (`ctb`), repo collaborator |
 | Ahmer Khan | `ahmer-khan-0077` | contributor (`ctb`), repo collaborator |
 
-> Note: the repo is **user-owned** (`meharpsingh/SAShiny`), so collaborators get
-> `write` (not `admin`). To grant `admin`, transfer the repo to the `procogia`
-> org. This is a decision for Mehar/ProCogia.
+> Note: the repo lives at **procogia/SAShiny** and is public. It was transferred
+> from `meharpsingh/SAShiny` on 2026-11-10 (the old URL redirects). The four new
+> owners have `admin`. Secret scanning and push protection are enabled.
 
 ## Current state (0.1.0, Beta)
 
@@ -56,7 +56,7 @@ cd Python && uv run ruff check . && uv run ruff format --check . && uv run mypy 
 
 ## Path to CRAN / PyPI (remaining work)
 
-1. **Make the repo public** (D15) — CRAN needs a public `URL`/`BugReports`.
+1. ~~Make the repo public (D15)~~ — done: <https://github.com/procogia/SAShiny>.
 2. **Close #11** — run `spec/tools/live_sas_check.py` on the ProCogia VPN and
    attach the reports (see `docs/live-sas-run-sheet.md`).
 3. **CRAN gaps:** vignettes, examples and R-hub checks are in place. Review the
@@ -106,7 +106,7 @@ checks. See the script header for usage.
 ## Getting started
 
 ```sh
-git clone https://github.com/meharpsingh/SAShiny.git
+git clone https://github.com/procogia/SAShiny.git
 cd SAShiny
 # R
 R CMD build R && R CMD check --as-cran SAShiny_*.tar.gz

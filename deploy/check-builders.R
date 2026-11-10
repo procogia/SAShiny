@@ -25,7 +25,7 @@ if (requireNamespace("devtools", quietly = TRUE)) {
 #     -f config="linux,windows,macos,clang-asan,donttest,nosuggests"
 #
 # Alternatively, with a GitHub PAT having repo scope:
-#   rhub::rhub_check(gh_url = "https://github.com/meharpsingh/SAShiny",
+#   rhub::rhub_check(gh_url = "https://github.com/procogia/SAShiny",
 #                    branch = "rhub-pkg", platforms = c("linux", "windows", "macos"))
 cat("R-hub v2: dispatch the workflow on the package-at-root rhub-pkg branch.\n")
 cat("Inspect the run logs; a green job alone does not report NOTE/WARNING/ERROR counts.\n")

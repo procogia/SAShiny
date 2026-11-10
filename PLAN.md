@@ -172,8 +172,8 @@ SAShiny/
 ```
 
 Install before release:
-- R: `pak::pak("meharpsingh/SAShiny/R")`
-- Python: `uv pip install "git+https://github.com/meharpsingh/SAShiny#subdirectory=Python"`
+- R: `pak::pak("procogia/SAShiny/R")`
+- Python: `uv pip install "git+https://github.com/procogia/SAShiny#subdirectory=Python"`
 
 ## 7. CRAN readiness checklist (R)
 
