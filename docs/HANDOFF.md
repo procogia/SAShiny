@@ -22,8 +22,12 @@ the current state, the path to CRAN/PyPI, and the rules you must follow.
 - **Phase 2 (core)** done: contract loader/validator, value renderer, wrapper
   generator, lint, mock engine, result object — both R and Python pass every
   fixture (97/97 spec check).
-- **Phase 3 (saspy engine + pool)** implemented: saspy engine, connection
-  selection (ODA/Viya/SAS 9.4), bounded pool. **Live SAS is unverified (#11).**
+- **Phase 3 (saspy engine + pool)** implemented in R and Python: saspy session
+  from generated config, uploads (§7), full result collection (§8.2),
+  `choices_from` (§6.4), recordings shared across languages (§8.3), pools with
+  one SAS session per pooled session. Tested against a fake saspy session in
+  both languages. **Live SAS is unverified (#11)** and `examples/recordings/`
+  is empty until someone records the demo inputs against live SAS.
 - **Phase 4 (Shiny modules)** done: auto-UI, custom override, log panel,
   downloads, multi-program app, Shiny test client.
 - **Quality:** `R CMD check` 0 errors/warnings; Python 122 tests + ruff/mypy

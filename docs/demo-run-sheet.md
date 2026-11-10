@@ -11,10 +11,15 @@ is the presentation script plus the fallback plan.
 
 1. Run the live SAS check (see `docs/live-sas-run-sheet.md`) and attach the
    reports to #11.
-2. Record offline results for each track (recording mode) so the Offline profile
-   replays them:
-   - Run each example once against live SAS with `record=True` on the mock
-     engine, or capture the results into `recordings/`.
+2. Record offline results for each track so the Offline profile replays them:
+   - Start either demo app, pick a live profile, and press Run on each tab with
+     the inputs you will show. Live runs are saved to `examples/recordings/`
+     automatically (spec §8.3); recordings from R and Python are
+     interchangeable.
+   - Recordings match exact input values. If you change an input during the
+     demo, record that combination too, or the Offline profile shows
+     "no recording matches these inputs".
+   - Commit the recordings (synthetic example data only).
 3. Start the local apps:
    - R: `shiny::runApp("R/inst/examples/demo")`
    - Python: `cd Python && uv run --with shiny python examples/demo/app.py`
