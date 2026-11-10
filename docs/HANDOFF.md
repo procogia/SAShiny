@@ -59,11 +59,23 @@ cd Python && uv run ruff check . && uv run ruff format --check . && uv run mypy 
 1. **Make the repo public** (D15) — CRAN needs a public `URL`/`BugReports`.
 2. **Close #11** — run `spec/tools/live_sas_check.py` on the ProCogia VPN and
    attach the reports (see `docs/live-sas-run-sheet.md`).
-3. **CRAN gaps:** vignettes, `@examples`/`@examplesIf`, win-builder/macOS/R-hub
-   (see `deploy/check-builders.R`), `lintr`/`styler`/`spelling`/`urlchecker`.
-4. **PyPI gaps:** TestPyPI rehearsal (Trusted Publishing workflow is already in
-   `.github/workflows/pypi-publish.yml`).
+3. **CRAN gaps:** ✅ vignettes, ✅ `@examples` (done). Remaining: R-hub
+   (needs a validated email + token), and review the win-builder/macOS results
+   (submitted 2026-11-09; results emailed to `meharpsingh@gmail.com`).
+4. **PyPI gaps:** ✅ Trusted Publishing workflow, ✅ TestPyPI rehearsal script
+   (`deploy/testpypi-rehearsal.sh`). Remaining: run it with a TestPyPI token.
 5. Submit CRAN → PyPI.
+
+## Builder / rehearsal status (2026-11-09)
+
+- **win-builder (devel + release)** — submitted; results emailed to
+  `meharpsingh@gmail.com`.
+- **macOS builder** — submitted; results at
+  `https://mac.R-project.org/macbuilder/results/1794281604-3cacade0f652cbc5/`.
+- **R-hub** — blocked: needs a validated email (`rhub::validate_email()`) and the
+  repo to be public (or a GitHub token). Command: `rhub::rhub_check()`.
+- **TestPyPI** — blocked: needs a TestPyPI token. Command:
+  `cd Python && uv publish --publish-url https://test.pypi.org/legacy/ --token <token>`.
 
 ## Open issues
 
