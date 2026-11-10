@@ -20,8 +20,8 @@ Description: Pairs an unmodified 'SAS' program with a declarative 'YAML'
     registered trademark of Posit Software, PBC; this package is not
     affiliated with or endorsed by either company.
 License: MIT + file LICENSE
-URL: https://github.com/meharpsingh/SAShiny
-BugReports: https://github.com/meharpsingh/SAShiny/issues
+URL: https://github.com/procogia/SAShiny
+BugReports: https://github.com/procogia/SAShiny/issues
 Depends:
     R (>= 4.1)
 Imports:
