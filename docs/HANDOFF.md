@@ -73,7 +73,7 @@ cd Python && uv run ruff check . && uv run ruff format --check . && uv run mypy 
 - **win-builder (devel + release)** — submitted; results emailed to
   `meharpsingh@gmail.com`.
 - **macOS builder** — the latest submission is at
-  `https://mac.R-project.org/macbuilder/results/1794319386-2e68262a9b5ecfd1/`.
+  `https://mac.R-project.org/macbuilder/results/1794322399-ce9bd0472ed0902f/`.
   It stops before installation because required and suggested CRAN packages are
   unavailable to the service, despite its log saying it will use them. This is
   not a passing package check. Do not upload CRAN dependencies as custom ones;
@@ -81,7 +81,7 @@ cd Python && uv run ruff check . && uv run ruff format --check . && uv run mypy 
 - **R-hub** — Linux, Windows, macOS and `clang-asan` pass with `Status: OK` in
   run 42830282119. The `donttest` job in that run fails before checking SAShiny
   because R-hub's `processx.so` lacks an ASAN runtime symbol. The separate
-  `nosuggests` passes with `Status: OK` in run 42835755997.
+  `nosuggests` passes with `Status: OK` in run 42838546509.
 - **TestPyPI** — configure a pending publisher for project `sashiny`, owner
   `meharpsingh`, repository `SAShiny`, workflow `pypi-publish.yml`, environment
   `testpypi`. Then run `gh workflow run pypi-publish.yml -f target=testpypi`.
