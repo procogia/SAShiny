@@ -2099,6 +2099,10 @@ upload = [
 [package.dev-dependencies]
 dev = [
     { name = "mypy" },
+    { name = "openpyxl" },
+    { name = "pandas", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "pandas", version = "3.1.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "pyreadstat" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "ruff" },
@@ -2124,6 +2128,9 @@ provides-extras = ["dev", "saspy", "shiny", "upload"]
 [package.metadata.requires-dev]
 dev = [
     { name = "mypy", specifier = ">=1.13" },
+    { name = "openpyxl", specifier = ">=3.1" },
+    { name = "pandas", specifier = ">=2.0" },
+    { name = "pyreadstat", specifier = ">=1.2" },
     { name = "pytest", specifier = ">=8" },
     { name = "pytest-cov", specifier = ">=5" },
     { name = "ruff", specifier = ">=0.8" },

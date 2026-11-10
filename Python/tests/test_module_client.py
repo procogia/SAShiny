@@ -69,3 +69,49 @@ def test_module_reports_invalid_values() -> None:
         session.set_inputs(**{"mod-run": 1})
         status = session.get_output("mod-status")
         assert "status: error" in status.value
+
+
+def _recorded_app(tmp_path: Path) -> tuple[App, sashiny.Contract]:
+    """An app whose mock engine replays a recording made by a (fake) live run."""
+    pytest.importorskip("pandas")
+    from fakesas import FakeSAS  # noqa: PLC0415
+    from test_engine_saspy_live import CONTRACT, _fake  # noqa: PLC0415
+
+    (tmp_path / "prog.sas").write_text("data work.stats; run;\n", encoding="utf-8")
+    (tmp_path / "adsl.csv").write_text("age,name\n40,Ann\n", encoding="utf-8")
+    (tmp_path / "app.sashiny.yml").write_text(CONTRACT, encoding="utf-8")
+    contract = sashiny.load(tmp_path / "app.sashiny.yml")
+    fake: FakeSAS = _fake()
+    live = sashiny.SaspyEngine({}, session_factory=lambda: fake, record_to=tmp_path / "rec")
+    live.run(contract, {"min_age": 18, "make": None}, uploads={"adsl": True})
+    engine = sashiny.MockEngine(tmp_path / "rec")
+    app_ui = ui.page_fluid(modules.program_ui("mod", contract))
+
+    def server(input, output, session):
+        modules.program_server("mod", contract, engine)
+
+    return App(app_ui, server), contract
+
+
+def test_module_replays_recording_into_cards(tmp_path: Path) -> None:
+    app, _ = _recorded_app(tmp_path)
+    with test_server(app) as session:
+        session.set_inputs(**{"mod-min_age": 18, "mod-adsl__sample": True, "mod-run": 1})
+        status = session.get_output("mod-status").value
+        assert "status: success" in status
+        assert "replayed recording" in status
+        stats = str(session.get_output("mod-out_stats").value)
+        assert "Age (y)" in stats
+        assert "Ann" in stats
+        assert "dataset WORK.NOPE not found" in str(session.get_output("mod-out_missing").value)
+        assert "data:image/png;base64" in str(session.get_output("mod-out_graphs").value)
+        assert "SASHINY" not in str(session.get_output("mod-out_log").value)
+
+
+def test_module_reports_missing_recording(tmp_path: Path) -> None:
+    app, _ = _recorded_app(tmp_path)
+    with test_server(app) as session:
+        session.set_inputs(**{"mod-min_age": 99, "mod-adsl__sample": True, "mod-run": 1})
+        status = session.get_output("mod-status").value
+        assert "no recording matches" in status
+        assert "No output for this run" in str(session.get_output("mod-out_stats").value)

@@ -10,8 +10,10 @@ from .contract import Contract, Issue, load, validate
 from .engines import Engine, MockEngine, SaspyEngine, connect, load_profiles
 from .lint import lint
 from .pool import Pool
+from .recording import load_recording, save_recording
 from .result import LogLine, Result, TableResult
 from .run import run
+from .upload import UploadError, UploadFile
 from .values import render_values
 from .wrapper import reset_code, wrapper_code
 
@@ -25,15 +27,19 @@ __all__ = [
     "Result",
     "SaspyEngine",
     "TableResult",
+    "UploadError",
+    "UploadFile",
     "__version__",
     "app",
     "connect",
     "lint",
     "load",
     "load_profiles",
+    "load_recording",
     "render_values",
     "reset_code",
     "run",
+    "save_recording",
     "validate",
     "wrapper_code",
 ]

@@ -34,7 +34,7 @@ class Engine(ABC):
         values: dict[str, Any],
         *,
         today: date | None = None,
-        uploads: dict[str, bool] | None = None,
+        uploads: dict[str, Any] | None = None,
         run_id: str | None = None,
     ) -> Result:
         """Run a contract with the given input values.
@@ -43,7 +43,9 @@ class Engine(ABC):
             contract: The loaded contract.
             values: Input values keyed by input id (JSON form, spec §2.1).
             today: The date used to resolve ``"today"``. Defaults to today.
-            uploads: Maps dataset input ids to ``True`` when a file was supplied.
+            uploads: Maps dataset input ids to the supplied file: a path, an
+                :class:`sashiny.upload.UploadFile`, or ``True`` for the
+                input's ``sample`` file.
             run_id: The run identifier. Defaults to a generated UUID.
 
         Returns:
@@ -51,3 +53,16 @@ class Engine(ABC):
 
         """
         raise NotImplementedError
+
+    def choices(self, contract: Contract) -> dict[str, list[dict[str, str]]]:
+        """Read the choices of ``choices_from`` inputs (spec §6.4).
+
+        Returns:
+            Choices keyed by input id, each ``{"value": ..., "label": ...}``.
+            Engines without SAS return ``{}``.
+
+        """
+        return {}
+
+    def close(self) -> None:  # noqa: B027 - optional hook, a no-op by default
+        """Release engine resources (a no-op unless the engine holds a session)."""

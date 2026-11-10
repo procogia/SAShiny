@@ -1,69 +1,175 @@
-"""SAShiny Lisbon demo app (Python).
+r"""SAShiny Lisbon demo app (Python).
 
-A multi-tab Shiny app (General / Pharma / AML) that runs the three example
-contracts through the mock engine (offline mode). The connection-profile picker
-and live/offline toggle are present; live SAS is stubbed until the saspy engine
-(issue #6) and live SAS reports (issue #11) land.
+Three tabs (General / Pharma / AML) run the example contracts. The sidebar picks
+the SAS connection:
+
+- **Offline** replays recordings from ``examples/recordings`` (spec §8.3).
+- **ODA**, **ProCogia Viya** and **ProCogia SAS 9.4** run live through saspy.
+  Every live run is also saved as a recording, so running the demo inputs once
+  live fills the offline fallback. If a live session cannot start, the run falls
+  back to the matching recording and says so in the Run card.
+
+Connection details come from environment variables; credentials come only from
+``~/.authinfo`` (see ``docs/live-sas-run-sheet.md``):
+
+    SASHINY_ODA_REGION   us1 | us2 | eu1 | ap1 | ap2   (default us1)
+    SASHINY_VIYA_URL     https://viya.example.com
+    SASHINY_VIYA_CONTEXT SAS Studio compute context     (optional)
+    SASHINY_SAS94_HOST   sas94.example.com
 
 Run from the repository root:
 
-    cd Python && uv run --with shiny shiny run examples/demo/app.py --host 0.0.0.0 --port 8000
+    cd Python && uv run --extra shiny --extra saspy --extra upload \\
+        shiny run examples/demo/app.py --host 0.0.0.0 --port 8000
 """
 
 from __future__ import annotations
 
+import os
+from datetime import date
 from pathlib import Path
+from typing import Any
 
-from shiny import App, Inputs, Outputs, Session, ui
+from shiny import App, Inputs, Outputs, Session, reactive, ui
 
 import sashiny
 from sashiny import modules
 
 REPO = Path(__file__).resolve().parents[3]
 EXAMPLES = REPO / "examples"
+RECORDINGS = EXAMPLES / "recordings"
 
 TRACKS = {
-    "General": EXAMPLES / "general" / "cars_explorer.sashiny.yml",
-    "Pharma": EXAMPLES / "pharma" / "ae_summary.sashiny.yml",
-    "AML": EXAMPLES / "aml" / "cash_aggregation_tuning.sashiny.yml",
+    "general": ("General", EXAMPLES / "general" / "cars_explorer.sashiny.yml"),
+    "pharma": ("Pharma", EXAMPLES / "pharma" / "ae_summary.sashiny.yml"),
+    "aml": ("AML", EXAMPLES / "aml" / "cash_aggregation_tuning.sashiny.yml"),
+}
+PROFILES = {
+    "offline": "Offline (recordings)",
+    "oda": "SAS OnDemand for Academics",
+    "viya": "ProCogia SAS Viya (VPN)",
+    "sas94": "ProCogia SAS 9.4 (VPN)",
 }
 
-PROFILES = ["Offline", "ODA", "ProCogia Viya", "ProCogia 9.4"]
+
+def _live_engine(profile: str) -> sashiny.Engine:
+    """Build a pooled live engine for a profile from environment variables."""
+    env = os.environ
+
+    def factory() -> sashiny.Engine:
+        if profile == "oda":
+            return sashiny.connect(
+                "oda", region=env.get("SASHINY_ODA_REGION", "us1"), record_to=RECORDINGS
+            )
+        if profile == "viya":
+            return sashiny.connect(
+                "viya",
+                url=env.get("SASHINY_VIYA_URL"),
+                context=env.get("SASHINY_VIYA_CONTEXT"),
+                record_to=RECORDINGS,
+            )
+        return sashiny.connect("sas94", host=env.get("SASHINY_SAS94_HOST"), record_to=RECORDINGS)
+
+    return sashiny.Pool(factory, max_size=2)
 
 
-def _load_contracts() -> dict[str, sashiny.Contract]:
-    return {name: sashiny.load(path) for name, path in TRACKS.items()}
+class DemoEngine(sashiny.Engine):
+    """Routes runs to the selected profile and falls back to recordings."""
+
+    name = "demo"
+    version = sashiny.__version__
+
+    def __init__(self, profile: reactive.Value[str]) -> None:
+        """Route to ``profile``; live engines are created on first use."""
+        self.profile = profile
+        self.offline = sashiny.MockEngine(RECORDINGS)
+        self.live: dict[str, sashiny.Engine] = {}
+
+    def _current(self) -> tuple[str, sashiny.Engine]:
+        with reactive.isolate():
+            name = self.profile()
+        if name == "offline":
+            return name, self.offline
+        if name not in self.live:
+            self.live[name] = _live_engine(name)
+        return name, self.live[name]
+
+    def choices(self, contract: sashiny.Contract) -> dict[str, list[dict[str, str]]]:
+        """Read ``choices_from`` choices on the selected engine."""
+        _, engine = self._current()
+        return engine.choices(contract)
+
+    def run(
+        self,
+        contract: sashiny.Contract,
+        values: dict[str, Any],
+        *,
+        today: date | None = None,
+        uploads: dict[str, Any] | None = None,
+        run_id: str | None = None,
+    ) -> sashiny.Result:
+        """Run live on the selected profile, or replay a recording."""
+        name, engine = self._current()
+        kwargs: dict[str, Any] = {"today": today, "uploads": uploads, "run_id": run_id}
+        if name == "offline":
+            return engine.run(contract, values, **kwargs)
+        try:
+            result = engine.run(contract, values, **kwargs)
+        except ValueError as exc:  # missing connection settings
+            reason = str(exc)
+        else:
+            reason = result.metadata.get("engine_error", "")
+            if not reason:
+                return result
+        fallback = self.offline.run(contract, values, **kwargs)
+        fallback.metadata["notice"] = (
+            f"live {PROFILES[name]} unavailable ({reason}); showing the offline recording"
+        )
+        return fallback
+
+    def close(self) -> None:
+        """Close every live session."""
+        for engine in self.live.values():
+            engine.close()
 
 
 app_ui = ui.page_navbar(
     ui.nav_panel(
         "About",
         ui.markdown(
-            "SAShiny demo: unchanged SAS programs as the server of a Shiny app. "
-            "Select a track, choose a connection profile, set inputs, and press Run."
+            "SAShiny turns unchanged SAS programs into Shiny apps. Each tab is one SAS "
+            "program plus a sidecar YAML contract. Choose a connection, set the inputs "
+            "and press Run."
         ),
     ),
-    ui.nav_panel("General", modules.program_ui("general", _load_contracts()["General"])),
-    ui.nav_panel("Pharma", modules.program_ui("pharma", _load_contracts()["Pharma"])),
-    ui.nav_panel("AML", modules.program_ui("aml", _load_contracts()["AML"])),
+    *[
+        ui.nav_panel(label, modules.program_ui(tid, sashiny.load(path)))
+        for tid, (label, path) in TRACKS.items()
+    ],
     title="SAShiny demo",
     sidebar=ui.sidebar(
-        ui.input_select("profile", "Connection profile", PROFILES, selected="Offline"),
-        ui.input_switch("live", "Live SAS", value=False),
-        ui.markdown("Live SAS requires the saspy engine (issue #6)."),
+        ui.input_select("profile", "SAS connection", PROFILES, selected="offline"),
+        ui.markdown(
+            "Offline replays recorded runs. Live profiles need saspy, Java (IOM) and "
+            "credentials in `~/.authinfo`."
+        ),
+        open="closed",
     ),
 )
 
 
 def server(input: Inputs, output: Outputs, session: Session) -> None:
-    """Wire the demo server: run each track through the mock engine."""
-    contracts = _load_contracts()
-    # The mock engine is stateless; a plain object, not a reactive.
-    engine = sashiny.MockEngine()
+    """Serve all three tracks through one routing engine."""
+    profile: reactive.Value[str] = reactive.value("offline")
 
-    modules.program_server("general", contracts["General"], engine)
-    modules.program_server("pharma", contracts["Pharma"], engine)
-    modules.program_server("aml", contracts["AML"], engine)
+    @reactive.effect
+    def _track_profile() -> None:
+        profile.set(input.profile())
+
+    engine = DemoEngine(profile)
+    for tid, (_label, path) in TRACKS.items():
+        modules.program_server(tid, sashiny.load(path), engine)
+    session.on_ended(engine.close)
 
 
 app = App(app_ui, server)

@@ -25,7 +25,7 @@ def run(  # noqa: PLR0913 - mirrors the engine.run signature
     engine: Engine,
     *,
     today: date | None = None,
-    uploads: dict[str, bool] | None = None,
+    uploads: dict[str, Any] | None = None,
     run_id: str | None = None,
 ) -> Result:
     """Run a contract with the given inputs on an engine.
@@ -36,7 +36,8 @@ def run(  # noqa: PLR0913 - mirrors the engine.run signature
         values: Input values keyed by input id (JSON form, spec §2.1).
         engine: The engine to run on (mock or saspy).
         today: The date used to resolve ``"today"``. Defaults to today.
-        uploads: Maps dataset input ids to ``True`` when a file was supplied.
+        uploads: Maps dataset input ids to a file path, an ``UploadFile``, or
+            ``True`` for the input's ``sample`` file.
         run_id: The run identifier. Defaults to a generated UUID.
 
     Returns:

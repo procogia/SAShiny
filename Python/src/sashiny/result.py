@@ -17,7 +17,7 @@ __all__ = ["LogLine", "Result", "TableResult"]
 
 @dataclass
 class LogLine:
-    """A single classified log line (spec §8 ``log`` output)."""
+    """A classified log line (kept for compatibility; outputs use §8.1 dicts)."""
 
     text: str
     level: str  # "error" | "warning" | "note" | "text"
@@ -25,7 +25,7 @@ class LogLine:
 
 @dataclass
 class TableResult:
-    """A collected table (spec §8 ``table`` output)."""
+    """A collected table (kept for compatibility; outputs use §8.1 dicts)."""
 
     columns: list[str]
     rows: list[list[Any]]
@@ -40,10 +40,10 @@ class Result:
     Attributes:
         run_id: The run identifier (spec §6.1).
         status: ``success`` | ``warning`` | ``error`` (spec §6.5).
-        outputs: Collected outputs keyed by output id. Values are typed per the
-            output kind: ``table`` -> :class:`TableResult`, ``plot`` -> list of
-            image bytes, ``html`` -> str, ``log`` -> list of :class:`LogLine`,
-            ``download`` -> bytes.
+        outputs: Collected outputs keyed by output id. Each value is the
+            language-neutral JSON value of spec §8.1 (tables, plots, HTML, log
+            lines and base64 downloads as dicts, lists and strings), or
+            ``{"error": message}`` when that output could not be collected.
         log: The full main-submission log text.
         metadata: Run metadata (contract/program hashes, rendered macros,
             timestamps, engine/SAS version).
@@ -88,5 +88,6 @@ class Result:
                 "engine_version": engine_version,
                 "sas_version": sas_version,
                 "status": status,
+                "collect_errors": [],
             },
         )
