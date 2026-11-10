@@ -106,12 +106,13 @@ test_that("csv downloads quote fields and leave missing values empty", {
 })
 
 test_that("xlsx downloads round-trip", {
-  skip_if_not_installed("writexl")
-  skip_if_not_installed("readxl")
+  skip_if_not_installed("openxlsx")
   path <- tempfile(fileext = ".xlsx")
   writeBin(.sashiny_xlsx_bytes(fake_table(), "STATS"), path)
-  df <- readxl::read_excel(path, sheet = "STATS")
+  expect_identical(openxlsx::getSheetNames(path), "STATS")
+  df <- openxlsx::read.xlsx(path, sheet = "STATS")
   expect_identical(names(df), c("id", "txt"))
+  expect_identical(df$txt, c("a,\"b\"", "c"))
 })
 
 test_that("xpt downloads choose version 5 or 8", {

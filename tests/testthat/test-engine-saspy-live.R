@@ -170,6 +170,8 @@ test_that("the saspy configuration file is valid Python", {
   expect_identical(text[[3]], "SAS_config_names = ['oda']")
   expect_match(text[[4]], "oda = json.loads(r'''{\"java\":\"/usr/bin/java\"", fixed = TRUE)
   expect_error(.sashiny_write_cfgfile(list(), "not valid", dir), "identifier")
+  skip_on_cran()
+  skip_on_os("windows")
   python <- Sys.which("python3")
   skip_if(!nzchar(python), "python3 not available")
   out <- system2(python, c("-c", shQuote(sprintf(
