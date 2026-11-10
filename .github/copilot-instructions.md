@@ -39,7 +39,7 @@ render), wrapper (reset + main code), lint (L001–L005), engines (mock, saspy),
 - roxygen2 (markdown) docs for **every** function, exported and internal. Use `@noRd` for internal ones.
   Add `@examples` / `@examplesIf` that run in under 5 s without SAS.
 - testthat 3e. Fixture-conformance tests read `../spec/fixtures` in development. At build time spec files are copied to `inst/spec/`.
-- Keep hard `Imports` minimal. Put optional backends (`reticulate`, `mirai`, `bslib`, `DT`, `haven`, `readxl`) in `Suggests`,
+- Keep hard `Imports` minimal. Put optional backends (`reticulate`, `mirai`, `bslib`, `DT`, `haven`, `openxlsx`) in `Suggests`,
   guarded with `rlang::check_installed()`.
 - CRAN policy: write only to `tempdir()`, no internet in checks, restore any `options()`/`par()`/working directory you change,
   put software names in single quotes in DESCRIPTION (`'SAS'`, `'Shiny'`, `'SASPy'`).

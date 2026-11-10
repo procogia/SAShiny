@@ -87,13 +87,12 @@ test_that("bad uploads are rejected with V014 messages", {
 })
 
 test_that("xlsx and xpt uploads are read", {
-  skip_if_not_installed("writexl")
-  skip_if_not_installed("readxl")
+  skip_if_not_installed("openxlsx")
   skip_if_not_installed("haven")
   dir <- tempfile("sashiny-up-")
   dir.create(dir)
   df <- data.frame(USUBJID = "S1", AGE = 50, TRTSDT = as.Date("2024-03-01"))
-  writexl::write_xlsx(df, file.path(dir, "adsl.xlsx"))
+  openxlsx::write.xlsx(df, file.path(dir, "adsl.xlsx"))
   read <- .sashiny_read_upload(.sashiny_upload_file(file.path(dir, "adsl.xlsx")), upload_spec)
   expect_identical(read$df$AGE, 50)
   expect_identical(read$df$TRTSDT, as.Date("2024-03-01"))

@@ -6,11 +6,11 @@
   from the connection settings, keeps one SAS session across runs (an
   environment), and starts a fresh session after a failure.
 * Dataset inputs are uploaded with `df2sd` (spec section 7) from a user file, a
-  Shiny `fileInput` value or the contract's `sample`. CSV, xlsx (`readxl`), xpt
-  and sas7bdat (`haven`) are read and converted as specified.
+  Shiny `fileInput` value or the contract's `sample`. CSV, xlsx (`openxlsx`),
+  xpt and sas7bdat (`haven`) are read and converted as specified.
 * Every output type is collected (spec section 8.2): raw or SAS-formatted
   tables with column metadata and row counts, plots, HTML, scoped logs, and
-  csv/xlsx (`writexl`)/xpt (`haven`)/sas7bdat/rtf/pdf downloads. A failing
+  csv/xlsx (`openxlsx`)/xpt (`haven`)/sas7bdat/rtf/pdf downloads. A failing
   output becomes `list(error = )` without affecting the others
   (`metadata$collect_errors`).
 * `choices_from` inputs read their choices from SAS at session start (spec

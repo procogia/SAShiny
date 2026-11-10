@@ -107,8 +107,10 @@
     return(list(df = df, all_text = TRUE))
   }
   if (identical(ext, "xlsx")) {
-    .sashiny_need("readxl", "to read xlsx uploads")
-    df <- as.data.frame(readxl::read_excel(upload$path, sheet = 1L))
+    .sashiny_need("openxlsx", "to read xlsx uploads")
+    df <- openxlsx::read.xlsx(upload$path, sheet = 1L, detectDates = TRUE, check.names = FALSE,
+      sep.names = " "
+    )
     return(list(df = df, all_text = FALSE))
   }
   if (ext %in% c("xpt", "sas7bdat")) {

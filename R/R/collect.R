@@ -321,16 +321,14 @@
   as.data.frame(cols, stringsAsFactors = FALSE, check.names = FALSE, optional = TRUE)
 }
 
-#' Serialise a raw table value to XLSX bytes (needs writexl).
+#' Serialise a raw table value to XLSX bytes (needs openxlsx).
 #' @noRd
 .sashiny_xlsx_bytes <- function(table, sheet) {
-  .sashiny_need("writexl", "to create xlsx downloads")
+  .sashiny_need("openxlsx", "to create xlsx downloads")
   path <- tempfile(fileext = ".xlsx")
   on.exit(unlink(path), add = TRUE)
-  sheets <- list(.sashiny_table_df(table))
-  names(sheets) <- substr(sheet, 1L, 31L)
-  writexl::write_xlsx(sheets, path)
-  readBin(path, "raw", n = file.info(path)$size)
+  openxlsx::write.xlsx(.sashiny_table_df(table), path, sheetName = substr(sheet, 1L, 31L))
+  .sashiny_read_bytes(path)
 }
 
 #' Serialise a raw table value to SAS transport bytes (needs haven).
