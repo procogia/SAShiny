@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from datetime import date
 from pathlib import Path
@@ -61,3 +62,17 @@ def test_mock_engine_save_recording(tmp_path: Path) -> None:
     engine.save_recording(contract, macros, {"status": "success", "log": ""})
     key = sashiny.engines.mock._recording_key(contract, macros)
     assert (tmp_path / f"{key}.json").is_file()
+
+
+def test_contract_sha256_hashes_yaml_not_program() -> None:
+    """Spec §8: contract_sha256 is the YAML bytes; program_sha256 the program bytes."""
+    path = (
+        Path(__file__).resolve().parents[2]
+        / "spec/fixtures/contracts/valid/minimal/contract.sashiny.yml"
+    )
+    contract = sashiny.load(path)
+    res = sashiny.MockEngine().run(contract, {}, today=date(2026, 11, 11))
+    assert res.metadata["contract_sha256"] == hashlib.sha256(path.read_bytes()).hexdigest()
+    program = (path.parent / "program.sas").read_bytes()
+    assert res.metadata["program_sha256"] == hashlib.sha256(program).hexdigest()
+    assert res.metadata["contract_sha256"] != res.metadata["program_sha256"]

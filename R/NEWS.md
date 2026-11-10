@@ -1,5 +1,12 @@
 # SAShiny 0.1.0
 
+* Fixed the R demo app (`inst/examples/demo/app.R`): it now attaches SAShiny,
+  locates `examples/` from any working directory, and uses a `bslib` sidebar.
+* `sas_wrapper_code()` now strips a UTF-8 BOM at the byte level and marks the
+  program text as UTF-8, so output no longer depends on the session locale
+  (spec section 6.3).
+* Result metadata `contract_sha256` is now the SHA-256 of the contract YAML
+  bytes, as spec section 8 requires (previously it hashed the SAS program).
 * Made tests robust when Suggests packages are unavailable and converted the
   getting-started vignette to `knitr`'s native HTML format.
 * Added the contract loader and validator (`sas_contract()`, `sas_validate()`)

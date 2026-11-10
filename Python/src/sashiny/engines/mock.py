@@ -27,6 +27,16 @@ def _sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def _contract_sha256(contract: Contract) -> str:
+    """SHA-256 of the contract YAML bytes as stored on disk (spec §8).
+
+    Returns an empty string for contracts built in memory without a source file.
+    """
+    if contract.path is None or not contract.path.is_file():
+        return ""
+    return _sha256(contract.path.read_bytes())
+
+
 def _recording_key(contract: Contract, macros: dict[str, str]) -> str:
     """Deterministic key for a recording: contract hash + rendered macros."""
     contract_bytes = json.dumps(contract.data, sort_keys=True).encode("utf-8")
@@ -77,7 +87,7 @@ class MockEngine(Engine):
             return Result.new(
                 run_id,
                 "error",
-                contract_sha256=_sha256(contract.base_dir.joinpath(data["program"]).read_bytes()),
+                contract_sha256=_contract_sha256(contract),
                 program_sha256=_sha256(contract.base_dir.joinpath(data["program"]).read_bytes()),
                 macros=macros,
                 engine=self.name,
@@ -93,7 +103,7 @@ class MockEngine(Engine):
         return Result.new(
             run_id,
             "success",
-            contract_sha256=_sha256(contract.base_dir.joinpath(data["program"]).read_bytes()),
+            contract_sha256=_contract_sha256(contract),
             program_sha256=_sha256(contract.base_dir.joinpath(data["program"]).read_bytes()),
             macros=macros,
             engine=self.name,

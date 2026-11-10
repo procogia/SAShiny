@@ -27,6 +27,18 @@
   )
 }
 
+#' SHA-256 of the contract YAML bytes as stored on disk (spec section 8).
+#'
+#' Returns `""` for contracts built in memory without a source file.
+#' @noRd
+.sashiny_contract_sha256 <- function(contract) {
+  path <- contract$path
+  if (is.null(path) || !file.exists(path)) {
+    return("")
+  }
+  .sashiny_sha256(readBin(path, "raw", n = file.info(path)$size))
+}
+
 #' Deterministic recording key: contract hash + rendered macros.
 #' @noRd
 .sashiny_recording_key <- function(contract, macros) {
@@ -75,10 +87,7 @@ sas_engine_run <- function(engine, contract, values, today = Sys.Date(),
       run_id, "error",
       metadata = .sashiny_metadata(
         run_id, "error",
-        contract_sha256 = .sashiny_sha256(readBin(
-          file.path(contract$base_dir, data$program), "raw",
-          n = file.info(file.path(contract$base_dir, data$program))$size
-        )),
+        contract_sha256 = .sashiny_contract_sha256(contract),
         program_sha256 = .sashiny_sha256(readBin(
           file.path(contract$base_dir, data$program), "raw",
           n = file.info(file.path(contract$base_dir, data$program))$size
@@ -100,10 +109,7 @@ sas_engine_run <- function(engine, contract, values, today = Sys.Date(),
     run_id, "success",
     metadata = .sashiny_metadata(
       run_id, "success",
-      contract_sha256 = .sashiny_sha256(readBin(
-        file.path(contract$base_dir, data$program), "raw",
-        n = file.info(file.path(contract$base_dir, data$program))$size
-      )),
+      contract_sha256 = .sashiny_contract_sha256(contract),
       program_sha256 = .sashiny_sha256(readBin(
         file.path(contract$base_dir, data$program), "raw",
         n = file.info(file.path(contract$base_dir, data$program))$size

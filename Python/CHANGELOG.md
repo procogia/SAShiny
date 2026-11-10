@@ -6,6 +6,10 @@ All notable changes to the Python library are documented here. The format follow
 
 ## [0.1.0]
 
+### Fixed
+- Result metadata `contract_sha256` is now the SHA-256 of the contract YAML bytes
+  (spec §8); previously it hashed the SAS program. `Contract` gains a `path` field.
+
 ### Added
 - Contract loader and validator (`sashiny.contract`).
 - Value validation and rendering (`sashiny.values`).

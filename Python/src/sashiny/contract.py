@@ -79,6 +79,7 @@ class Contract:
     data: dict[str, Any]
     base_dir: Path
     issues: list[Issue] = field(default_factory=list)
+    path: Path | None = None
 
 
 def load(path: str | Path) -> Contract:
@@ -93,7 +94,7 @@ def load(path: str | Path) -> Contract:
     """
     p = Path(path)
     data = yaml.load(p.read_text(encoding="utf-8"), Loader=SafeLoaderNoDates)  # noqa: S506
-    return Contract(data=data, base_dir=p.parent)
+    return Contract(data=data, base_dir=p.parent, path=p)
 
 
 def validate(contract: Contract, today: date | None = None) -> list[Issue]:
