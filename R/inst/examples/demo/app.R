@@ -32,9 +32,8 @@ profiles <- c("Offline", "ODA", "ProCogia Viya", "ProCogia 9.4")
 ui <- navbarPage(
   "SAShiny demo",
   tabPanel("About", markdown(
-    "SAShiny demo: unchanged SAS programs as the server of a Shiny app. ",
-    "Select a track, choose a connection profile, set inputs, and press Run."
-  )),
+      "SAShiny demo: unchanged SAS programs as the server of a Shiny app. Select a track, choose a connection profile, set inputs, and press Run."
+    )),
   tabPanel("General", sas_program_ui("general", contracts$General)),
   tabPanel("Pharma", sas_program_ui("pharma", contracts$Pharma)),
   tabPanel("AML", sas_program_ui("aml", contracts$AML)),
