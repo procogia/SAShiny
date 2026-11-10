@@ -1,7 +1,7 @@
 # SAShiny — Handoff to new maintainers
 
-Welcome, Shreya and Love. This document is the handoff from Mehar: the current
-state, the path to CRAN/PyPI, and the rules you must follow.
+Welcome, Shreya, Love, Igor and Ahmer. This document is the handoff from Mehar:
+the current state, the path to CRAN/PyPI, and the rules you must follow.
 
 ## Owners
 
@@ -59,23 +59,33 @@ cd Python && uv run ruff check . && uv run ruff format --check . && uv run mypy 
 1. **Make the repo public** (D15) — CRAN needs a public `URL`/`BugReports`.
 2. **Close #11** — run `spec/tools/live_sas_check.py` on the ProCogia VPN and
    attach the reports (see `docs/live-sas-run-sheet.md`).
-3. **CRAN gaps:** ✅ vignettes, ✅ `@examples` (done). Remaining: R-hub
-   (needs a validated email + token), and review the win-builder/macOS results
-   (submitted 2026-11-09; results emailed to `meharpsingh@gmail.com`).
-4. **PyPI gaps:** ✅ Trusted Publishing workflow, ✅ TestPyPI rehearsal script
-   (`deploy/testpypi-rehearsal.sh`). Remaining: run it with a TestPyPI token.
-5. Submit CRAN → PyPI.
+3. **CRAN gaps:** vignettes, examples and R-hub checks are in place. Review the
+   win-builder results emailed to `meharpsingh@gmail.com`. The macOS builder
+   has twice failed before package installation due to its dependency cache;
+   see the exact result link below.
+4. **PyPI gaps:** the Trusted Publishing workflow supports TestPyPI and PyPI.
+   Configure pending publishers in the respective web UIs, then run the
+   TestPyPI workflow. A long-lived token is not required.
+5. Submit CRAN → PyPI only after the external results and public URLs are clean.
 
-## Builder / rehearsal status (2026-11-09)
+## Builder / rehearsal status (2026-11-10)
 
 - **win-builder (devel + release)** — submitted; results emailed to
   `meharpsingh@gmail.com`.
-- **macOS builder** — submitted; results at
-  `https://mac.R-project.org/macbuilder/results/1794281604-3cacade0f652cbc5/`.
-- **R-hub** — blocked: needs a validated email (`rhub::validate_email()`) and the
-  repo to be public (or a GitHub token). Command: `rhub::rhub_check()`.
-- **TestPyPI** — blocked: needs a TestPyPI token. Command:
-  `cd Python && uv publish --publish-url https://test.pypi.org/legacy/ --token <token>`.
+- **macOS builder** — the latest submission is at
+  `https://mac.R-project.org/macbuilder/results/1794319386-2e68262a9b5ecfd1/`.
+  It stops before installation because required and suggested CRAN packages are
+  unavailable to the service, despite its log saying it will use them. This is
+  not a passing package check. Do not upload CRAN dependencies as custom ones;
+  the builder reserves that facility for packages absent from CRAN.
+- **R-hub** — Linux, Windows, macOS and `clang-asan` pass with `Status: OK` in
+  run 42830282119. The `donttest` job in that run fails before checking SAShiny
+  because R-hub's `processx.so` lacks an ASAN runtime symbol. The separate
+  `nosuggests` passes with `Status: OK` in run 42835755997.
+- **TestPyPI** — configure a pending publisher for project `sashiny`, owner
+  `meharpsingh`, repository `SAShiny`, workflow `pypi-publish.yml`, environment
+  `testpypi`. Then run `gh workflow run pypi-publish.yml -f target=testpypi`.
+  For PyPI, repeat with environment `pypi`. No token is needed.
 
 ## Open issues
 
