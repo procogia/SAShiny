@@ -80,6 +80,7 @@ print.sashiny_engine_saspy <- function(x, ...) {
     engine$sas <- engine$session_factory()
     return(engine$sas)
   }
+  if (is.list(engine$cfg)) .sashiny_preflight(engine$cfg)
   .sashiny_need("reticulate", "to run live SAS via saspy")
   saspy <- reticulate::import("saspy")
   cfgfile <- engine$cfg
@@ -92,6 +93,46 @@ print.sashiny_engine_saspy <- function(x, ...) {
   }
   engine$sas <- saspy$SASsession(cfgfile = cfgfile, cfgname = engine$cfgname, results = "HTML")
   engine$sas
+}
+
+#' The saspy credentials file: `~/.authinfo`, or `_authinfo` in `USERPROFILE`
+#' on Windows.
+#' @noRd
+.sashiny_authinfo_path <- function() {
+  if (.Platform$OS.type == "windows") {
+    home <- Sys.getenv("USERPROFILE", unset = path.expand("~"))
+    return(file.path(home, "_authinfo"))
+  }
+  file.path(path.expand("~"), ".authinfo")
+}
+
+#' Fail fast on settings saspy would reject or prompt for.
+#'
+#' saspy prompts on stdin for a user id and password when the `authkey` is
+#' missing from the authinfo file, which would hang a Shiny app, and it reports
+#' a missing Java as an invalid configuration.
+#' @noRd
+.sashiny_preflight <- function(cfg, authinfo = .sashiny_authinfo_path()) {
+  java <- cfg$java
+  if (!is.null(cfg$iomhost) && (is.null(java) || !nzchar(java))) {
+    stop(
+      "Java was not found; IOM connections (ODA, SAS 9.4) need Java 8 or later. ",
+      "Install it, set JAVA_HOME, or pass java = \"/path/to/java\".",
+      call. = FALSE
+    )
+  }
+  key <- cfg$authkey
+  if (!is.null(key)) {
+    lines <- if (file.exists(authinfo)) readLines(authinfo, warn = FALSE) else character(0)
+    first <- vapply(strsplit(trimws(lines), "[[:space:]]+"), function(w) w[1] %||% "", "")
+    if (!key %in% first) {
+      stop(sprintf(
+        "no credentials for '%s' in %s. Add a line: %s user <user id> password <password>",
+        key, authinfo, key
+      ), call. = FALSE)
+    }
+  }
+  invisible(TRUE)
 }
 
 #' Submit code and return `list(LOG, LST)`.
