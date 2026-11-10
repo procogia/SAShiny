@@ -4,6 +4,15 @@ fake_engine <- function(fake = fake_session(), ...) {
   sas_engine_saspy(list(java = "java"), session_factory = function() fake, ...)
 }
 
+test_that("a new session turns notes on first (ODA starts with NONOTES)", {
+  fake <- fake_session()
+  sas_engine_run(fake_engine(fake), fake_contract(), list(min_age = 30, make = "BMW"),
+    today = .sashiny_today
+  )
+  expect_identical(fake$submitted[[1]], .sashiny_session_setup_code)
+  expect_identical(sum(fake$submitted == .sashiny_session_setup_code), 1L)
+})
+
 test_that("a full run collects every output type", {
   fake <- fake_session()
   contract <- fake_contract()

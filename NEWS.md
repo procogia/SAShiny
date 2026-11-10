@@ -1,3 +1,13 @@
+# SAShiny (development version)
+
+## SAS OnDemand for Academics fixes
+
+* The saspy engine submits `options notes;` once per new SAS session (spec
+  6.1). ODA starts sessions with `NONOTES`, which removed the `NOTE:` sentinels,
+  so every run was reported as an error and the program log was empty.
+* The SAS version is read from the `SXVER=` output line, not the source echo,
+  which servers like ODA include in the log (it was reported as `&sysvlong;`).
+
 # SAShiny 0.1.0
 
 ## Live demo tests

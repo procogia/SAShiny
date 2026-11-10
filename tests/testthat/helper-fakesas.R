@@ -96,7 +96,7 @@ fake_sas <- function(datasets = list(), meta = list(), files = list(),
     } else if (grepl("_sx_choices as", code, fixed = TRUE)) {
       choices_step(code)
     } else if (grepl("SXVER=", code, fixed = TRUE)) {
-      return(list(LOG = "SXVER=9.04.01M8P011923\n", LST = ""))
+      return(list(LOG = "1    %put SXVER=&sysvlong;\nSXVER=9.04.01M8P011923\n", LST = ""))
     } else if (grepl("SASHINY-PATH=", code, fixed = TRUE)) {
       lib <- first("pathname\\((\\w+)\\)", code)
       return(list(LOG = paste0("1 %put ...\nSASHINY-PATH=/sas/", tolower(lib), "\n"), LST = ""))

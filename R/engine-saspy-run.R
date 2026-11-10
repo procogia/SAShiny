@@ -76,9 +76,22 @@ print.sashiny_engine_saspy <- function(x, ...) {
   if (!is.null(engine$sas)) {
     return(engine$sas)
   }
+  sas <- .sashiny_saspy_open(engine)
+  # Session setup (spec 6.1): ODA starts with NONOTES, which hides the sentinels.
+  sas$submit(.sashiny_session_setup_code, results = "TEXT")
+  engine$sas <- sas
+  engine$sas
+}
+
+#' Submitted once per new SAS session (spec section 6.1).
+#' @noRd
+.sashiny_session_setup_code <- "/* SAShiny 1 session */\noptions notes;\n"
+
+#' Open a new SAS session (saspy, or the testing factory).
+#' @noRd
+.sashiny_saspy_open <- function(engine) {
   if (!is.null(engine$session_factory)) {
-    engine$sas <- engine$session_factory()
-    return(engine$sas)
+    return(engine$session_factory())
   }
   if (is.list(engine$cfg)) .sashiny_preflight(engine$cfg)
   .sashiny_need("reticulate", "to run live SAS via saspy")
@@ -91,8 +104,7 @@ print.sashiny_engine_saspy <- function(x, ...) {
     }
     cfgfile <- .sashiny_write_cfgfile(engine$cfg, engine$cfgname, engine$tmpdir)
   }
-  engine$sas <- saspy$SASsession(cfgfile = cfgfile, cfgname = engine$cfgname, results = "HTML")
-  engine$sas
+  saspy$SASsession(cfgfile = cfgfile, cfgname = engine$cfgname, results = "HTML")
 }
 
 #' The saspy credentials file: `~/.authinfo`, or `_authinfo` in `USERPROFILE`
@@ -149,8 +161,9 @@ print.sashiny_engine_saspy <- function(x, ...) {
     engine$sas_version <- tryCatch(
       {
         log <- .sashiny_submit(engine, "%put SXVER=&sysvlong;")$LOG
-        m <- regmatches(log, regexec("SXVER=([^[:space:]]+)", log))[[1]]
-        if (length(m) == 2L) m[[2]] else ""
+        # Only a line starting with SXVER=; the source echo also contains it.
+        hit <- grep("^SXVER=", .sashiny_split_log(log), value = TRUE)
+        if (length(hit)) sub("^SXVER=([^[:space:]]+).*$", "\\1", hit[[1]]) else ""
       },
       error = function(e) ""
     )
