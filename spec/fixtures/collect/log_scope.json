@@ -1,0 +1,83 @@
+{
+  "cases": [
+    {
+      "name": "program_scope",
+      "log": "1          /* SAShiny 1 wrapper: generated, do not edit */\n2          %put NOTE: SASHINY-BEGIN run=fixture;\nNOTE: SASHINY-BEGIN run=fixture\n3          %put NOTE: SASHINY-BEGIN-PROGRAM;\nNOTE: SASHINY-BEGIN-PROGRAM\n4          data work.stats;\n5            set sashelp.cars;   \n6          run;\n\nNOTE: There were 428 observations read from the data set SASHELP.CARS.\nWARNING: Variable X is uninitialized.\nERROR: File WORK.NOPE.DATA does not exist.\n7          %put NOTE: SASHINY-END-PROGRAM;\nNOTE: SASHINY-END-PROGRAM\n8          %put NOTE: SASHINY-END run=fixture syscc=8;\nNOTE: SASHINY-END run=fixture syscc=8",
+      "scope": "program",
+      "expected": [
+        {
+          "level": "text",
+          "text": "4          data work.stats;"
+        },
+        {
+          "level": "text",
+          "text": "5            set sashelp.cars;"
+        },
+        {
+          "level": "text",
+          "text": "6          run;"
+        },
+        {
+          "level": "text",
+          "text": ""
+        },
+        {
+          "level": "note",
+          "text": "NOTE: There were 428 observations read from the data set SASHELP.CARS."
+        },
+        {
+          "level": "warning",
+          "text": "WARNING: Variable X is uninitialized."
+        },
+        {
+          "level": "error",
+          "text": "ERROR: File WORK.NOPE.DATA does not exist."
+        },
+        {
+          "level": "text",
+          "text": "7          %put NOTE: SASHINY-END-PROGRAM;"
+        }
+      ]
+    },
+    {
+      "name": "program_scope_crlf_and_missing_end",
+      "log": "NOTE: SASHINY-BEGIN-PROGRAM\r\nline a\r\nERROR 22-322: Syntax error.\r\n",
+      "scope": "program",
+      "expected": [
+        {
+          "level": "text",
+          "text": "line a"
+        },
+        {
+          "level": "error",
+          "text": "ERROR 22-322: Syntax error."
+        }
+      ]
+    },
+    {
+      "name": "no_begin_sentinel",
+      "log": "ERROR: session ended",
+      "scope": "program",
+      "expected": []
+    },
+    {
+      "name": "full_scope",
+      "log": "NOTE: a\nWARNING: b\nplain",
+      "scope": "full",
+      "expected": [
+        {
+          "level": "note",
+          "text": "NOTE: a"
+        },
+        {
+          "level": "warning",
+          "text": "WARNING: b"
+        },
+        {
+          "level": "text",
+          "text": "plain"
+        }
+      ]
+    }
+  ]
+}

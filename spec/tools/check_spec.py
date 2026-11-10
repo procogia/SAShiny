@@ -113,6 +113,30 @@ def check_wrappers(r: Report) -> None:
         r.check(got == want, f"wrapper/{d.name} main bytes", _diff(want, got))
 
 
+def check_collect(r: Report) -> None:
+    d = FIX / "collect"
+    for case in json.loads((d / "log_scope.json").read_text(encoding="utf-8"))["cases"]:
+        got = ref.scope_log(case["log"], case["scope"])
+        r.check(got == case["expected"], f"collect/log_scope/{case['name']}", f"got {got}")
+    plots = json.loads((d / "plots.json").read_text(encoding="utf-8"))
+    for case in plots["cases"]:
+        label = f"collect/plots/{case['name']}"
+        if case.get("expected_error"):
+            try:
+                ref.extract_plots(plots["html"], case["select"])
+                r.check(False, label, "expected an error")
+            except ValueError:
+                r.check(True, label)
+        else:
+            got = ref.extract_plots(plots["html"], case["select"])
+            r.check(got == case["expected"], label, f"got {got}")
+    k = json.loads((d / "recording_key.json").read_text(encoding="utf-8"))
+    macros = [tuple(m) for m in k["macros"]]
+    uploads = [tuple(u) for u in k["uploads"]]
+    r.check(ref.recording_key_text(k["contract_sha256"], macros, uploads) == k["key_text"], "collect/recording_key text")
+    r.check(ref.recording_key(k["contract_sha256"], macros, uploads) == k["key"], "collect/recording_key sha256")
+
+
 def check_expected_sas_format(r: Report) -> None:
     for f in sorted(FIX.glob("wrapper/*/expected_*.sas")):
         raw = f.read_bytes()
@@ -141,6 +165,7 @@ def main() -> int:
     check_invalid(r, today)
     check_values(r)
     check_wrappers(r)
+    check_collect(r)
     check_expected_sas_format(r)
     check_examples(r, date.today())
     for f in r.failures:

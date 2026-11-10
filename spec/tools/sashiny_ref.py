@@ -479,3 +479,66 @@ def wrapper_code(data: dict[str, Any], macros: dict[str, str], program_bytes: by
     tail.extend(f"ods {fmt}(id={oid}) close;" for oid, fmt in ods)
     tail.append(f"%put NOTE: SASHINY-END run={run_id} syscc=&syscc;")
     return body + "\n".join(tail) + "\n"
+
+
+# --------------------------------------------------------------------------- collection (section 8)
+
+_IMG = re.compile(r"""<img\b[^>]*?\bsrc\s*=\s*["']data:(image/[A-Za-z0-9.+-]+);base64,([^"']+)["']""", re.IGNORECASE)
+_SVG = re.compile(r"<svg\b.*?</svg>", re.IGNORECASE | re.DOTALL)
+
+
+def split_log(log: str) -> list[str]:
+    """Split a log into lines (8.2 log): CRLF/CR/LF, no empty final line, trailing whitespace dropped."""
+    lines = re.split(r"\r\n|\r|\n", log)
+    if lines and lines[-1] == "" and re.search(r"(\r\n|\r|\n)$", log):
+        lines.pop()
+    return [ln.rstrip() for ln in lines] if log else []
+
+
+def log_level(line: str) -> str:
+    for prefix, level in (("ERROR", "error"), ("WARNING", "warning"), ("NOTE", "note")):
+        if line.startswith(prefix):
+            return level
+    return "text"
+
+
+def scope_log(log: str, scope: str = "program") -> list[dict[str, str]]:
+    lines = split_log(log)
+    if scope == "program":
+        try:
+            begin = lines.index("NOTE: SASHINY-BEGIN-PROGRAM")
+        except ValueError:
+            return []
+        rest = lines[begin + 1 :]
+        end = rest.index("NOTE: SASHINY-END-PROGRAM") if "NOTE: SASHINY-END-PROGRAM" in rest else len(rest)
+        lines = rest[:end]
+    return [{"level": log_level(ln), "text": ln} for ln in lines]
+
+
+def extract_plots(html: str, select: int | None = None) -> list[dict[str, str]]:
+    import base64
+
+    found: list[tuple[int, dict[str, str]]] = []
+    for m in _IMG.finditer(html):
+        found.append((m.start(), {"mime": m.group(1).lower(), "data": m.group(2)}))
+    for m in _SVG.finditer(html):
+        found.append((m.start(), {"mime": "image/svg+xml", "data": base64.b64encode(m.group(0).encode("utf-8")).decode("ascii")}))
+    plots = [p for _, p in sorted(found, key=lambda t: t[0])]
+    if select is None:
+        return plots
+    if select > len(plots):
+        raise ValueError(f"select={select} but only {len(plots)} graph(s) were produced")
+    return [plots[select - 1]]
+
+
+def recording_key_text(contract_sha256: str, macros: list[tuple[str, str]], uploads: list[tuple[str, str]]) -> str:
+    lines = ["sashiny-recording-key 1", f"contract {contract_sha256}"]
+    lines += [f"macro {n}={v}" for n, v in macros]
+    lines += [f"upload {i} {h}" for i, h in uploads]
+    return "\n".join(lines) + "\n"
+
+
+def recording_key(contract_sha256: str, macros: list[tuple[str, str]], uploads: list[tuple[str, str]]) -> str:
+    import hashlib
+
+    return hashlib.sha256(recording_key_text(contract_sha256, macros, uploads).encode("utf-8")).hexdigest()

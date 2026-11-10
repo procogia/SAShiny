@@ -319,22 +319,132 @@ A timeout MUST abort the SAS session. The pool MUST then discard and replace tha
 4. Undeclared columns: native numeric/date types are kept. In `csv`, a column whose non-empty values all
    parse as numbers becomes numeric, otherwise character.
 5. The result is written to `target`. Column order is preserved.
+6. A supplied dataset input is either a user file or, if the UI offers it, the contract's `sample` file.
+   Both go through steps 1–5.
 
 ---
 
 ## 8. Result collection
 
-| Output | Collected as |
+Collection is step 4 of the run protocol (6.1). It happens after the main submission and in contract output
+order. A failure collecting one output MUST NOT change the run status or stop collection of the other
+outputs. The failed output's value is `{"error": "<message>"}`, and the message is also appended to
+`metadata.collect_errors`.
+
+### 8.1 Output values
+
+Each output has a **language-neutral JSON value**. Engines return it, the mock engine replays it, and
+recordings store it (8.3), so R and Python see identical data.
+
+| Output | Value |
 |---|---|
-| `table` | Up to `max_rows` rows of `from` (`columns` subset if given). Raw values unless `formatted: true`. Metadata reports `truncated: true/false` and total row count. |
-| `plot` | ODS graphics produced by the main submission, in order. SVG preferred, PNG fallback. `select` picks one. |
-| `html` | The ODS HTML listing of the main submission. |
-| `log` | `program` scope: lines strictly between `SASHINY-BEGIN-PROGRAM` and `SASHINY-END-PROGRAM` (whole log after BEGIN if END is missing). `full`: entire main-submission log. Each line is classified `error`/`warning`/`note`/`text`. |
-| `download` | Data formats: produced from `from` after the run (`xpt` and `sas7bdat` SHOULD be produced by SAS). `rtf`/`pdf`: the file written under WORK by the wrapper. |
+| `table` | `{"columns": [{"name", "type", "label", "format"}], "rows": [[...], ...], "total_rows": int or null, "truncated": bool, "formatted": bool}` |
+| `plot` | `[{"mime": "image/png" \| "image/svg+xml" \| "image/jpeg" \| "image/gif", "data": "<base64>"}, ...]` |
+| `html` | The ODS HTML document of the main submission, as a string |
+| `log` | `[{"level": "error" \| "warning" \| "note" \| "text", "text": "<line>"}, ...]` |
+| `download` | `{"filename": "<name>.<ext>", "mime": "<type>", "data": "<base64>"}` |
+
+Table details:
+- `type` is `"numeric"` or `"character"`. `label` and `format` are `""` when SAS has none.
+- With `formatted: false`, numeric cells are JSON numbers, or `null` for SAS missing values. Character
+  cells are strings with trailing blanks removed. SAS dates stay numbers.
+- With `formatted: true`, every cell is the string SAS displays (`vvalue`), with leading and trailing
+  blanks removed.
+- `total_rows` is the logical observation count (`nlobs`). It is `null` when SAS cannot report it, for
+  example for views. `truncated` is `total_rows > max_rows`.
+
+### 8.2 Collection protocol
+
+`<LIB>` and `<MEM>` are the upper-cased parts of `from`. `<WORK>` is `%sysfunc(pathname(work))`.
+Remote paths join a directory and a file name with `\` if the directory contains a `\`, otherwise with `/`.
+Temporary members (`work._sx_*`) are deleted after use.
+
+**table**
+1. Read column metadata:
+   ```sas
+   proc sql noprint;
+     create table work._sx_cols as
+       select varnum, name, type, format, label
+       from dictionary.columns
+       where libname = "<LIB>" and memname = "<MEM>"
+       order by varnum;
+     create table work._sx_nobs as
+       select nlobs from dictionary.tables
+       where libname = "<LIB>" and memname = "<MEM>";
+   quit;
+   ```
+   If `work._sx_cols` is empty, the error is `dataset <LIB>.<MEM> not found`.
+2. The selected columns are `columns`, matched case-insensitively and kept in the order listed, or all
+   columns in `varnum` order. An unknown column is an error.
+3. `formatted: false`: read `<LIB>.<MEM>` with data-set options `obs=<max_rows>` and `keep=<columns>`.
+4. `formatted: true`: run the step below, then read `work._sx_fmt` and rename `_sx_c<i>` back to the
+   original column names. `<k>` is the number of selected columns.
+   ```sas
+   data work._sx_fmt;
+     set <LIB>.<MEM>(obs=<max_rows> keep=<col1> ... <colk>);
+     length _sx_c1-_sx_c<k> $512;
+     _sx_c1 = strip(vvalue(<col1>));
+     ...
+     keep _sx_c1-_sx_c<k>;
+   run;
+   ```
+
+**plot**: The plots are the images embedded in the `html` document, in document order. Collect each
+`<img>` whose `src` is a `data:image/...;base64,...` URI as-is, and each inline `<svg>...</svg>` element
+base64-encoded with mime `image/svg+xml`. With `select: k` the value is a one-item list. If fewer than
+`k` images exist, collection fails for that output.
+
+**html**: The ODS HTML listing returned by the main submission.
+
+**log**: Split the main-submission log on line breaks (`CRLF`, `CR` or `LF`). If the log ends with a line
+break, there is no empty final line. Drop trailing whitespace from each line.
+`program` scope keeps the lines strictly between the line equal to `NOTE: SASHINY-BEGIN-PROGRAM` and the
+line equal to `NOTE: SASHINY-END-PROGRAM`, or every line after BEGIN if END is missing. Source echo lines
+never match, because SAS prefixes them with line numbers. `full` keeps every line. Each line's `level`
+is `error`, `warning` or `note` if it starts with `ERROR`, `WARNING` or `NOTE`, otherwise `text`.
+
+**download**: The file name is `<filename or output id>.<ext>`.
+
+| `format` | Produced by | MIME |
+|---|---|---|
+| `csv` | Client: all rows of `from` (raw values, at most 1 000 000), header row, UTF-8, comma, LF line ends, RFC 4180 quoting, missing = empty field | `text/csv` |
+| `xlsx` | Client: same rows, first sheet named after `<MEM>` | `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` |
+| `xpt` | Client: SAS transport version 5 if `<MEM>` and every column name are at most 8 characters, otherwise version 8 | `application/x-sas-xport` |
+| `sas7bdat` | Server: download `pathname(<LIB>)` joined with lower-case `<MEM>` + `.sas7bdat` | `application/x-sas-data` |
+| `rtf` / `pdf` | Server: download `<WORK>` joined with `sashiny_<output_id>.<fmt>`, written by the wrapper (6.3) | `application/rtf` / `application/pdf` |
+
+Numeric formatting in client-produced files may differ slightly between implementations.
+
+### 8.3 Recordings
+
+A recording replays a run without SAS. It is the offline fallback and the source of examples and
+tests. It is a UTF-8 JSON file `<key>.json`:
+
+```json
+{"sashiny_recording": 1, "status": "...", "log": "<full main-submission log>",
+ "outputs": {"<output_id>": <value from 8.1>}, "sas_version": "...",
+ "contract_sha256": "...", "program_sha256": "...", "macros": {"NAME": "VALUE"},
+ "recorded_at": "<UTC ISO 8601>"}
+```
+
+`<key>` is the lower-case hex SHA-256 of this UTF-8 text, built line by line with LF endings:
+
+```
+sashiny-recording-key 1
+contract <contract_sha256>
+macro <NAME>=<VALUE>          one line per rendered macro, in 5.7 order
+upload <input_id> <sha256>    one line per supplied dataset input, contract order; sha256 of the file bytes
+```
+
+The key depends only on the contract bytes, the rendered values and the uploaded files. A recording
+made by either language therefore replays in both. A mock engine with no matching recording returns
+status `success` with empty outputs and sets `metadata.recording` to `"missing"`.
+
+### 8.4 Run metadata
 
 Every result carries run metadata: `run_id`, `contract_sha256` (of the YAML bytes), `program_sha256`
 (of the program file bytes as stored on disk), rendered macro values, start/end timestamps (UTC, ISO 8601),
-engine name and version, SAS version (`&SYSVLONG`), and status.
+engine name and version, SAS version (`&SYSVLONG`), status, and `collect_errors` (list, possibly empty).
 
 ---
 
