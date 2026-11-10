@@ -5,17 +5,13 @@
 * R-hub: Linux, Windows, macOS and `clang-asan` (R-devel): `Status: OK`.
 * R-hub `nosuggests`: `Status: OK` in run 42838546509. The vignette uses a
   `knitr` HTML vignette and the testthat suite runs conditionally.
-* macOS builder, R-release: the service stopped before installation because it
-  could not resolve CRAN dependencies. Both submissions reported the same
-  dependency-cache error; the package was not executed by this builder.
-* win-builder, R-devel and R-release: submitted; result URLs are emailed to
-  the maintainer. Results must be reviewed before submission.
+* macOS builder, R-release (arm64): Status: OK, 0 errors, 0 warnings, 0 notes.
+* win-builder, R-devel, R-release and R-oldrelease: submitted; results are emailed
+  to the maintainer and must be reviewed before submission.
 
 ## R CMD check results
 
-The full local check is clean. CRAN incoming checks additionally report a new
-submission. The private source-repository URLs will be checked after the
-repository is made public.
+The full local check is clean. CRAN incoming checks report only "New submission".
 
 ## Downstream dependencies
 
