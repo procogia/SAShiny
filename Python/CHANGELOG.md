@@ -4,6 +4,13 @@ All notable changes to the Python library are documented here. The format follow
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [0.1.1]
+
+### Fixed
+- `import sashiny` no longer requires the optional `shiny` extra. `app` and
+  `modules` are imported lazily, so the core package works with only its
+  declared dependencies.
+
 ## [0.1.0]
 
 ### Added (live demo tests)
