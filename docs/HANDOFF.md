@@ -71,7 +71,11 @@ cd Python && uv run ruff check . && uv run ruff format --check . && uv run mypy 
 ## Builder / rehearsal status (2026-11-10)
 
 - **win-builder (devel + release)** — submitted; results emailed to
-  `meharpsingh@gmail.com`.
+  `meharpsingh@gmail.com`. They have not been reviewed here because this session
+  has no mailbox access and the service provides no derivable result URLs.
+- **GitHub macOS CI** — R-hub macOS R-devel passes. The regular macOS R-release
+  CI job has been cancelled while queued before executing steps; its retry is
+  pending runner availability. The other five matrix jobs pass.
 - **macOS builder** — the latest submission is at
   `https://mac.R-project.org/macbuilder/results/1794322399-ce9bd0472ed0902f/`.
   It stops before installation because required and suggested CRAN packages are
