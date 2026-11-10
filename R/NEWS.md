@@ -1,5 +1,15 @@
 # SAShiny 0.1.0
 
+## Live demo tests
+
+* Before starting saspy, the engine now checks that Java is available for IOM
+  connections and that `~/.authinfo` has an entry for the profile's `authkey`.
+  Without the second check saspy would prompt for credentials on stdin, which
+  hangs a Shiny app.
+* A live test suite runs the demo scenarios (`examples/demo-scenarios.yml`) on
+  real SAS when `SASHINY_LIVE=1`, and offline tests check the scenarios and any
+  committed recordings.
+
 ## Live engine and result collection
 
 * The saspy engine now runs end to end. It writes a saspy configuration file

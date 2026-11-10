@@ -43,7 +43,7 @@ from ..values import render_values
 from ..wrapper import reset_code, wrapper_code
 from .base import Engine
 
-__all__ = ["SaspyEngine", "connect", "load_profiles"]
+__all__ = ["SaspyEngine", "authinfo_path", "connect", "load_profiles", "preflight"]
 
 CONTROL = re.compile(r"[\x00-\x1f\x7f-\x9f]")
 # syscc threshold above which a run is an error (spec §6.5).
@@ -286,6 +286,44 @@ def _write_cfgfile(cfg: dict[str, Any], cfgname: str, folder: Path) -> Path:
     return path
 
 
+def authinfo_path() -> Path:
+    """Return the saspy credentials file path.
+
+    This is ``~/.authinfo``, or ``_authinfo`` in ``USERPROFILE`` on Windows.
+    """
+    if os.name == "nt":
+        return Path(os.environ.get("USERPROFILE", str(Path.home()))) / "_authinfo"
+    return Path.home() / ".authinfo"
+
+
+def preflight(cfg: dict[str, Any]) -> None:
+    """Fail fast, with a clear message, on settings saspy would reject or prompt for.
+
+    saspy prompts for a user id and password on stdin when the ``authkey`` is
+    missing from the authinfo file, which would hang a Shiny app; and it reports
+    a missing Java as an invalid configuration.
+
+    Raises:
+        RuntimeError: Java is missing for an IOM connection, or the ``authkey``
+            has no entry in the authinfo file.
+
+    """
+    if "iomhost" in cfg and not cfg.get("java"):
+        raise RuntimeError(
+            "Java was not found; IOM connections (ODA, SAS 9.4) need Java 8 or later. "
+            "Install it, set JAVA_HOME, or pass java='/path/to/java'."
+        )
+    key = cfg.get("authkey")
+    if key:
+        path = authinfo_path()
+        lines = path.read_text(encoding="utf-8").splitlines() if path.is_file() else []
+        if not any(line.split()[:1] == [key] for line in lines):
+            raise RuntimeError(
+                f"no credentials for '{key}' in {path}. Add a line: "
+                f"{key} user <user id> password <password>"
+            )
+
+
 class SaspyEngine(Engine):
     """A live SAS engine backed by saspy.
 
@@ -335,6 +373,7 @@ class SaspyEngine(Engine):
                 import saspy  # noqa: PLC0415 - optional dependency
 
                 if isinstance(self.cfg, dict):
+                    preflight(self.cfg)
                     self._tmp = tempfile.TemporaryDirectory(prefix="sashiny-cfg-")
                     cfgfile = str(_write_cfgfile(self.cfg, self.cfgname, Path(self._tmp.name)))
                 else:

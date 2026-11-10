@@ -194,3 +194,27 @@ test_that("dates and times convert back to SAS numbers", {
   expect_identical(.sashiny_sas_number(5, ""), 5)
   expect_null(.sashiny_sas_number(NULL, ""))
 })
+
+test_that("the pre-flight check requires Java for IOM connections", {
+  expect_error(.sashiny_preflight(list(iomhost = "h", java = "")), "Java was not found")
+  expect_error(.sashiny_preflight(list(iomhost = "h")), "Java was not found")
+  expect_true(.sashiny_preflight(list(url = "https://viya")))
+})
+
+test_that("the pre-flight check requires an authinfo entry", {
+  authinfo <- tempfile()
+  cfg <- list(iomhost = "h", java = "java", authkey = "oda")
+  expect_error(.sashiny_preflight(cfg, authinfo), "no credentials for 'oda'")
+  writeLines(c("viya user a password b", "oda user me password pw"), authinfo)
+  expect_true(.sashiny_preflight(cfg, authinfo))
+  unlink(authinfo)
+})
+
+test_that("a missing Java is reported on the result, before saspy is imported", {
+  engine <- sas_engine_saspy(list(iomhost = "h", java = "", authkey = "oda"))
+  result <- sas_engine_run(engine, fake_contract(), list(min_age = 30, make = "BMW"),
+    today = .sashiny_today, uploads = list(adsl = TRUE)
+  )
+  expect_identical(result$status, "error")
+  expect_match(result$metadata$engine_error, "Java was not found")
+})

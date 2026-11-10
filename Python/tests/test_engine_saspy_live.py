@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 
 import sashiny
+from sashiny.engines import saspy as saspy_mod
 from sashiny.engines.saspy import SaspyEngine, _sas_number, _write_cfgfile
 from sashiny.recording import key_for
 
@@ -274,3 +275,26 @@ def test_sas_number_conversions() -> None:
     assert _sas_number(dt.date(1960, 1, 11), "") == 10
     assert _sas_number(dt.timedelta(seconds=90), "TIME8.") == 90
     assert _sas_number(5, "") == 5
+
+
+def test_preflight_requires_java_for_iom() -> None:
+    with pytest.raises(RuntimeError, match="Java was not found"):
+        saspy_mod.preflight({"iomhost": ["h"], "java": None})
+    saspy_mod.preflight({"url": "https://viya"})  # no authkey, no IOM: nothing to check
+
+
+def test_preflight_requires_an_authinfo_entry(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(saspy_mod, "authinfo_path", lambda: tmp_path / ".authinfo")
+    with pytest.raises(RuntimeError, match="no credentials for 'oda'"):
+        saspy_mod.preflight({"iomhost": ["h"], "java": "java", "authkey": "oda"})
+    (tmp_path / ".authinfo").write_text("viya user a password b\noda user me password pw\n")
+    saspy_mod.preflight({"iomhost": ["h"], "java": "java", "authkey": "oda"})
+
+
+def test_missing_java_is_reported_on_the_result(contract: sashiny.Contract) -> None:
+    engine = sashiny.SaspyEngine({"iomhost": ["h"], "java": None, "authkey": "oda"})
+    result = engine.run(contract, {"min_age": 1}, today=TODAY)
+    assert result.status == "error"
+    assert "Java was not found" in result.metadata["engine_error"]

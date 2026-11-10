@@ -1,0 +1,106 @@
+# Demo scenarios: the inputs the Lisbon demo shows, and what each run must produce.
+#
+# This file is the single source for docs/recording-checklist.md and for the live
+# test suites in both languages:
+#   Python: Python/tests/live/test_demo_live.py
+#   R:      R/tests/testthat/test-demo-live.R
+#
+# Primary scenarios use the contract defaults, so pressing Run without touching
+# the UI produces the same recording key. The suites check that, so this file
+# and the contracts cannot drift apart.
+#
+# Values are in the contract JSON form (spec section 2.1). `uploads: {id: sample}`
+# means "Use the sample file". Every output must be collected without an error;
+# `expect` adds per-output minimums.
+
+sashiny_scenarios: 1
+
+scenarios:
+  - id: general
+    title: General - car price explorer
+    contract: general/cars_explorer.sashiny.yml
+    primary: true
+    values:
+      origins: [Asia, Europe, USA]
+      types: [Sedan, SUV, Sports, Truck, Wagon]
+      min_msrp: 20000
+    uploads: {}
+    expect:
+      status: success
+      tables: {stats: {min_rows: 1}}
+      plots: {price_vs_mpg: 1, price_by_type: 1}
+
+  - id: pharma
+    title: Pharma - TEAE summary
+    contract: pharma/ae_summary.sashiny.yml
+    primary: true
+    values:
+      arms: [Placebo, Xanomeline Low Dose, Xanomeline High Dose]
+      saffl: "Y"
+      period: ["2025-01-01", "2025-12-31"]
+      min_pct: 5
+    uploads: {adsl: sample, adae: sample}
+    expect:
+      status: success
+      tables: {ae_table: {min_rows: 1}, demog: {min_rows: 1}}
+      plots: {ae_plot: 1}
+
+  - id: aml
+    title: AML - cash aggregation tuning
+    contract: aml/cash_aggregation_tuning.sashiny.yml
+    primary: true
+    values:
+      segments: [Retail, SME, Corporate]
+      threshold: 10000
+      lookback_days: 30
+      period: ["2026-01-01", "2026-06-30"]
+    uploads: {transactions: sample}
+    expect:
+      status: success
+      tables: {atl_btl: {min_rows: 1}, alerts: {min_rows: 1}}
+      plots: {atl_btl_plot: 1}
+
+  # Optional on-stage variations: one changed input per track.
+  - id: general-msrp-40000
+    title: General - minimum MSRP 40000
+    contract: general/cars_explorer.sashiny.yml
+    primary: false
+    values:
+      origins: [Asia, Europe, USA]
+      types: [Sedan, SUV, Sports, Truck, Wagon]
+      min_msrp: 40000
+    uploads: {}
+    expect:
+      status: success
+      tables: {stats: {min_rows: 1}}
+      plots: {price_vs_mpg: 1, price_by_type: 1}
+
+  - id: pharma-min-pct-10
+    title: Pharma - minimum incidence 10%
+    contract: pharma/ae_summary.sashiny.yml
+    primary: false
+    values:
+      arms: [Placebo, Xanomeline Low Dose, Xanomeline High Dose]
+      saffl: "Y"
+      period: ["2025-01-01", "2025-12-31"]
+      min_pct: 10
+    uploads: {adsl: sample, adae: sample}
+    expect:
+      status: success
+      tables: {demog: {min_rows: 1}}
+      plots: {}
+
+  - id: aml-threshold-25000
+    title: AML - alert threshold 25000
+    contract: aml/cash_aggregation_tuning.sashiny.yml
+    primary: false
+    values:
+      segments: [Retail, SME, Corporate]
+      threshold: 25000
+      lookback_days: 30
+      period: ["2026-01-01", "2026-06-30"]
+    uploads: {transactions: sample}
+    expect:
+      status: success
+      tables: {atl_btl: {min_rows: 1}}
+      plots: {atl_btl_plot: 1}

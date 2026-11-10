@@ -95,8 +95,10 @@ failed — read the `error` and `traceback` fields in the JSON report.
 ## Record the demo runs (offline fallback)
 
 After a profile is green, record the demo inputs so the Offline profile can
-replay them. Either start a demo app and pick that profile (it records into
-`examples/recordings/` automatically), or record from a console:
+replay them. The quickest way is the live demo test suite, which records and
+checks every demo scenario (`docs/live-demo-tests.md`). Or start a demo app and
+pick that profile (it records into `examples/recordings/` automatically), or
+record from a console:
 
 ```python
 import sashiny

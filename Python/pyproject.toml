@@ -93,4 +93,6 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["tests"]
 addopts = ["--strict-markers", "--strict-config", "-ra"]
+markers = ["live: needs a real SAS session (SASHINY_LIVE=1); see tests/live/conftest.py"]

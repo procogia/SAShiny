@@ -6,6 +6,15 @@ All notable changes to the Python library are documented here. The format follow
 
 ## [0.1.0]
 
+### Added (live demo tests)
+- Before starting saspy, `SaspyEngine` checks that Java is available for IOM
+  connections and that `~/.authinfo` has an entry for the profile's `authkey`
+  (`sashiny.engines.saspy.preflight`). Without the second check saspy would
+  prompt for credentials on stdin, which hangs a Shiny app.
+- `tests/live` runs the demo scenarios (`examples/demo-scenarios.yml`) on real
+  SAS when `SASHINY_LIVE=1`; offline tests check the scenarios and any
+  committed recordings.
+
 ### Added (live engine and result collection)
 - `SaspyEngine` runs end to end: the session starts from a generated saspy
   configuration file, persists across runs, and is restarted after a failure.
