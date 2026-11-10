@@ -5,7 +5,8 @@ trademark of Posit Software, PBC. This project is not affiliated with or
 endorsed by either company.
 """
 
-from .app import app
+from typing import Any
+
 from .contract import Contract, Issue, load, validate
 from .engines import Engine, MockEngine, SaspyEngine, connect, load_profiles
 from .lint import lint
@@ -45,3 +46,23 @@ __all__ = [
 ]
 
 __version__ = "0.1.0"
+
+
+def __getattr__(name: str) -> Any:
+    """Lazily expose ``app`` and ``modules``, which need the optional ``shiny``.
+
+    The core package must import without ``shiny`` installed (it is an optional
+    extra). ``app`` and ``modules`` are only imported when first accessed.
+    """
+    if name == "app":
+        from .app import app as _app  # noqa: PLC0415 - optional dependency
+
+        globals()["app"] = _app
+        return _app
+    if name == "modules":
+        from importlib import import_module  # noqa: PLC0415 - optional dependency
+
+        _modules = import_module(f"{__name__}.modules")
+        globals()["modules"] = _modules
+        return _modules
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
