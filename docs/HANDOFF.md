@@ -97,6 +97,9 @@ cd Python && uv run ruff check . && uv run ruff format --check . && uv run mypy 
   macOS builder both pass.
 - **PyPI / TestPyPI** - see [pypi-trusted-publishing.md](pypi-trusted-publishing.md).
   Use owner `procogia` (not `meharpsingh`). Both names are free.
+- **TestPyPI** - the pending publisher is configured and the publish workflow
+  succeeds. `sashiny` 0.1.0 and 0.1.1 are on TestPyPI. 0.1.1 fixes the core
+  import so `import sashiny` works without the optional `shiny` extra.
 ## CRAN submission (2026-11-10)
 
 - **Submitted** SAShiny 0.1.0 (source commit `cf65c09`) through
@@ -111,8 +114,9 @@ cd Python && uv run ruff check . && uv run ruff format --check . && uv run mypy 
   the time they set, fix anything they raise, and resubmit with a bumped
   version (`0.1.1`) and an updated `NEWS.md`. Do not reply from a different
   address, and do not resubmit the same version number.
-- PyPI / TestPyPI: still waiting on the pending trusted publishers
-  (see [pypi-trusted-publishing.md](pypi-trusted-publishing.md)).
+- PyPI / TestPyPI: the TestPyPI pending publisher is configured and the
+  rehearsal passes (0.1.1 installs and imports without `shiny`). Real PyPI is
+  still pending the same publisher entry on pypi.org (environment `pypi`).
 ## Open issues
 
 - #11 — Live SAS check reports (blocked on VPN + `~/.authinfo`).
