@@ -19,3 +19,19 @@ PyYAML: single letters \code{y}/\code{Y}/\code{n}/\code{N} stay strings, while t
 (\code{yes}, \code{no}, \code{on}, \code{off}, \code{true}, \code{false}) become logicals. Returns a
 \code{sashiny_contract} object holding the parsed data and the file's directory.
 }
+\examples{
+# A minimal contract in a temporary directory.
+dir <- tempfile("sashiny-")
+dir.create(dir)
+writeLines(c(
+  "sashiny: 1",
+  "program: program.sas",
+  "title: Minimal",
+  "outputs:",
+  "  log:",
+  "    type: log"
+), file.path(dir, "contract.sashiny.yml"))
+writeLines("proc print data=sashelp.class; run;", file.path(dir, "program.sas"))
+contract <- sas_contract(file.path(dir, "contract.sashiny.yml"))
+sas_validate(contract)
+}

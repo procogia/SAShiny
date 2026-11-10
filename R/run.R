@@ -15,6 +15,20 @@
 #' @param uploads A named list mapping dataset input ids to `TRUE`.
 #' @param run_id The run identifier.
 #' @return A `sashiny_result` object.
+#' @examples
+#' dir <- tempfile("sashiny-")
+#' dir.create(dir)
+#' writeLines(c(
+#'   "sashiny: 1",
+#'   "program: program.sas",
+#'   "title: Minimal",
+#'   "outputs:",
+#'   "  log:",
+#'   "    type: log"
+#' ), file.path(dir, "contract.sashiny.yml"))
+#' writeLines("proc print data=sashelp.class; run;", file.path(dir, "program.sas"))
+#' result <- sas_run(file.path(dir, "contract.sashiny.yml"), list(), sas_engine_mock())
+#' result$status
 #' @export
 sas_run <- function(contract, values, engine, today = Sys.Date(),
                     uploads = NULL, run_id = NULL) {

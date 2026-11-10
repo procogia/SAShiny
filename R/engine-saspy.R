@@ -114,6 +114,10 @@ sas_engine_saspy <- function(cfg, cfgname = "sashiny") {
 #' @param java Path to the Java executable for IOM (optional; auto-detected when
 #'   omitted).
 #' @return A `sashiny_engine_saspy` object configured for the chosen backend.
+#' @examples
+#' # Build the config for an ODA connection (no live SAS session is started).
+#' engine <- sas_connect("oda", region = "us1")
+#' engine$cfg$authkey
 #' @export
 sas_connect <- function(profile, region = "us1", url = NULL, context = NULL,
                         verify = TRUE, host = NULL, port = 8591L,
