@@ -3,7 +3,11 @@
 Use an **unchanged SAS program** as the **server** of a Shiny app, with Shiny (R or Python) handling the UI.
 A sidecar YAML contract declares the program's inputs and outputs, and SAShiny does the rest.
 
-> Status: beta. Phase 2 (core) complete; saspy engine and Shiny modules implemented. See [PLAN.md](PLAN.md).
+> Status: beta (0.1.0). Phase 2 (core) complete; saspy engine and Shiny modules implemented. See [PLAN.md](PLAN.md).
+>
+> **Live SAS is not yet verified.** Every automated check uses the mock engine. The
+> saspy connection profiles (ODA, Viya, SAS 9.4) have not been run against real SAS
+> yet; that work is tracked in [#11](https://github.com/procogia/SAShiny/issues/11).
 
 ```
 analysis.sas            # your SAS program — never modified
