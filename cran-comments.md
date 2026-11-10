@@ -3,7 +3,7 @@
 * Local: Windows 10, R 4.6.1. Full `R CMD check --no-manual`: 0 errors,
   0 warnings, 0 notes. The manual was excluded because LaTeX is unavailable.
 * R-hub: Linux, Windows, macOS and `clang-asan` (R-devel): `Status: OK`.
-* R-hub `nosuggests`: `Status: OK` in run 42835755997. The vignette uses a
+* R-hub `nosuggests`: `Status: OK` in run 42838546509. The vignette uses a
   `knitr` HTML vignette and the testthat suite runs conditionally.
 * macOS builder, R-release: the service stopped before installation because it
   could not resolve CRAN dependencies. Both submissions reported the same
