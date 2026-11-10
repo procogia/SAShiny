@@ -18,3 +18,7 @@ A \code{sashiny_engine_mock} object (a named list).
 A mock engine that replays recorded results (issue #5). When \code{recordings_dir}
 is \code{NULL}, it returns an empty successful result for any run.
 }
+\examples{
+engine <- sas_engine_mock()
+engine
+}

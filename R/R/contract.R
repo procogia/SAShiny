@@ -49,6 +49,21 @@ sashiny_issue <- function(code, path, message = "") {
 #'
 #' @param path Path to the `*.sashiny.yml` file.
 #' @return A `sashiny_contract` object.
+#' @examples
+#' # A minimal contract in a temporary directory.
+#' dir <- tempfile("sashiny-")
+#' dir.create(dir)
+#' writeLines(c(
+#'   "sashiny: 1",
+#'   "program: program.sas",
+#'   "title: Minimal",
+#'   "outputs:",
+#'   "  log:",
+#'   "    type: log"
+#' ), file.path(dir, "contract.sashiny.yml"))
+#' writeLines("proc print data=sashelp.class; run;", file.path(dir, "program.sas"))
+#' contract <- sas_contract(file.path(dir, "contract.sashiny.yml"))
+#' sas_validate(contract)
 #' @export
 sas_contract <- function(path) {
   path <- normalizePath(path, mustWork = TRUE)

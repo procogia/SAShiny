@@ -51,3 +51,8 @@ responsibility for pointing at the correct endpoint/version rests with the
 caller. Credentials are never passed here — they come from \verb{~/.authinfo}
 keyed by the profile's \code{authkey}.
 }
+\examples{
+# Build the config for an ODA connection (no live SAS session is started).
+engine <- sas_connect("oda", region = "us1")
+engine$cfg$authkey
+}

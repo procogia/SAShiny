@@ -43,6 +43,9 @@
 #' @param recordings_dir Directory holding recording files (`<key>.json`).
 #' @param record When `TRUE`, write recordings instead of replaying.
 #' @return A `sashiny_engine_mock` object (a named list).
+#' @examples
+#' engine <- sas_engine_mock()
+#' engine
 #' @export
 sas_engine_mock <- function(recordings_dir = NULL, record = FALSE) {
   structure(

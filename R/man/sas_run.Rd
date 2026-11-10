@@ -33,3 +33,18 @@ A \code{sashiny_result} object.
 \description{
 Run a contract with the given inputs on an engine
 }
+\examples{
+dir <- tempfile("sashiny-")
+dir.create(dir)
+writeLines(c(
+  "sashiny: 1",
+  "program: program.sas",
+  "title: Minimal",
+  "outputs:",
+  "  log:",
+  "    type: log"
+), file.path(dir, "contract.sashiny.yml"))
+writeLines("proc print data=sashelp.class; run;", file.path(dir, "program.sas"))
+result <- sas_run(file.path(dir, "contract.sashiny.yml"), list(), sas_engine_mock())
+result$status
+}

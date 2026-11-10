@@ -1,0 +1,75 @@
+---
+title: "Getting started with SAShiny"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting started with SAShiny}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+SAShiny lets an **unchanged SAS program** act as the server of a Shiny app. A
+sidecar YAML contract declares the program's inputs and outputs; SAShiny
+validates the inputs, safely passes them to SAS as macro variables, submits the
+program verbatim, and collects the results.
+
+This vignette walks through the core workflow using the **mock engine**, which
+needs no SAS installation.
+
+## The contract
+
+A SAShiny program is a pair of files:
+
+- `analysis.sas` — your SAS program (never modified).
+- `analysis.sashiny.yml` — the contract declaring inputs and outputs.
+
+```{r}
+library(SAShiny)
+
+# Write a minimal contract and program to a temporary directory.
+dir <- tempfile("sashiny-")
+dir.create(dir)
+writeLines(c(
+  "sashiny: 1",
+  "program: program.sas",
+  "title: Minimal",
+  "outputs:",
+  "  log:",
+  "    type: log"
+), file.path(dir, "contract.sashiny.yml"))
+writeLines("proc print data=sashelp.class; run;", file.path(dir, "program.sas"))
+```
+
+## Load and validate
+
+```{r}
+contract <- sas_contract(file.path(dir, "contract.sashiny.yml"))
+issues <- sas_validate(contract)
+length(issues)  # 0 means valid
+```
+
+## Run against the mock engine
+
+```{r}
+engine <- sas_engine_mock()
+result <- sas_run(contract, list(), engine)
+result$status
+```
+
+## Connection selection
+
+For live SAS, choose one of three backends. The consumer supplies the connection
+details; credentials come from `~/.authinfo`.
+
+```{r}
+oda <- sas_connect("oda", region = "us1")
+oda$cfg$authkey
+```
+
+## Next steps
+
+See `vignette("yaml-contract")` for the full contract reference, and
+`docs/HANDOFF.md` for the path to CRAN/PyPI.

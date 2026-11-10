@@ -26,6 +26,10 @@ Authors:
 
 Other contributors:
 \itemize{
+  \item Shreya Sharma [contributor]
+  \item Love ProCogia [contributor]
+  \item Igor ProCogia [contributor]
+  \item Ahmer Khan [contributor]
   \item ProCogia [funder]
 }
 
