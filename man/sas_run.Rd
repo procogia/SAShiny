@@ -23,7 +23,8 @@ file (loaded automatically).}
 
 \item{today}{A \code{Date} used to resolve \code{"today"}.}
 
-\item{uploads}{A named list mapping dataset input ids to \code{TRUE}.}
+\item{uploads}{A named list mapping dataset input ids to a file path, a
+Shiny \code{fileInput} value, or \code{TRUE} for the input's \code{sample}.}
 
 \item{run_id}{The run identifier.}
 }

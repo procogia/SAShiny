@@ -1,5 +1,39 @@
 # SAShiny 0.1.0
 
+## Live engine and result collection
+
+* The saspy engine now runs end to end. It writes a saspy configuration file
+  from the connection settings, keeps one SAS session across runs (an
+  environment), and starts a fresh session after a failure.
+* Dataset inputs are uploaded with `df2sd` (spec section 7) from a user file, a
+  Shiny `fileInput` value or the contract's `sample`. CSV, xlsx (`readxl`), xpt
+  and sas7bdat (`haven`) are read and converted as specified.
+* Every output type is collected (spec section 8.2): raw or SAS-formatted
+  tables with column metadata and row counts, plots, HTML, scoped logs, and
+  csv/xlsx (`writexl`)/xpt (`haven`)/sas7bdat/rtf/pdf downloads. A failing
+  output becomes `list(error = )` without affecting the others
+  (`metadata$collect_errors`).
+* `choices_from` inputs read their choices from SAS at session start (spec
+  section 6.4); new generic `sas_engine_choices()`.
+* Recordings (spec section 8.3): `sas_connect(..., record_to = )` saves each run
+  and `sas_engine_mock()` replays it. The key is shared with the Python library,
+  so recordings made in either language replay in both.
+* `sas_engine_run()` is now an S3 generic with methods for the mock engine, the
+  saspy engine and pools (previously every engine ran the mock code path). New
+  generic `sas_engine_close()`.
+* `sas_pool()` accepts an engine factory, so each pooled session has its own
+  SAS session; it closes discarded sessions and keeps sessions after input
+  validation errors.
+* The Shiny module renders one card per contract output, applies contract
+  defaults and `ui$order`, converts Shiny values to the contract JSON form,
+  supports uploads with a "use the sample file" toggle, and offers downloads.
+* The demo app routes runs to ODA, Viya or SAS 9.4 and falls back to the
+  offline recordings when live SAS is unavailable.
+* Run ids come from `openssl::rand_bytes()`, leaving the caller's random
+  number stream untouched.
+
+## Earlier in 0.1.0
+
 * Fixed the R demo app (`inst/examples/demo/app.R`): it now attaches SAShiny,
   locates `examples/` from any working directory, and uses a `bslib` sidebar.
 * `sas_wrapper_code()` now strips a UTF-8 BOM at the byte level and marks the

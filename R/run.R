@@ -12,7 +12,8 @@
 #' @param values A named list of input values.
 #' @param engine An engine object (e.g. from [sas_engine_mock()]).
 #' @param today A `Date` used to resolve `"today"`.
-#' @param uploads A named list mapping dataset input ids to `TRUE`.
+#' @param uploads A named list mapping dataset input ids to a file path, a
+#'   Shiny `fileInput` value, or `TRUE` for the input's `sample`.
 #' @param run_id The run identifier.
 #' @return A `sashiny_result` object.
 #' @examples

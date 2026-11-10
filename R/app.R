@@ -13,7 +13,7 @@
 #' @return A Shiny app object (from [shiny::shinyApp()]).
 #' @export
 sas_app <- function(contracts, engine, title = "SAShiny") {
-  rlang::check_installed("shiny", reason = "to build a Shiny app")
+  .sashiny_need("shiny", "to build a Shiny app")
   loaded <- lapply(contracts, function(c) {
     if (inherits(c, "sashiny_contract")) c else sas_contract(c)
   })

@@ -13,7 +13,10 @@ sas_pool(
 )
 }
 \arguments{
-\item{engine}{An engine object (e.g. from \code{\link[=sas_engine_mock]{sas_engine_mock()}}).}
+\item{engine}{An engine factory (a function with no arguments, such as
+\code{function() sas_connect("oda")}), giving each pooled session its own SAS
+session; or a single engine shared by all pooled sessions (suitable for
+\code{\link[=sas_engine_mock]{sas_engine_mock()}}).}
 
 \item{min_size}{Minimum number of sessions kept warm.}
 
@@ -28,4 +31,8 @@ A \code{sashiny_pool} object (an environment).
 }
 \description{
 Create a bounded session pool
+}
+\examples{
+pool <- sas_pool(sas_engine_mock(), max_size = 2L)
+sas_pool_close(pool)
 }

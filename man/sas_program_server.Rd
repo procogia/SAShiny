@@ -11,7 +11,8 @@ sas_program_server(id, contract, engine, server_override = NULL)
 
 \item{contract}{A \code{sashiny_contract} object.}
 
-\item{engine}{An engine object (e.g. from \code{\link[=sas_engine_mock]{sas_engine_mock()}}).}
+\item{engine}{An engine: \code{\link[=sas_engine_mock]{sas_engine_mock()}}, \code{\link[=sas_connect]{sas_connect()}} or
+\code{\link[=sas_pool]{sas_pool()}}.}
 
 \item{server_override}{An optional function \verb{function(id, contract, engine)}
 that returns a custom server, replacing the auto-generated server.}

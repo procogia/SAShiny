@@ -14,7 +14,8 @@ sas_connect(
   port = 8591L,
   saspath = NULL,
   ssh_user = NULL,
-  java = NULL
+  java = NULL,
+  record_to = NULL
 )
 }
 \arguments{
@@ -40,6 +41,9 @@ used instead of IOM).}
 
 \item{java}{Path to the Java executable for IOM (optional; auto-detected when
 omitted).}
+
+\item{record_to}{Directory where every run is also saved as a recording
+(spec section 8.3) for offline replay with \code{\link[=sas_engine_mock]{sas_engine_mock()}}.}
 }
 \value{
 A \code{sashiny_engine_saspy} object configured for the chosen backend.

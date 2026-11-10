@@ -18,17 +18,19 @@ sas_pool_run(
 
 \item{contract}{A \code{sashiny_contract} object.}
 
-\item{values}{A named list of input values.}
+\item{values}{A named list of input values in the contract's JSON form.}
 
 \item{today}{A \code{Date} used to resolve \code{"today"}.}
 
-\item{uploads}{A named list mapping dataset input ids to \code{TRUE}.}
+\item{uploads}{A named list mapping dataset input ids to the supplied file:
+a path, a Shiny \code{fileInput} value, or \code{TRUE} for the input's \code{sample}.}
 
-\item{run_id}{The run identifier.}
+\item{run_id}{The run identifier (defaults to a generated UUID).}
 }
 \value{
 A \code{sashiny_result} object.
 }
 \description{
-The session is discarded if the run errors or times out (spec section 6.5).
+Equivalent to \code{\link[=sas_engine_run]{sas_engine_run()}} on the pool. The session is discarded if a
+submitted run errors (spec section 6.5); input validation errors keep it.
 }

@@ -2,7 +2,7 @@
 % Please edit documentation in R/pool.R
 \name{sas_pool_close}
 \alias{sas_pool_close}
-\title{Close a pool, discarding all sessions.}
+\title{Close a pool, ending every pooled session}
 \usage{
 sas_pool_close(pool)
 }
@@ -13,5 +13,5 @@ sas_pool_close(pool)
 Invisibly, \code{NULL}.
 }
 \description{
-Close a pool, discarding all sessions.
+Close a pool, ending every pooled session
 }

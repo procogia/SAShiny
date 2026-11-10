@@ -9,7 +9,10 @@
 #'
 #' @param run_id The run identifier (spec section 6.1).
 #' @param status `success`, `warning` or `error` (spec section 6.5).
-#' @param outputs A named list of collected outputs keyed by output id.
+#' @param outputs A named list of collected outputs keyed by output id. Each
+#'   value is the language-neutral value of spec section 8.1 (tables, plots,
+#'   HTML, log lines and base64 downloads), or `list(error = message)` when
+#'   that output could not be collected.
 #' @param log The full main-submission log text.
 #' @param metadata A named list of run metadata.
 #' @return A `sashiny_result` object (a named list).
@@ -44,8 +47,8 @@ sashiny_result <- function(run_id, status, outputs = list(), log = "",
                               engine = "", engine_version = "",
                               sas_version = "", started_at = NULL,
                               ended_at = NULL) {
-  started_at <- started_at %||% format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
-  ended_at <- ended_at %||% format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
+  started_at <- started_at %||% .sashiny_now()
+  ended_at <- ended_at %||% .sashiny_now()
   list(
     run_id = run_id,
     contract_sha256 = contract_sha256,
@@ -56,6 +59,7 @@ sashiny_result <- function(run_id, status, outputs = list(), log = "",
     engine = engine,
     engine_version = engine_version,
     sas_version = sas_version,
-    status = status
+    status = status,
+    collect_errors = list()
   )
 }

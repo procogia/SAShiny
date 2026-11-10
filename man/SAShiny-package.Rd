@@ -19,11 +19,6 @@ Useful links:
 \author{
 \strong{Maintainer}: Mehar Pratap Singh \email{meharpsingh@gmail.com} [copyright holder]
 
-Authors:
-\itemize{
-  \item Mehar Pratap Singh \email{meharpsingh@gmail.com} [copyright holder]
-}
-
 Other contributors:
 \itemize{
   \item Shreya Sharma [contributor]
