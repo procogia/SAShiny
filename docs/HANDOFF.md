@@ -59,9 +59,8 @@ cd Python && uv run ruff check . && uv run ruff format --check . && uv run mypy 
 1. ~~Make the repo public (D15)~~ — done: <https://github.com/procogia/SAShiny>.
 2. **Close #11** — run `spec/tools/live_sas_check.py` on the ProCogia VPN and
    attach the reports (see `docs/live-sas-run-sheet.md`).
-3. **CRAN gaps:** vignettes, examples, R-hub and the macOS builder are clean.
-   Remaining: review the three win-builder replies emailed to
-   `meharpsingh@gmail.com`.
+3. **CRAN gaps:** vignettes, examples, R-hub, macOS builder, win-builder release
+   and oldrelease are clean. Open: win-builder R-devel shows an ERROR (see below).
 4. **PyPI gaps:** the Trusted Publishing workflow supports TestPyPI and PyPI.
    Configure pending publishers in the respective web UIs, then run the
    TestPyPI workflow. A long-lived token is not required.
@@ -78,9 +77,18 @@ cd Python && uv run ruff check . && uv run ruff format --check . && uv run mypy 
   checking SAShiny, because R-hub's own `processx.so` lacks an ASAN symbol.
 - **Local** - `R CMD check --as-cran`: the only NOTE is "New submission".
   `urlchecker` reports all URLs correct.
-- **win-builder (devel, release, oldrelease)** - resubmitted after the repo went
-  public. Results are emailed to `meharpsingh@gmail.com`. **Not yet reviewed**:
-  Mehar must read the three replies and send any NOTE/WARNING/ERROR to the team.
+- **win-builder, commit ab2a748 (read from Gmail on 2026-11-10)**:
+  R 4.6.2 release `Status: 1 NOTE`; R 4.5.3 oldrelease `Status: 1 NOTE`;
+  **R-devel `Status: 1 ERROR, 1 NOTE`**. The NOTE is "New submission" plus
+  "Possibly misspelled words: PBC" (from the 'Posit Software, PBC' trademark
+  text, which is correct as written). The R-devel ERROR is
+  `Files named as vignettes but with no recognized vignette engine:
+  'inst/doc/getting-started.Rmd'`. Our tarball contains no `.Rmd` at all (the
+  vignette is `.Rhtml`). R-devel passed at 06:05 PT, then failed on every run
+  from 07:04 PT with tarball contents that pass on release, oldrelease, R-hub
+  Windows R-devel and the macOS builder. A fourth R-devel run was submitted at
+  09:24 PT and had not replied after 22 minutes. Treat R-devel as unresolved.
+  **Do not submit to CRAN while R-devel shows an ERROR.**
 - **GitHub macOS CI** - the runner queue has been unreliable; R-hub macOS and the
   macOS builder both pass.
 - **PyPI / TestPyPI** - see [pypi-trusted-publishing.md](pypi-trusted-publishing.md).
