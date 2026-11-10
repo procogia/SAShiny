@@ -1,15 +1,21 @@
 ## Test environments
 
-* local: Windows 10, R 4.6.1
-* win-builder: R-devel, R-release
-* macOS builder: R-release
-* R-hub: (to be filled)
+* Local: Windows 10, R 4.6.1. Full `R CMD check --no-manual`: 0 errors,
+  0 warnings, 0 notes. The manual was excluded because LaTeX is unavailable.
+* R-hub: Linux, Windows, macOS and `clang-asan` (R-devel): `Status: OK`.
+* R-hub `nosuggests`: `Status: OK` in run 42835755997. The vignette uses a
+  `knitr` HTML vignette and the testthat suite runs conditionally.
+* macOS builder, R-release: the service stopped before installation because it
+  could not resolve CRAN dependencies. Both submissions reported the same
+  dependency-cache error; the package was not executed by this builder.
+* win-builder, R-devel and R-release: submitted; result URLs are emailed to
+  the maintainer. Results must be reviewed before submission.
 
 ## R CMD check results
 
-0 errors | 0 warnings | 1 note
-
-* New submission.
+The full local check is clean. CRAN incoming checks additionally report a new
+submission. The private source-repository URLs will be checked after the
+repository is made public.
 
 ## Downstream dependencies
 
@@ -18,11 +24,10 @@ There are currently no downstream dependencies for this package.
 ## Notes
 
 * This package pairs an unmodified 'SAS' program with a 'Shiny' app. It does not
-  require 'SAS', 'Python' or internet access to install or run its checks: the
-  mock engine is used everywhere, and live-'SAS' tests are opt-in
-  (`SASHINY_LIVE=1`) and skipped otherwise.
+  require 'SAS', 'Python' or internet access to install or run its tests: the
+  mock engine is used, and live-'SAS' tests are opt-in (`SASHINY_LIVE=1`).
 * 'SAS' is a registered trademark of SAS Institute Inc. and 'Shiny' is a
   registered trademark of Posit Software, PBC; this package is not affiliated
   with or endorsed by either company.
-* Optional backends ('reticulate', 'mirai', 'bslib', 'DT', 'haven', 'readxl')
-  are in `Suggests` and guarded with `rlang::check_installed()`.
+* Optional backends are in `Suggests` and used only conditionally. The vignette
+  uses `knitr`'s native HTML format, without requiring `rmarkdown` or Pandoc.

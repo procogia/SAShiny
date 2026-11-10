@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Getting started with SAShiny</title>
+  <!--
+  %\VignetteIndexEntry{Getting started with SAShiny}
+  %\VignetteEngine{knitr::knitr}
+  %\VignetteEncoding{UTF-8}
+  -->
+  <style>
+    body { max-width: 800px; margin: 2em auto; padding: 0 1em;
+      font-family: sans-serif; line-height: 1.5; }
+    pre { padding: 1em; background: #f5f5f5; overflow-x: auto; }
+    code { font-family: monospace; }
+  </style>
+</head>
+<body>
+<!--begin.rcode include=FALSE
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+end.rcode-->
+
+<h1>Getting started with SAShiny</h1>
+
+<p>SAShiny lets an <strong>unchanged SAS program</strong> act as the server of
+a Shiny app. A sidecar YAML contract declares the program's inputs and outputs;
+SAShiny validates the inputs, safely passes them to SAS as macro variables,
+submits the program verbatim, and collects the results.</p>
+
+<p>This vignette walks through the core workflow using the
+<strong>mock engine</strong>, which needs no SAS installation.</p>
+
+<h2>The contract</h2>
+
+<p>A SAShiny program is a pair of files:</p>
+<ul>
+  <li><code>analysis.sas</code> — your SAS program (never modified).</li>
+  <li><code>analysis.sashiny.yml</code> — the contract declaring inputs and
+    outputs.</li>
+</ul>
+
+<!--begin.rcode
+library(SAShiny)
+
+# Write a minimal contract and program to a temporary directory.
+dir <- tempfile("sashiny-")
+dir.create(dir)
+writeLines(c(
+  "sashiny: 1",
+  "program: program.sas",
+  "title: Minimal",
+  "outputs:",
+  "  log:",
+  "    type: log"
+), file.path(dir, "contract.sashiny.yml"))
+writeLines("proc print data=sashelp.class; run;", file.path(dir, "program.sas"))
+end.rcode-->
+
+<h2>Load and validate</h2>
+
+<!--begin.rcode
+contract <- sas_contract(file.path(dir, "contract.sashiny.yml"))
+issues <- sas_validate(contract)
+length(issues)  # 0 means valid
+end.rcode-->
+
+<h2>Run against the mock engine</h2>
+
+<!--begin.rcode
+engine <- sas_engine_mock()
+result <- sas_run(contract, list(), engine)
+result$status
+end.rcode-->
+
+<h2>Connection selection</h2>
+
+<p>For live SAS, choose one of three backends. The consumer supplies the
+connection details; credentials come from <code>~/.authinfo</code>.</p>
+
+<!--begin.rcode
+oda <- sas_connect("oda", region = "us1")
+oda$cfg$authkey
+end.rcode-->
+
+<h2>Next steps</h2>
+
+<p>See the <code>spec/CONTRACT.md</code> file in the source repository for the
+full contract reference, and <code>docs/HANDOFF.md</code> for the path to
+CRAN/PyPI.</p>
+
+</body>
+</html>

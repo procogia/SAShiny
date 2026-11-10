@@ -1,5 +1,7 @@
 # SAShiny 0.1.0
 
+* Made tests robust when Suggests packages are unavailable and converted the
+  getting-started vignette to `knitr`'s native HTML format.
 * Added the contract loader and validator (`sas_contract()`, `sas_validate()`)
   implementing spec sections 1-3 (E000, S001-S016).
 * Added value validation and rendering (`sas_render_values()`) implementing

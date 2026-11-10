@@ -1,4 +1,6 @@
-library(testthat)
-library(SAShiny)
+if (requireNamespace("testthat", quietly = TRUE)) {
+  library(testthat)
+  library(SAShiny)
 
-test_check("SAShiny")
+  test_check("SAShiny")
+}
