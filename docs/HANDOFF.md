@@ -51,7 +51,7 @@ the current state, the path to CRAN/PyPI, and the rules you must follow.
 
 ```sh
 # spec check
-uv run --no-project --with jsonschema --with pyyaml python spec/tools/check_spec.py
+uv run --no-project --python 3.12 --with jsonschema --with pyyaml python spec/tools/check_spec.py
 # R
 R CMD build R && R CMD check --as-cran SAShiny_*.tar.gz
 # Python
