@@ -33,11 +33,15 @@ sas_reset_code <- function(data) {
 #' @return A character string of the complete wrapper text.
 #' @export
 sas_wrapper_code <- function(data, macros, program_bytes, run_id = "fixture") {
-  text <- rawToChar(program_bytes)
-  # Strip a leading UTF-8 BOM.
-  if (startsWith(text, "\ufeff")) {
-    text <- substring(text, 2L)
+  # Strip a leading UTF-8 BOM at the byte level, so the result does not depend
+  # on the session locale (spec section 6.3).
+  bom <- as.raw(c(0xef, 0xbb, 0xbf))
+  if (length(program_bytes) >= 3L && identical(program_bytes[1:3], bom)) {
+    program_bytes <- program_bytes[-(1:3)]
   }
+  text <- rawToChar(program_bytes)
+  # The program is decoded as UTF-8 (spec section 6.3), whatever the locale.
+  Encoding(text) <- "UTF-8"
   text <- gsub("\r\n", "\n", text, fixed = TRUE)
   text <- gsub("\r", "\n", text, fixed = TRUE)
   if (!endsWith(text, "\n")) {

@@ -80,7 +80,7 @@ sas_contract <- function(path) {
   )
   data <- yaml::read_yaml(path, handlers = handlers)
   structure(
-    list(data = data, base_dir = dirname(path)),
+    list(data = data, base_dir = dirname(path), path = path),
     class = "sashiny_contract"
   )
 }
