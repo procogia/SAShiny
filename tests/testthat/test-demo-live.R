@@ -73,11 +73,11 @@ test_that("the SAS program ran unchanged", {
   runs <- live_runs()
   for (s in demo_scenarios()) {
     contract <- sas_contract(s$contract_path)
-        on_disk <- paste(
-          as.character(unclass(openssl::sha256(file(file.path(contract$base_dir, contract$data$program))))),
-          collapse = ""
-        )
-        expect_identical(runs[[s$id]]$metadata$program_sha256, on_disk, info = s$id)
+    on_disk <- paste(
+      as.character(unclass(openssl::sha256(file(file.path(contract$base_dir, contract$data$program))))),
+      collapse = ""
+    )
+    expect_identical(runs[[s$id]]$metadata$program_sha256, on_disk, info = s$id)
   }
 })
 
