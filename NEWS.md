@@ -11,13 +11,14 @@
 ## Live engine fixes
 
 * Dataset uploads no longer fail with `ValueError: call stack is not deep
-  enough`. saspy's `df2sd` recurses deeply through pandas, which overflowed
-  reticulate's default Python recursion limit; the limit is now raised around
-  the upload.
-* Reading a result table no longer crashes with "missing value where
-  TRUE/FALSE needed" when a cell is a multi-element value (a list-column or
-  datetime surfaced by reticulate as a vector). Cell normalisation now reduces
-  such a value to a scalar before testing for missingness.
+  enough` (issue #17). `reticulate::r_to_py()` gave uploaded data frames a
+  string `Index`, which caused saspy's `dataframe2sasdata()` to call
+  `warnings.warn()` with no Python frame on the stack; the index is now reset
+  to a `RangeIndex` and `df2sd` is invoked through a Python wrapper function.
+* Reading an empty or reticulate-converted result table no longer crashes with
+  "missing value where TRUE/FALSE needed" when `sd2df` returns a 0-row table
+  as a list of empty lists (where `nrow()` is `NULL`) or a multi-element cell
+  (issue #17).
 
 # SAShiny 0.1.0
 
