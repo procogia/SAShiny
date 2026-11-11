@@ -8,6 +8,17 @@
 * The SAS version is read from the `SXVER=` output line, not the source echo,
   which servers like ODA include in the log (it was reported as `&sysvlong;`).
 
+## Live engine fixes
+
+* Dataset uploads no longer fail with `ValueError: call stack is not deep
+  enough`. saspy's `df2sd` recurses deeply through pandas, which overflowed
+  reticulate's default Python recursion limit; the limit is now raised around
+  the upload.
+* Reading a result table no longer crashes with "missing value where
+  TRUE/FALSE needed" when a cell is a multi-element value (a list-column or
+  datetime surfaced by reticulate as a vector). Cell normalisation now reduces
+  such a value to a scalar before testing for missingness.
+
 # SAShiny 0.1.0
 
 ## Live demo tests
