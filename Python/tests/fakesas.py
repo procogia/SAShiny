@@ -74,7 +74,7 @@ class FakeSAS:
         elif "_sx_choices as" in code:
             self._choices_step(code)
         elif "SXVER=" in code:
-            return {"LOG": "SXVER=9.04.01M8P011923\n", "LST": ""}
+            return {"LOG": "1    %put SXVER=&sysvlong;\nSXVER=9.04.01M8P011923\n", "LST": ""}
         elif "SASHINY-PATH=" in code:
             lib = _PATH.search(code)
             assert lib is not None

@@ -10,6 +10,16 @@ All notable changes to the Python library are documented here. The format follow
 - `import sashiny` no longer requires the optional `shiny` extra. `app` and
   `modules` are imported lazily, so the core package works with only its
   declared dependencies.
+- SAS-literal values (quoted/dquoted text/choice, numeric, date, multichoice,
+  dataset, validated bare) are emitted without `%superq`, so `WHERE` clauses
+  work on real SAS 9.4 (issue #16). Only `raw` text/choice keeps `%superq`.
+
+### Fixed (SAS OnDemand for Academics)
+- `SaspyEngine` submits `options notes;` once per new SAS session (spec 6.1).
+  ODA starts sessions with `NONOTES`, which removed the `NOTE:` sentinels, so
+  every run was reported as an error and the program log was empty.
+- The SAS version is read from the `SXVER=` output line, not the source echo,
+  which servers like ODA include in the log (it was reported as `&sysvlong;`).
 
 ## [0.1.0]
 

@@ -48,6 +48,8 @@ __all__ = ["SaspyEngine", "authinfo_path", "connect", "load_profiles", "prefligh
 CONTROL = re.compile(r"[\x00-\x1f\x7f-\x9f]")
 # syscc threshold above which a run is an error (spec §6.5).
 SYSCC_ERROR = 4
+# Submitted once per new SAS session (spec §6.1).
+SESSION_SETUP_CODE = "/* SAShiny 1 session */\noptions notes;\n"
 
 # ODA hosts by region (spec/tools/live_sas_check.py).
 ODA_HOSTS = {
@@ -380,6 +382,8 @@ class SaspyEngine(Engine):
                 else:
                     cfgfile = str(self.cfg)
                 self._sas = saspy.SASsession(cfgfile=cfgfile, cfgname=self.cfgname, results="HTML")
+            # Session setup (spec 6.1): ODA starts with NONOTES, which hides the sentinels.
+            self._sas.submit(SESSION_SETUP_CODE, results="TEXT")
         return self._sas
 
     def _submit(self, code: str, results: str = "TEXT") -> dict[str, str]:
@@ -389,7 +393,9 @@ class SaspyEngine(Engine):
     def _sas_version(self) -> str:
         if self._sas_version_text is None:
             try:
-                m = re.search(r"SXVER=(\S+)", self._submit("%put SXVER=&sysvlong;")["LOG"])
+                log = self._submit("%put SXVER=&sysvlong;")["LOG"]
+                # Anchor at line start: the source echo also contains "SXVER=".
+                m = re.search(r"^SXVER=(\S+)", log, re.MULTILINE)
                 self._sas_version_text = m.group(1) if m else ""
             except Exception:
                 self._sas_version_text = ""

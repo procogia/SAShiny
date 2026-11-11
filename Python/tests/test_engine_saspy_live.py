@@ -111,6 +111,14 @@ def _engine(fake: FakeSAS, **kwargs: object) -> SaspyEngine:
     return SaspyEngine({"java": "java"}, session_factory=lambda: fake, **kwargs)  # type: ignore[arg-type]
 
 
+def test_new_session_turns_notes_on_first(contract: sashiny.Contract) -> None:
+    # ODA starts sessions with NONOTES, which would hide the NOTE: sentinels (spec 6.1).
+    fake = _fake()
+    _engine(fake).run(contract, {"min_age": 30, "make": "BMW"}, today=TODAY)
+    assert fake.submitted[0] == saspy_mod.SESSION_SETUP_CODE
+    assert fake.submitted.count(saspy_mod.SESSION_SETUP_CODE) == 1
+
+
 def test_full_run_collects_every_output(contract: sashiny.Contract) -> None:
     fake = _fake()
     engine = _engine(fake)
