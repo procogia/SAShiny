@@ -60,8 +60,11 @@ sas_wrapper_code <- function(data, macros, program_bytes, run_id = "fixture") {
       out <- c(out, paste0("  call symputx('", name, "', '", value, "', 'G');"))
     }
     out <- c(out, "run;")
+    needs_superq <- .sashiny_superq_macros(data)
     for (name in names(macros)) {
-      out <- c(out, paste0("%let ", name, " = %superq(", name, ");"))
+      if (name %in% needs_superq) {
+        out <- c(out, paste0("%let ", name, " = %superq(", name, ");"))
+      }
     }
   }
 

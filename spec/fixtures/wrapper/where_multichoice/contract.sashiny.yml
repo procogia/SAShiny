@@ -1,0 +1,19 @@
+sashiny: 1
+program: program.sas
+title: Multichoice in a WHERE clause
+inputs:
+  min_msrp:
+    type: numeric
+    label: Minimum MSRP
+    default: 20000
+  origins:
+    type: multichoice
+    label: Origins
+    choices: [Asia, Europe, USA]
+    count_macro: n_origins
+outputs:
+  t:
+    type: table
+    from: work.t
+  log:
+    type: log

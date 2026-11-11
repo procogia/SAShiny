@@ -1,0 +1,11 @@
+sashiny: 1
+program: program.sas
+title: Raw text keeps %superq
+inputs:
+  note:
+    type: text
+    label: Note
+    optional: true
+outputs:
+  log:
+    type: log

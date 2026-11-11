@@ -11,6 +11,7 @@ from __future__ import annotations
 from typing import Any
 
 from .contract import all_macro_names
+from .values import superq_macros
 
 __all__ = ["reset_code", "wrapper_code"]
 
@@ -64,8 +65,10 @@ def wrapper_code(
         for name, value in macros.items():
             out.append(f"  call symputx('{name}', '{value.replace(chr(39), chr(39) * 2)}', 'G');")
         out.append("run;")
+        needs_superq = superq_macros(data)
         for name in macros:
-            out.append(f"%let {name} = %superq({name});")
+            if name in needs_superq:
+                out.append(f"%let {name} = %superq({name});")
     ods = [
         (oid, spec["format"])
         for oid, spec in data["outputs"].items()

@@ -117,6 +117,15 @@ def all_macro_names(data: dict[str, Any]) -> list[str]:
     return out
 
 
+def superq_macros(data: dict[str, Any]) -> set[str]:
+    """Macros that need %superq: only raw text/choice (spec 6.3)."""
+    out: set[str] = set()
+    for iid, spec in (data.get("inputs") or {}).items():
+        if spec["type"] in ("text", "choice") and spec.get("render", "raw") == "raw":
+            out.update(macro_names(iid, spec))
+    return out
+
+
 def choice_values(spec: dict[str, Any]) -> list[str] | None:
     if "choices" not in spec:
         return None
@@ -463,8 +472,10 @@ def wrapper_code(data: dict[str, Any], macros: dict[str, str], program_bytes: by
         for name, value in macros.items():
             out.append(f"  call symputx('{name}', '{value.replace(chr(39), chr(39) * 2)}', 'G');")
         out.append("run;")
+        needs_superq = superq_macros(data)
         for name in macros:
-            out.append(f"%let {name} = %superq({name});")
+            if name in needs_superq:
+                out.append(f"%let {name} = %superq({name});")
     ods = [(oid, spec["format"]) for oid, spec in data["outputs"].items() if spec["type"] == "download" and spec["format"] in ODS_FORMATS]
     for oid, fmt in ods:
         out.append(f'ods {fmt}(id={oid}) file="%sysfunc(pathname(work))/sashiny_{oid}.{fmt}";')

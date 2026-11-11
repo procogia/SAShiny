@@ -23,6 +23,24 @@
   "\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000"
 )
 
+#' Macro names that need `%superq` (spec section 6.3)
+#'
+#' Only `raw` text/choice values need macro quoting, because they are unquoted
+#' and could contain live `&` or `%`. Quoted, dquoted, numeric, date, multichoice,
+#' dataset, and validated-bare values are already inert (SAS string literals or
+#' SAS names/numeric literals), so they are emitted directly.
+#' @noRd
+.sashiny_superq_macros <- function(data) {
+  out <- character()
+  for (iid in names(data$inputs %||% list())) {
+    spec <- data$inputs[[iid]]
+    if (spec$type %in% c("text", "choice") && identical(spec$render %||% "raw", "raw")) {
+      out <- c(out, .sashiny_macro_names(iid, spec))
+    }
+  }
+  out
+}
+
 #' Render a numeric value (spec section 5.1)
 #' @noRd
 .sashiny_render_number <- function(x) {

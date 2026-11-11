@@ -5,8 +5,6 @@ data _null_;
   call symputx('ADSL_DS', 'WORK.ADSL', 'G');
   call symputx('ARM', '''Drug A''', 'G');
 run;
-%let ADSL_DS = %superq(ADSL_DS);
-%let ARM = %superq(ARM);
 ods rtf(id=rtf_a) file="%sysfunc(pathname(work))/sashiny_rtf_a.rtf";
 ods pdf(id=pdf_a) file="%sysfunc(pathname(work))/sashiny_pdf_a.pdf";
 ods rtf(id=rtf_b) file="%sysfunc(pathname(work))/sashiny_rtf_b.rtf";

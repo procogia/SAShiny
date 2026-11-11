@@ -189,7 +189,9 @@ needs to be SAS-escaped.
 | `dquoted` | `"O'Brien & Co"` (wrap in `"`, double each `"`) |
 
 `quoted` is recommended for values that go into SAS string comparisons, because SAS does not resolve
-macro triggers inside single quotes.
+macro triggers inside single quotes. `quoted` and `dquoted` renderings are also macro-inert (the macro
+processor does not resolve `&` or `%` inside SAS string literals), so they are emitted without
+`%superq` in the wrapper (§6.3). Only `raw` text/choice values need `%superq`.
 
 ### 5.3 multichoice
 Each selected value is rendered with `render` (`quoted` default, `dquoted`, or `bare` = as-is). The
@@ -258,7 +260,7 @@ indentation inside `data _null_`. `<...>` are placeholders. Bracketed lines are 
 [data _null_;                                   ] only if at least one macro is set
 [  call symputx('<NAME>', '<VALUE>', 'G');      ] one line per macro, order of 5.7
 [run;                                           ]
-[%let <NAME> = %superq(<NAME>);                 ] one line per macro, same order
+[%let <NAME> = %superq(<NAME>);                 ] only for `raw` text/choice macros, same order
 [ods <fmt>(id=<output_id>) file="%sysfunc(pathname(work))/sashiny_<output_id>.<fmt>";] one per rtf/pdf download, contract order
 %put NOTE: SASHINY-BEGIN-PROGRAM;
 <PROGRAM TEXT, verbatim>
@@ -270,8 +272,14 @@ indentation inside `data _null_`. `<...>` are placeholders. Bracketed lines are 
 
 Rules:
 - `<VALUE>` is the rendered value (section 5) with every `'` doubled. Because it sits in a **single-quoted**
-  SAS literal, the macro processor never sees `&` or `%` in user data. The following `%superq` re-stores
-  the value macro-quoted, so later references (`&NAME`) cannot trigger macro execution.
+  SAS literal, the macro processor never sees `&` or `%` in user data.
+- The `%superq` re-store is emitted **only** for `raw` text/choice values, which are unquoted and could
+  otherwise trigger macro execution. Values that are already SAS string literals (`quoted`, `dquoted`),
+  numeric literals, date literals, and validated `bare` values (SAS names or numeric literals) are
+  emitted directly without `%superq`, because they are already inert: the macro processor does not
+  resolve `&` or `%` inside SAS string literals, and the compiler unquotes them where needed (for
+  example in `WHERE` clauses). Applying `%superq` to those values would keep them macro-quoted and
+  break `WHERE` clauses (see §9).
 - `<PROGRAM TEXT>` is the program file decoded as UTF-8, a leading BOM removed, and CRLF/CR line endings
   converted to LF. Nothing else changes. A newline is inserted after the program text if it does not end
   with one. The file on disk is never changed.
@@ -457,8 +465,12 @@ engine name and version, SAS version (`&SYSVLONG`), status, and `collect_errors`
   `%if not %symexist(NAME) %then %do; %let NAME = ...; %end;` (SAS 9.4M5+ open-code `%if`).
 - A program that ends the session (`endsas;`) or leaves unbalanced quotes produces status `error`
   (missing END sentinel).
-- Macro-quoted values are automatically unquoted when passed to the compiler. In the rare cases where
-  a procedure mishandles quoted tokens, the program may use `%unquote(&NAME)`.
+- Macro-quoted values are **not** automatically unquoted when passed to the compiler. In particular,
+  `WHERE` clauses do not unquote them, so a macro-quoted value such as `'Asia' 'Europe' 'USA'` causes a
+  syntax error in `where origin in (&NAME)`. For this reason SAS-literal values are emitted without
+  `%superq` (see §6.3), and only `raw` text/choice values are macro-quoted. A program may use
+  `%unquote(&NAME)` where a quoted token must be resolved, but it MUST NOT be required for ordinary
+  `WHERE` clauses.
 
 ## 10. Lint (advisory)
 

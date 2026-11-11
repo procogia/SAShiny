@@ -15,7 +15,7 @@ from typing import Any
 
 from .contract import Issue, choice_values, macro_names, resolve_date
 
-__all__ = ["render_values"]
+__all__ = ["render_values", "superq_macros"]
 
 SAS_EPOCH = date(1960, 1, 1)
 MONTHS = ("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC")
@@ -29,6 +29,23 @@ _WS = (
     "\t\n\x0b\x0c\r \x85\xa0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006"
     "\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000"
 )
+
+
+def superq_macros(data: dict[str, Any]) -> set[str]:
+    """Return the macro names that need ``%superq`` (spec §6.3).
+
+    Only ``raw`` text/choice values need macro quoting, because they are
+    unquoted and could contain live ``&`` or ``%``. Quoted, dquoted, numeric,
+    date, multichoice, dataset, and validated-bare values are already inert
+    (SAS string literals or SAS names/numeric literals), so they are emitted
+    directly and do not need ``%superq``.
+    """
+    out: set[str] = set()
+    for iid, spec in (data.get("inputs") or {}).items():
+        kind = spec["type"]
+        if kind in ("text", "choice") and spec.get("render", "raw") == "raw":
+            out.update(macro_names(iid, spec))
+    return out
 
 
 def render_number(x: float) -> str:
