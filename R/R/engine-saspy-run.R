@@ -344,6 +344,10 @@ sas_engine_run.sashiny_engine_saspy <- function(engine, contract, values, today 
 #'
 #' Through reticulate, date columns are sent as pandas datetimes so `df2sd`
 #' writes SAS dates; other sessions (tests) receive the R data frame.
+#'
+#' saspy's `df2sd` runs pandas code that recurses deeply, which overflows
+#' reticulate's default Python recursion limit ("call stack is not deep
+#' enough"). The limit is raised (and restored) around the call.
 #' @noRd
 .sashiny_df2sd <- function(sas, df, lib, mem, datetimes) {
   if (inherits(sas, "python.builtin.object")) {
@@ -357,6 +361,10 @@ sas_engine_run.sashiny_engine_saspy <- function(engine, contract, values, today 
       )
       reticulate::py_set_item(py_df, n, col)
     }
+    sys <- reticulate::import("sys", convert = FALSE)
+    old_limit <- sys$getrecursionlimit()
+    on.exit(sys$setrecursionlimit(old_limit), add = TRUE)
+    sys$setrecursionlimit(10000L)
     sas$df2sd(py_df, table = mem, libref = lib, datetimes = reticulate::dict(datetimes))
   } else {
     sas$df2sd(df, table = mem, libref = lib, datetimes = datetimes)

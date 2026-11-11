@@ -194,6 +194,9 @@
     return(NULL)
   }
   value <- value[[1]]
+  if (length(value) > 1L) {
+    value <- value[[1]]
+  }
   if (numeric) {
     number <- suppressWarnings(as.numeric(value))
     if (is.na(number)) {
