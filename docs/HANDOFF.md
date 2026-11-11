@@ -106,13 +106,16 @@ cd Python && uv run ruff check . && uv run ruff format --check . && uv run mypy 
   <https://cran.r-project.org/submit.html> at 10:5x PT as Mehar Pratap Singh
   (`meharpsingh@gmail.com`), and **confirmed** via the emailed link. CRAN's
   "The following package was uploaded to CRAN" message arrived at 11:03 PT.
-- Submitted with **win-builder R-devel still showing an ERROR**
-  (`inst/doc/getting-started.Rmd` has no recognised vignette engine; the
-  tarball contains no `.Rmd`). Release and oldrelease were NOTE-only. This was
-  Mehar's explicit decision to submit anyway, and the cran-comments explain it.
+- **Resubmitted** SAShiny 0.1.1 (source commit `04974ca`) at 19:3x PT and
+  **confirmed** via the emailed link. CRAN's "uploaded to CRAN" message arrived
+  at 19:48 PT. 0.1.1 supersedes 0.1.0 and adds the `%superq` WHERE-clause fix
+  (issue #16), the ODA session-setup fix (PR #15), and the live dataset-upload /
+  empty-table fixes (issue #17).
+- The 0.1.0 submission was auto-processed and was "pending a manual inspection"
+  (CRAN email 12:32 PT); the 0.1.1 resubmission replaces it.
 - **Next:** CRAN reviewers reply to `meharpsingh@gmail.com`. Answer within
   the time they set, fix anything they raise, and resubmit with a bumped
-  version (`0.1.1`) and an updated `NEWS.md`. Do not reply from a different
+  version (`0.1.2`) and an updated `NEWS.md`. Do not reply from a different
   address, and do not resubmit the same version number.
 - PyPI / TestPyPI: the TestPyPI pending publisher is configured and the
   rehearsal passes (0.1.1 installs and imports without `shiny`). Real PyPI is
