@@ -231,11 +231,30 @@ sas_engine_choices.sashiny_engine_saspy <- function(engine, contract) {
 #' Choice cells as text (integers without a trailing ".0").
 #' @noRd
 .sashiny_choice_text <- function(x) {
+  if (length(x) == 0L) {
+    return(character(0))
+  }
   x <- unlist(lapply(x, function(v) if (is.null(v)) NA else v))
   if (is.numeric(x)) {
     return(vapply(x, .sashiny_format_number, character(1)))
   }
   trimws(as.character(x))
+}
+
+#' Row count of a `sd2df` result (data frame or reticulate-converted list).
+#' @noRd
+.sashiny_nrow <- function(df) {
+  if (is.null(df)) {
+    return(0L)
+  }
+  n <- nrow(df)
+  if (!is.null(n) && length(n) == 1L && !is.na(n)) {
+    return(as.integer(n))
+  }
+  if (is.list(df) && length(df) > 0L) {
+    return(as.integer(length(df[[1]])))
+  }
+  0L
 }
 
 #' A data frame column by case-insensitive name.
@@ -345,27 +364,31 @@ sas_engine_run.sashiny_engine_saspy <- function(engine, contract, values, today 
 #' Through reticulate, date columns are sent as pandas datetimes so `df2sd`
 #' writes SAS dates; other sessions (tests) receive the R data frame.
 #'
-#' saspy's `df2sd` runs pandas code that recurses deeply, which overflows
-#' reticulate's default Python recursion limit ("call stack is not deep
-#' enough"). The limit is raised (and restored) around the call.
+#' `reticulate::r_to_py()` creates a string `Index` from R row names, which
+#' triggers `warnings.warn()` inside saspy's `dataframe2sasdata()`. When
+#' `df2sd` is invoked directly from C (reticulate) with no Python frame on the
+#' call stack, Python's `warnings.warn()` raises `ValueError: call stack is not
+#' deep enough`. Resetting the index to a `RangeIndex` and invoking `df2sd`
+#' through a Python wrapper function avoids both issues.
 #' @noRd
 .sashiny_df2sd <- function(sas, df, lib, mem, datetimes) {
   if (inherits(sas, "python.builtin.object")) {
     pd <- reticulate::import("pandas", convert = FALSE)
     dates <- names(datetimes)
     for (n in dates) df[[n]] <- format(df[[n]], "%Y-%m-%d")
-    py_df <- reticulate::r_to_py(df)
+    rownames(df) <- NULL
+    py_df <- reticulate::r_to_py(df)$reset_index(drop = TRUE)
     for (n in dates) {
       col <- pd$to_datetime(reticulate::py_get_item(py_df, n),
         format = "%Y-%m-%d", errors = "coerce"
       )
       reticulate::py_set_item(py_df, n, col)
     }
-    sys <- reticulate::import("sys", convert = FALSE)
-    old_limit <- sys$getrecursionlimit()
-    on.exit(sys$setrecursionlimit(old_limit), add = TRUE)
-    sys$setrecursionlimit(10000L)
-    sas$df2sd(py_df, table = mem, libref = lib, datetimes = reticulate::dict(datetimes))
+    call_df2sd <- reticulate::py_eval(
+      "lambda sas, df, mem, lib, dt: sas.df2sd(df, table=mem, libref=lib, datetimes=dt)",
+      convert = FALSE
+    )
+    call_df2sd(sas, py_df, mem, lib, reticulate::dict(datetimes))
   } else {
     sas$df2sd(df, table = mem, libref = lib, datetimes = datetimes)
   }
@@ -416,17 +439,19 @@ sas_engine_run.sashiny_engine_saspy <- function(engine, contract, values, today 
   sas <- .sashiny_saspy_session(engine)
   .sashiny_submit(engine, .sashiny_table_meta_code(lib, mem))
   cols <- sas$sd2df(table = "_sx_cols", libref = "work")
-  if (is.null(cols) || nrow(cols) == 0L) {
+  ncols <- .sashiny_nrow(cols)
+  if (ncols == 0L) {
     stop(sprintf("dataset %s.%s not found", lib, mem), call. = FALSE)
   }
   nobs <- sas$sd2df(table = "_sx_nobs", libref = "work")
   total <- NULL
-  if (!is.null(nobs) && nrow(nobs) > 0L) {
-    n <- suppressWarnings(as.numeric(unlist(nobs[[1]])[[1]]))
+  if (.sashiny_nrow(nobs) > 0L) {
+    vals <- unlist(nobs[[1]])
+    n <- if (length(vals) > 0L) suppressWarnings(as.numeric(vals[[1]])) else NA_real_
     if (!is.na(n)) total <- as.integer(n)
   }
   cell <- function(name, i) unlist(.sashiny_df_column(cols, name)[i])
-  meta <- lapply(seq_len(nrow(cols)), function(i) {
+  meta <- lapply(seq_len(ncols), function(i) {
     type <- tolower(trimws(as.character(cell("type", i))))
     list(
       name = trimws(as.character(cell("name", i))),
@@ -467,7 +492,7 @@ sas_engine_run.sashiny_engine_saspy <- function(engine, contract, values, today 
     stop(sprintf("could not read %s.%s", lib, mem), call. = FALSE)
   }
   frame <- lapply(keys, function(k) .sashiny_df_column(df, k))
-  rows <- lapply(seq_len(nrow(df)), function(i) {
+  rows <- lapply(seq_len(.sashiny_nrow(df)), function(i) {
     lapply(seq_along(chosen), function(j) {
       value <- .sashiny_cell(frame[[j]], i)
       if (!formatted && identical(chosen[[j]]$type, "numeric")) {

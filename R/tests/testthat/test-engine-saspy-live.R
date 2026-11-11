@@ -227,3 +227,29 @@ test_that("a missing Java is reported on the result, before saspy is imported", 
   expect_identical(result$status, "error")
   expect_match(result$metadata$engine_error, "Java was not found")
 })
+
+test_that("empty reticulate-converted tables (nrow is NULL) collect cleanly (issue #17)", {
+  fake <- fake_session()
+  sd2df <- fake$sd2df
+  fake$sd2df <- function(table, libref = "WORK", dsopts = NULL) {
+    if (identical(toupper(table), "_SX_COLS") && is.null(fake$datasets[["WORK._SX_COLS"]]) ||
+        identical(nrow(fake$datasets[["WORK._SX_COLS"]]), 0L) && identical(toupper(table), "_SX_COLS")) {
+      return(list(varnum = list(), name = list(), type = list(), format = list(), label = list()))
+    }
+    if (identical(toupper(table), "STATS")) {
+      return(list(name = list(), age = list(), trtsdt = list()))
+    }
+    if (identical(toupper(table), "_SX_NOBS")) {
+      return(list(nlobs = list(0)))
+    }
+    sd2df(table, libref, dsopts)
+  }
+  result <- sas_engine_run(fake_engine(fake), fake_contract(),
+    list(min_age = 30, make = "BMW"),
+    today = .sashiny_today
+  )
+  expect_identical(result$outputs$stats$rows, list())
+  expect_identical(result$outputs$stats$total_rows, 0L)
+  expect_false(result$outputs$stats$truncated)
+  expect_identical(result$outputs$missing, list(error = "dataset WORK.NOPE not found"))
+})
