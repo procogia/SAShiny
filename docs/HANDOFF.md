@@ -117,9 +117,9 @@ cd Python && uv run ruff check . && uv run ruff format --check . && uv run mypy 
   the time they set, fix anything they raise, and resubmit with a bumped
   version (`0.1.2`) and an updated `NEWS.md`. Do not reply from a different
   address, and do not resubmit the same version number.
-- PyPI / TestPyPI: the TestPyPI pending publisher is configured and the
-  rehearsal passes (0.1.1 installs and imports without `shiny`). Real PyPI is
-  still pending the same publisher entry on pypi.org (environment `pypi`).
+- PyPI / TestPyPI: both pending publishers are configured. `sashiny` 0.1.1 is
+  published on TestPyPI and on real PyPI, and installs cleanly from both
+  (`import sashiny` works without the optional `shiny` extra).
 ## Open issues
 
 - #11 — Live SAS check reports (blocked on VPN + `~/.authinfo`).
