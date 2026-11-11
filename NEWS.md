@@ -1,4 +1,13 @@
-# SAShiny (development version)
+# SAShiny 0.1.1
+
+## Wrapper quoting fix
+
+* SAS-literal values (quoted/dquoted text/choice, numeric, date, multichoice,
+  dataset, and validated bare names) are now emitted without `%superq`, so
+  `WHERE` clauses work on real SAS 9.4 (issue #16). Only `raw` text/choice
+  values keep `%superq`, because those are unquoted and could contain live `&`
+  or `%`. This fixes the syntax error that broke all three example programs on
+  live SAS.
 
 ## SAS OnDemand for Academics fixes
 
