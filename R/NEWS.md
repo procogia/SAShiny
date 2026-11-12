@@ -1,3 +1,14 @@
+# SAShiny 0.1.2
+
+## Client-side chart output
+
+* New `chart` output type (spec §8.5): SAS produces only the data (collected
+  like a `table`), and the Shiny module renders the plot client-side. A
+  declarative `spec` (kind + column mappings, optional `backend`) or a
+  per-language `render` callback drives the chart. Backends: `ggplot2`, base R
+  graphics and `plotly` in R; `plotnine`, `matplotlib` and `plotly` in Python.
+  The existing `plot` (ODS graphics) type is unchanged.
+
 # SAShiny 0.1.1
 
 ## Wrapper quoting fix

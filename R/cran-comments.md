@@ -1,8 +1,8 @@
 ## Test environments
 
 * Local: Windows 10, R 4.6.1. `R CMD check --as-cran --no-manual`: 0 errors,
-  0 warnings, 1 note (New submission). The manual was excluded because LaTeX is
-  unavailable locally.
+  0 warnings, 1 note. The manual was excluded because LaTeX is unavailable
+  locally.
 * GitHub Actions: ubuntu (R devel, release, oldrel-1, 4.1), macOS (release) and
   Windows (release): all pass.
 * R-hub: Linux, Windows, macOS, `clang-asan` and `nosuggests` (R-devel):
@@ -15,7 +15,8 @@
 
 0 errors | 0 warnings | 1 note
 
-* This is a new submission.
+* This is a resubmission of 0.1.1 (which was pending manual inspection). It
+  adds the client-side `chart` output type (spec §8.5) and supersedes 0.1.1.
 * "Possibly misspelled words in DESCRIPTION: PBC". This is the correct legal
   suffix in 'Posit Software, PBC', used in the trademark statement.
 

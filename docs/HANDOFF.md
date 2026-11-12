@@ -113,9 +113,14 @@ cd Python && uv run ruff check . && uv run ruff format --check . && uv run mypy 
   empty-table fixes (issue #17).
 - The 0.1.0 submission was auto-processed and was "pending a manual inspection"
   (CRAN email 12:32 PT); the 0.1.1 resubmission replaces it.
+- **Resubmitted** SAShiny 0.1.2 (source commit `dd4eb54`) to supersede 0.1.1.
+  0.1.2 adds the client-side `chart` output type (spec §8.5): SAS produces only
+  the data, and the Shiny module renders the plot client-side via a declarative
+  `spec` or a per-language `render` callback (ggplot2 / base / plotly in R;
+  plotnine / matplotlib / plotly in Python).
 - **Next:** CRAN reviewers reply to `meharpsingh@gmail.com`. Answer within
   the time they set, fix anything they raise, and resubmit with a bumped
-  version (`0.1.2`) and an updated `NEWS.md`. Do not reply from a different
+  version (`0.1.3`) and an updated `NEWS.md`. Do not reply from a different
   address, and do not resubmit the same version number.
 - PyPI / TestPyPI: both pending publishers are configured. `sashiny` 0.1.1 is
   published on TestPyPI and on real PyPI, and installs cleanly from both
