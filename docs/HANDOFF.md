@@ -124,11 +124,12 @@ cd Python && uv run ruff check . && uv run ruff format --check . && uv run mypy 
   the time they set, fix anything they raise, and resubmit with a bumped
   version (`0.1.3`) and an updated `NEWS.md`. Do not reply from a different
   address, and do not resubmit the same version number.
-- PyPI / TestPyPI: both pending publishers are configured. `sashiny` 0.1.1 and
-  0.1.2 are on real PyPI. **0.1.2 has a chart-backend bug** (plotnine receives
-  the raw dict instead of a DataFrame), found by a Daytona smoke test on
-  2026-11-12. The fix is on `main` (Python bumped to 0.1.3 in #18/#20/#21), but
-  **0.1.3 is not yet published** — publish it to supersede the broken 0.1.2.
+- PyPI / TestPyPI: both pending publishers are configured. `sashiny` 0.1.1,
+  0.1.2 and 0.1.3 are on real PyPI. 0.1.2 had a chart-backend bug (plotnine
+  received the raw dict instead of a DataFrame), found by a Daytona smoke test
+  on 2026-11-12; 0.1.3 (the fix, from #18/#20/#21) is published and supersedes
+  it. Verified: `sashiny==0.1.3` installs from PyPI and renders charts with
+  matplotlib/plotnine/plotly.
 ## Open issues
 
 - #11 — Live SAS check reports (blocked on VPN + `~/.authinfo`).
