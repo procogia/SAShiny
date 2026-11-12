@@ -347,7 +347,7 @@ def _output_card(oid: str, spec: dict[str, Any]) -> TagChild:
         body: TagChild = ui.download_button(f"dl_{oid}", f"Download {label}")
     else:
         body = ui.output_ui(f"out_{oid}")
-    return ui.card(ui.card_header(label), _help(spec), body)
+    return ui.card(ui.card_header(label), _help(spec), body, fill=False)
 
 
 # --------------------------------------------------------------------------- module
@@ -385,10 +385,11 @@ def program_ui(
             ui.accordion_panel("Full SAS log", ui.output_code("log")),
             open=False,
         ),
+        fill=False,
     )
     if settings.get("layout") == "top":
-        return ui.TagList(ui.card(*controls), status, *outputs)
-    return ui.TagList(ui.layout_sidebar(ui.sidebar(*controls), status, *outputs))
+        return ui.TagList(ui.card(*controls, fill=False), status, *outputs)
+    return ui.TagList(ui.layout_sidebar(ui.sidebar(*controls), status, *outputs, fillable=False))
 
 
 @module.server

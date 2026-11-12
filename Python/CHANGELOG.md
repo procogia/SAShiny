@@ -4,6 +4,14 @@ All notable changes to the Python library are documented here. The format follow
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [0.1.4]
+
+### Fixed
+- Output cards in the Shiny module no longer shrink to fit the viewport. The
+  sidebar layout is no longer fillable and each card renders at its natural
+  height, so tables, charts and the log scroll with the page instead of inside
+  a thin strip (#26).
+
 ## [0.1.3]
 
 ### Fixed

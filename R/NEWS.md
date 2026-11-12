@@ -1,3 +1,12 @@
+# SAShiny 0.1.3
+
+## Shiny module layout
+
+* Output cards no longer shrink to fit the viewport. The sidebar layout is no
+  longer fillable and each card renders at its natural height, so tables,
+  charts and the log scroll with the page instead of inside a thin strip
+  (issue #26).
+
 # SAShiny 0.1.2
 
 ## Client-side chart output
