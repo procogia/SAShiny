@@ -3,7 +3,7 @@
 Use an **unchanged SAS program** as the **server** of a Shiny app, with Shiny (R or Python) handling the UI.
 A sidecar YAML contract declares the program's inputs and outputs, and SAShiny does the rest.
 
-> Status: beta (0.1.2). Core, saspy engine, Shiny modules and client-side charts
+> Status: beta (R 0.1.2, Python 0.1.3). Core, saspy engine, Shiny modules and client-side charts
 > implemented. See [PLAN.md](PLAN.md).
 >
 > **Live SAS is not yet verified.** Every automated check uses the mock engine. The
