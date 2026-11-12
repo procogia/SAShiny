@@ -155,6 +155,8 @@ def test_spec_columns_resolve_case_insensitively() -> None:
     )
     with pytest.raises(ValueError, match="unknown column 'nope'"):
         _resolve_spec(_class_value(), {"kind": "scatter", "x": "height", "facet": "nope"})
+    with pytest.raises(ValueError, match="chart kind 'line' requires a 'y' column"):
+        _resolve_spec(_class_value(), {"kind": "line", "x": "height"})
 
 
 @pytest.mark.parametrize("kind", KINDS)
