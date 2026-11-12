@@ -62,8 +62,10 @@
   %else %if &sq = 1 %then %let _ma = q=(12);
   %else %let _ma = ;
 
-  /* Differenced models have no intercept; undifferenced ones keep the mean */
-  %if %eval(&d + &sd) > 0 %then %let _int = noint;
+  /* Regular differencing (d = 1) removes the constant. Without it the model
+     keeps a constant: the mean, or with seasonal differencing only, the
+     average change from one year to the next */
+  %if &d = 1 %then %let _int = noint;
   %else %let _int = ;
 
   %if %eval(&sp + &sd + &sq) > 0 %then %let _name = SARIMA(&p,&d,&q)(&sp,&sd,&sq)[12];
@@ -153,7 +155,8 @@
   run;
 
   proc sql noprint;
-    select count(*), sum(missing(prescriptions)), sum(prescriptions <= 0),
+    select count(*), sum(missing(prescriptions)),
+           sum(not missing(prescriptions) and prescriptions <= 0),
            sum(shock_flag = 1)
       into :n trimmed, :n_gaps trimmed, :n_bad trimmed, :n_shock trimmed
       from work.series;
@@ -332,11 +335,20 @@
       having score = min(score);
   quit;
 
-  %if &n_conv = 0 or %length(&rec_id) = 0 %then %do;
+  %if &n_conv = 0 %then %do;
     %let ok = 0;
     %let msg = No candidate model converged on this series.;
     %put ERROR: &msg;
     %goto status;
+  %end;
+
+  /* Only the manual model converged: it becomes the recommendation */
+  %if %length(&rec_id) = 0 %then %do;
+    proc sql noprint;
+      select id, model into :rec_id trimmed, :rec_name trimmed
+        from work.model_comparison where usable and id = 'custom';
+    quit;
+    %put WARNING: None of the eight standard candidates converged. Recommending the manual model &rec_name.;
   %end;
 
   /* Final model: the recommendation, the custom orders or a named candidate */

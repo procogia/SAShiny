@@ -83,7 +83,9 @@ values.
    | M8 | SARIMA(2,1,0)(1,1,0)[12] |
 
    With **Final model: Manual**, your own orders (p, q 0–2; d, P, D, Q 0–1; period
-   12) are fitted as a ninth candidate.
+   12) are fitted as a ninth candidate. Models with regular differencing (d = 1)
+   have no constant. Models without it keep one: the mean, or, with seasonal
+   differencing only (M7), the average change from one year to the next.
 3. **Evaluation.** Forecasts the holdout months with each candidate and scores them
    by RMSE, MAE and WAPE on the prescription scale. AIC and SBC from the training fit
    are also shown, but they compare models with the same differencing only. Each
@@ -93,6 +95,8 @@ values.
    fails the run.
 4. **Selection.** **Automatic** picks the usable candidate with the lowest holdout
    score for the chosen metric. You can override it with Manual or any of M1–M8.
+   If only the manual model converges, it becomes the recommendation (with a
+   warning).
 5. **Final fit and forecast.** Refits the final model on all months and forecasts
    3–12 months ahead at the chosen interval level. Log forecasts are
    back-transformed with the usual variance correction.
