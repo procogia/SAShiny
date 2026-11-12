@@ -254,9 +254,12 @@
   png <- tryCatch(
     {
       plot <- sas_render_chart(value, chart_spec, backend = backend, render = render)
-      .sashiny_plot_png(plot, backend)
+      if (identical(backend, "base")) plot else .sashiny_plot_png(plot, backend)
     },
-    error = function(e) NULL
+    error = function(e) {
+      message("Could not render chart: ", conditionMessage(e))
+      NULL
+    }
   )
   if (is.null(png)) {
     return(shiny::tags$small("Could not render this chart."))
@@ -266,9 +269,10 @@
 
 #' Serialize a plot object to a base64 PNG.
 #'
-#' Mirrors `shiny::plotPNG` for the three chart backends: `plotly` objects are
-#' saved with `plotly::save_image`, `base` recorded plots are replayed, and
-#' `ggplot2` objects are printed to a PNG device.
+#' Mirrors `shiny::plotPNG` for the ggplot2 and plotly backends: `plotly`
+#' objects are saved with `plotly::save_image`, and `ggplot2` objects are
+#' printed to a PNG device. The `base` backend draws directly to a PNG device
+#' in `sas_render_chart()` and returns the PNG already.
 #' @noRd
 .sashiny_plot_png <- function(plot, backend) {
   if (identical(backend, "plotly")) {
@@ -280,11 +284,7 @@
   }
   tmp <- tempfile(fileext = ".png")
   grDevices::png(tmp, width = 800, height = 600)
-  if (identical(backend, "base")) {
-    grDevices::replayPlot(plot)
-  } else {
-    print(plot)
-  }
+  print(plot)
   grDevices::dev.off()
   on.exit(unlink(tmp), add = TRUE)
   openssl::base64_encode(readBin(tmp, "raw", n = file.info(tmp)$size))

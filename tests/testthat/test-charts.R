@@ -53,7 +53,7 @@ test_that("render_chart callback takes precedence", {
   expect_identical(out, "custom")
 })
 
-test_that("base backend renders a scatter plot to a recorded plot", {
+test_that("base backend renders a scatter plot to a base64 PNG", {
   value <- list(
     columns = list(
       list(name = "x", type = "numeric", label = "", format = ""),
@@ -62,6 +62,58 @@ test_that("base backend renders a scatter plot to a recorded plot", {
     rows = list(list(1, 2), list(2, 4), list(3, 6)),
     total_rows = 3L, truncated = FALSE, formatted = FALSE
   )
-  plot <- sas_render_chart(value, list(kind = "scatter", x = "x", y = "y"), backend = "base")
-  expect_s3_class(plot, "recordedplot")
+  png <- sas_render_chart(value, list(kind = "scatter", x = "x", y = "y"), backend = "base")
+  expect_type(png, "character")
+  expect_true(nzchar(png))
+  # The PNG is non-empty and decodes to a valid image.
+  bytes <- openssl::base64_decode(png)
+  expect_gt(length(bytes), 8L)
+  expect_identical(rawToChar(bytes[1:8]), "\x89PNG\r\n\x1a\n")
+})
+
+test_that("chart data frame maps spec names to real column names", {
+  value <- list(
+    columns = list(
+      list(name = "Height", type = "numeric", label = "", format = ""),
+      list(name = "Weight", type = "numeric", label = "", format = "")
+    ),
+    rows = list(list(1, 2), list(2, 4), list(3, 6)),
+    total_rows = 3L, truncated = FALSE, formatted = FALSE
+  )
+  data <- SAShiny:::.sashiny_chart_data(value)
+  expect_identical(names(data), c("Height", "Weight"))
+  expect_identical(data$Height, c(1, 2, 3))
+  expect_identical(data$Weight, c(2, 4, 6))
+})
+
+test_that("ggplot2 backend renders every chart kind", {
+  skip_if_not_installed("ggplot2")
+  value <- list(
+    columns = list(
+      list(name = "x", type = "numeric", label = "", format = ""),
+      list(name = "y", type = "numeric", label = "", format = "")
+    ),
+    rows = list(list(1, 2), list(2, 4), list(3, 6)),
+    total_rows = 3L, truncated = FALSE, formatted = FALSE
+  )
+  for (kind in c("scatter", "line", "bar", "histogram", "box")) {
+    plot <- sas_render_chart(value, list(kind = kind, x = "x", y = "y"), backend = "ggplot2")
+    expect_s3_class(plot, "ggplot")
+  }
+})
+
+test_that("plotly backend renders every chart kind", {
+  skip_if_not_installed("plotly")
+  value <- list(
+    columns = list(
+      list(name = "x", type = "numeric", label = "", format = ""),
+      list(name = "y", type = "numeric", label = "", format = "")
+    ),
+    rows = list(list(1, 2), list(2, 4), list(3, 6)),
+    total_rows = 3L, truncated = FALSE, formatted = FALSE
+  )
+  for (kind in c("scatter", "line", "bar", "histogram", "box")) {
+    fig <- sas_render_chart(value, list(kind = kind, x = "x", y = "y"), backend = "plotly")
+    expect_s3_class(fig, "plotly")
+  }
 })

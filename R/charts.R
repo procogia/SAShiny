@@ -33,6 +33,34 @@
   if (is.null(col$label) || !nzchar(col$label)) col$name else col$label
 }
 
+#' Real (case-corrected) column name of a chart value
+#' @noRd
+.sashiny_chart_name <- function(value, name) {
+  i <- .sashiny_chart_col(value, name)
+  value$columns[[i]]$name
+}
+
+#' Build a data frame from a chart value (spec section 8.1 table shape)
+#'
+#' Columns are named by their real (case-corrected) names, so a spec column
+#' such as `x = "height"` maps to a SAS column `Height`.
+#' @noRd
+.sashiny_chart_data <- function(value) {
+  cols <- value$columns %||% list()
+  names <- vapply(cols, function(c) c$name %||% "", character(1))
+  rows <- value$rows %||% list()
+  n <- length(rows)
+  out <- stats::setNames(
+    lapply(seq_along(cols), function(i) {
+      col <- lapply(rows, function(row) row[[i]])
+      # Unlist when every cell is a scalar; keep list otherwise.
+      if (all(lengths(col) == 1L)) unlist(col, use.names = FALSE) else col
+    }),
+    names
+  )
+  as.data.frame(out, stringsAsFactors = FALSE, optional = TRUE)
+}
+
 #' Render a chart value to a plot object
 #'
 #' @param value The collected chart value (spec section 8.1 table shape).
@@ -40,7 +68,9 @@
 #' @param backend One of `"ggplot2"`, `"base"` or `"plotly"`.
 #' @param render An optional user callback `function(value, spec, ...)` that
 #'   takes precedence over the declarative spec.
-#' @return A plot object for the chosen backend.
+#' @return A plot object for the chosen backend. The `"base"` backend returns a
+#'   base64-encoded PNG string instead, because base graphics draw directly to
+#'   a device and cannot be returned as a portable object.
 #' @export
 sas_render_chart <- function(value, spec = NULL, backend = "ggplot2", render = NULL) {
   if (!is.null(render)) {
@@ -76,19 +106,23 @@ sas_chart_backends <- function() {
 .sashiny_chart_ggplot2 <- function(value, spec) {
   rlang::check_installed("ggplot2", reason = "to render charts with ggplot2")
   kind <- spec$kind
-  x <- spec$x
-  y <- spec$y
+  data <- .sashiny_chart_data(value)
+  x <- .sashiny_chart_name(value, spec$x)
+  y <- if (is.null(spec$y)) NULL else .sashiny_chart_name(value, spec$y)
+  color <- if (is.null(spec$color)) NULL else .sashiny_chart_name(value, spec$color)
+  fill <- if (is.null(spec$fill)) NULL else .sashiny_chart_name(value, spec$fill)
+  facet <- if (is.null(spec$facet)) NULL else .sashiny_chart_name(value, spec$facet)
   mapping <- ggplot2::aes(x = rlang::.data[[x]])
   if (!is.null(y)) {
     mapping <- ggplot2::aes(x = rlang::.data[[x]], y = rlang::.data[[y]])
   }
-  if (!is.null(spec$color)) {
-    mapping$colour <- rlang::sym(spec$color)
+  if (!is.null(color)) {
+    mapping$colour <- rlang::sym(color)
   }
-  if (!is.null(spec$fill)) {
-    mapping$fill <- rlang::sym(spec$fill)
+  if (!is.null(fill)) {
+    mapping$fill <- rlang::sym(fill)
   }
-  plot <- ggplot2::ggplot(value, mapping)
+  plot <- ggplot2::ggplot(data, mapping)
   plot <- plot + switch(kind,
     scatter = ggplot2::geom_point(),
     line = ggplot2::geom_line(),
@@ -97,8 +131,8 @@ sas_chart_backends <- function() {
     box = ggplot2::geom_boxplot(),
     stop(sprintf("unknown chart kind '%s'", kind), call. = FALSE)
   )
-  if (!is.null(spec$facet)) {
-    plot <- plot + ggplot2::facet_wrap(stats::as.formula(paste0("~", spec$facet)))
+  if (!is.null(facet)) {
+    plot <- plot + ggplot2::facet_wrap(stats::as.formula(paste0("~", facet)))
   }
   labels <- list()
   if (!is.null(spec$title)) labels$title <- spec$title
@@ -111,7 +145,11 @@ sas_chart_backends <- function() {
   plot
 }
 
-#' Render with base R graphics
+#' Render with base R graphics to a base64 PNG
+#'
+#' Draws straight into a PNG device (rather than recording and replaying a
+#' plot), so it works when R runs headless (Rscript, Shiny Server, Connect,
+#' Docker), where the default device is `pdf` with its display list off.
 #' @noRd
 .sashiny_chart_base <- function(value, spec) {
   kind <- spec$kind
@@ -119,6 +157,9 @@ sas_chart_backends <- function() {
   y <- spec$y
   xs <- unlist(.sashiny_chart_series(value, x), use.names = FALSE)
   ys <- if (is.null(y)) NULL else unlist(.sashiny_chart_series(value, y), use.names = FALSE)
+  tmp <- tempfile(fileext = ".png")
+  grDevices::png(tmp, width = 800, height = 600)
+  on.exit(grDevices::dev.off(), add = TRUE)
   switch(kind,
     scatter = graphics::plot(xs, ys),
     line = graphics::plot(xs, ys, type = "l"),
@@ -130,7 +171,9 @@ sas_chart_backends <- function() {
   if (!is.null(spec$title)) {
     graphics::title(main = spec$title)
   }
-  invisible(grDevices::recordPlot())
+  grDevices::dev.off()
+  on.exit(NULL, add = FALSE)
+  openssl::base64_encode(readBin(tmp, "raw", n = file.info(tmp)$size))
 }
 
 #' Render with plotly
@@ -138,15 +181,16 @@ sas_chart_backends <- function() {
 .sashiny_chart_plotly <- function(value, spec) {
   rlang::check_installed("plotly", reason = "to render charts with plotly")
   kind <- spec$kind
-  x <- spec$x
-  y <- spec$y
-  color <- spec$color
+  data <- .sashiny_chart_data(value)
+  x <- .sashiny_chart_name(value, spec$x)
+  y <- if (is.null(spec$y)) NULL else .sashiny_chart_name(value, spec$y)
+  color <- if (is.null(spec$color)) NULL else .sashiny_chart_name(value, spec$color)
   fig <- switch(kind,
-    scatter = plotly::plot_ly(value, x = ~.data[[x]], y = ~.data[[y]], color = color, type = "scatter", mode = "markers"),
-    line = plotly::plot_ly(value, x = ~.data[[x]], y = ~.data[[y]], color = color, type = "scatter", mode = "lines"),
-    bar = plotly::plot_ly(value, x = ~.data[[x]], y = ~.data[[y]], color = color, type = "bar"),
-    histogram = plotly::plot_ly(value, x = ~.data[[x]], color = color, type = "histogram"),
-    box = plotly::plot_ly(value, x = ~.data[[x]], y = ~.data[[y]], color = color, type = "box"),
+    scatter = plotly::plot_ly(data, x = ~.data[[x]], y = ~.data[[y]], color = color, type = "scatter", mode = "markers"),
+    line = plotly::plot_ly(data, x = ~.data[[x]], y = ~.data[[y]], color = color, type = "scatter", mode = "lines"),
+    bar = plotly::plot_ly(data, x = ~.data[[x]], y = ~.data[[y]], color = color, type = "bar"),
+    histogram = plotly::plot_ly(data, x = ~.data[[x]], color = color, type = "histogram"),
+    box = plotly::plot_ly(data, x = ~.data[[x]], y = ~.data[[y]], color = color, type = "box"),
     stop(sprintf("unknown chart kind '%s'", kind), call. = FALSE)
   )
   if (!is.null(spec$title)) {
