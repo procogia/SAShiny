@@ -10,11 +10,13 @@ from __future__ import annotations
 
 import base64
 import io
+import logging
 from collections.abc import Callable, Iterator
 from datetime import date
 from pathlib import Path
 from typing import Any
 
+from htmltools import HTMLDependency
 from shiny import Inputs, Outputs, Session, module, reactive, req, ui
 from shiny import render as shiny_render
 from shiny.ui import TagChild
@@ -23,6 +25,12 @@ from .contract import Contract
 from .engines import Engine
 from .result import Result
 from .upload import UploadFile
+
+logger = logging.getLogger(__name__)
+
+# Size of client-side chart images (spec §8.5): 8 x 6 inches at 150 dpi.
+_CHART_INCHES = (8.0, 6.0)
+_CHART_DPI = 150
 
 __all__ = ["program_server", "program_ui", "shiny_values"]
 
@@ -237,8 +245,9 @@ def chart_tag(
     """Render a §8.1 chart value with the client-side graphics engine.
 
     Follows the ``shiny.render.plot`` pattern: a render callback (or a
-    declarative spec) produces a plot object, which is serialised to a base64
-    PNG.
+    declarative spec) produces a plot object. plotly figures are shown as
+    interactive plotly charts; plotnine and matplotlib plots are serialised to
+    a base64 PNG.
     """
     if not value or not value.get("rows"):
         return ui.tags.small("No data for this chart.")
@@ -248,27 +257,56 @@ def chart_tag(
         chart_spec = (spec or {}).get("spec")
         backend = (chart_spec or {}).get("backend", "plotnine")
         plot = render_chart(value, chart_spec, backend=backend, render=render)
-        png = _plot_to_png(plot, backend)
+        if _is_plotly(plot):
+            return _plotly_tag(plot)
+        png = _plot_to_png(plot)
         return ui.img(src=f"data:image/png;base64,{png}", style="max-width: 100%;")
     except Exception as exc:
+        logger.warning("could not render chart: %s", exc)
         return ui.tags.small(f"Could not render this chart: {exc}")
 
 
-def _plot_to_png(plot: Any, backend: str) -> str:
-    """Serialize a plot object to a base64 PNG."""
-    if backend == "plotly":
-        import plotly.io as pio  # noqa: PLC0415 - optional dependency
+def _is_plotly(plot: Any) -> bool:
+    """Whether a plot object is a plotly figure."""
+    return type(plot).__module__.startswith("plotly.") and hasattr(plot, "to_plotly_json")
 
-        data = pio.to_image(plot, format="png")
-        return base64.b64encode(data).decode("ascii")
 
+def _plotly_tag(fig: Any) -> TagChild:
+    """Return an interactive plotly chart, using the plotly.js bundled with plotly.
+
+    No static-image export (kaleido and a Chrome install) and no CDN are
+    needed; Shiny serves plotly.js once as an HTML dependency.
+    """
+    import plotly  # noqa: PLC0415 - optional dependency
+    from plotly.offline import get_plotlyjs_version  # noqa: PLC0415
+
+    bundle = Path(plotly.__file__).parent / "package_data"
+    dep = HTMLDependency(
+        "plotly-js",
+        get_plotlyjs_version(),
+        source={"subdir": str(bundle)},
+        script={"src": "plotly.min.js"},
+    )
+    html = fig.to_html(full_html=False, include_plotlyjs=False, config={"responsive": True})
+    return ui.TagList(dep, ui.HTML(html))
+
+
+def _plot_to_png(plot: Any) -> str:
+    """Serialize a plotnine or matplotlib plot object to a base64 PNG.
+
+    Charts are drawn at 8 x 6 inches and 150 dpi (1200 x 900 pixels), the same
+    as the R module, so they stay sharp when a card scales them to its width.
+    """
     buf = io.BytesIO()
-    if backend == "plotnine":
-        plot.save(buf, format="png")
+    if hasattr(plot, "savefig"):
+        plot.set_size_inches(_CHART_INCHES)
+        plot.savefig(buf, format="png", dpi=_CHART_DPI)
+    elif hasattr(plot, "save"):
+        width, height = _CHART_INCHES
+        plot.save(buf, format="png", width=width, height=height, dpi=_CHART_DPI, verbose=False)
     else:
-        plot.savefig(buf, format="png")
-    buf.seek(0)
-    return base64.b64encode(buf.read()).decode("ascii")
+        raise TypeError(f"cannot render a {type(plot).__name__} as a chart")
+    return base64.b64encode(buf.getvalue()).decode("ascii")
 
 
 def html_tag(value: str) -> TagChild:

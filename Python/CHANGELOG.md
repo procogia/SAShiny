@@ -4,6 +4,26 @@ All notable changes to the Python library are documented here. The format follow
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [0.1.3]
+
+### Fixed
+- The `plotnine` (default) and `plotly` chart backends now build a
+  `pandas.DataFrame` from the collected value before plotting; in 0.1.2 they
+  failed for every chart kind (#19).
+- Spec column names (`x`, `y`, `color`, `fill`, `facet`) are resolved
+  case-insensitively to the collected SAS column names, as spec §8.5 requires,
+  for every backend. A histogram ignores `y`. SAS missing values are `NaN`.
+- `matplotlib` charts no longer fail on SAS missing values, group box plots by
+  `x`, and are no longer registered with pyplot, so a long-running server does
+  not accumulate figures.
+
+### Changed
+- In the Shiny module, `plotly` charts are shown as interactive plotly charts,
+  using the plotly.js bundled with the `plotly` package (no `kaleido`, Chrome
+  or CDN needed). `plotnine` and `matplotlib` charts are drawn at 1200 x 900
+  pixels (8 x 6 in at 150 dpi). Render errors are logged.
+- The `plotly` extra now also installs `pandas`.
+
 ## [0.1.2]
 
 ### Added
