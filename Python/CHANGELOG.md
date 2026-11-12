@@ -4,6 +4,16 @@ All notable changes to the Python library are documented here. The format follow
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [0.1.2]
+
+### Added
+- Client-side `chart` output type (spec §8.5): SAS produces only the data
+  (collected like a `table`), and the Shiny module renders the plot client-side.
+  A declarative `spec` (kind + column mappings, optional `backend`) or a
+  per-language `render` callback drives the chart. Backends: `plotnine`,
+  `matplotlib` and `plotly`. The existing `plot` (ODS graphics) type is
+  unchanged.
+
 ## [0.1.1]
 
 ### Fixed
