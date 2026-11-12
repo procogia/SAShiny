@@ -473,8 +473,8 @@ engine name and version, SAS version (`&SYSVLONG`), status, and `collect_errors`
 
 ### 8.5 Chart spec (client-side rendering)
 
-A `chart` output is rendered by the Shiny module, not by SAS. Exactly one of `spec` or `render` is
-given.
+A `chart` output is rendered by the Shiny module, not by SAS. Exactly one of `spec` (declarative, in
+the contract) or `render` (a per-language callback, supplied in code) is given.
 
 **`spec` (declarative)** — a mapping with these fields:
 
@@ -490,15 +490,19 @@ given.
 | `subtitle` | no | chart subtitle |
 | `xlab` | no | x-axis label (defaults to the column name) |
 | `ylab` | no | y-axis label (defaults to the column name) |
+| `backend` | no | client-side graphics engine: `ggplot2`, `base` or `plotly` (R); `plotnine`, `matplotlib` or `plotly` (Python). Defaults to the language's primary backend (`ggplot2` / `plotnine`). |
 
 Column names are matched case-insensitively against the collected columns. An unknown column is a
 collection error. The exact visual output is backend-specific; the data and the mapping are the
 portable contract.
 
-**`render` (callback)** — a per-language extension, not part of the cross-language fixtures. In R it is
-a function `function(value, spec, ...)` returning a plot object; in Python it is a callable
-`(value, spec) -> object`. The Shiny module calls it with the collected chart value and the output's
-`spec` mapping (or `None`/`NULL` when absent).
+**`render` (callback)** — a per-language extension, not part of the cross-language fixtures and not a
+YAML field. In R it is a function `function(value, spec, ...)` returning a plot object; in Python it
+is a callable `(value, spec) -> object`. The Shiny module calls it with the collected chart value and
+the output's `spec` mapping (or `None`/`NULL` when absent). The callback is supplied to the module
+server (e.g. `sas_program_server(..., render = list(<output_id> = fn))` in R, or a `render` mapping in
+Python), following the same "render callback" pattern as `shiny::renderPlot` and
+`shiny.render.plot`.
 
 ---
 

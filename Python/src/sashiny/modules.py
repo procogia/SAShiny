@@ -15,7 +15,8 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from shiny import Inputs, Outputs, Session, module, reactive, render, req, ui
+from shiny import Inputs, Outputs, Session, module, reactive, req, ui
+from shiny import render as shiny_render
 from shiny.ui import TagChild
 
 from .contract import Contract
@@ -228,15 +229,25 @@ def plot_tag(value: list[dict[str, str]]) -> TagChild:
     )
 
 
-def chart_tag(value: dict[str, Any], spec: dict[str, Any] | None) -> TagChild:
-    """Render a §8.1 chart value with the client-side graphics engine."""
+def chart_tag(
+    value: dict[str, Any],
+    spec: dict[str, Any] | None,
+    render: Callable[[dict[str, Any], dict[str, Any] | None], Any] | None = None,
+) -> TagChild:
+    """Render a §8.1 chart value with the client-side graphics engine.
+
+    Follows the ``shiny.render.plot`` pattern: a render callback (or a
+    declarative spec) produces a plot object, which is serialised to a base64
+    PNG.
+    """
     if not value or not value.get("rows"):
         return ui.tags.small("No data for this chart.")
     try:
         from .charts import render_chart  # noqa: PLC0415 - avoid import cycle
 
-        backend = spec.get("backend", "plotnine") if spec else "plotnine"
-        plot = render_chart(value, (spec or {}).get("spec"), backend=backend)
+        chart_spec = (spec or {}).get("spec")
+        backend = (chart_spec or {}).get("backend", "plotnine")
+        plot = render_chart(value, chart_spec, backend=backend, render=render)
         png = _plot_to_png(plot, backend)
         return ui.img(src=f"data:image/png;base64,{png}", style="max-width: 100%;")
     except Exception as exc:
@@ -350,6 +361,7 @@ def program_server(  # noqa: PLR0913, PLR0917 - Shiny module signature + overrid
     contract: Contract,
     engine: Engine,
     server_override: Callable[..., Any] | None = None,
+    chart_render: (dict[str, Callable[[dict[str, Any], dict[str, Any] | None], Any]] | None) = None,
 ) -> dict[str, Any]:
     """Serve a SAS program module (run the contract and render outputs).
 
@@ -361,6 +373,9 @@ def program_server(  # noqa: PLR0913, PLR0917 - Shiny module signature + overrid
         engine: The engine to run on (mock, saspy or a :class:`sashiny.Pool`).
         server_override: An optional callable ``(input, output, session,
             contract, engine)`` that replaces the auto-generated server.
+        chart_render: An optional mapping of chart render callbacks keyed by
+            output id. Each is ``(value, spec) -> object`` returning a plot
+            object (spec §8.5). Takes precedence over a declarative ``spec``.
 
     Returns:
         ``{"result", "status", "log"}`` reactive calcs for custom extensions.
@@ -407,13 +422,13 @@ def program_server(  # noqa: PLR0913, PLR0917 - Shiny module signature + overrid
         return engine.run(contract, values, uploads=uploads)
 
     @output(id="status")
-    @render.code
+    @shiny_render.code
     def _status() -> str:
         text = _status_text(result())
         return f"{text}\n{choice_error()}" if choice_error() else text
 
     @output(id="log")
-    @render.code
+    @shiny_render.code
     def _log() -> str:
         return result().log or "(no log)"
 
@@ -421,7 +436,7 @@ def program_server(  # noqa: PLR0913, PLR0917 - Shiny module signature + overrid
         if spec["type"] == "download":
             _register_download(output, oid, result)
         else:
-            _register_card(output, oid, spec, result)
+            _register_card(output, oid, spec, result, (chart_render or {}).get(oid))
 
     return {
         "result": result,
@@ -431,19 +446,23 @@ def program_server(  # noqa: PLR0913, PLR0917 - Shiny module signature + overrid
 
 
 def _register_card(
-    output: Outputs, oid: str, spec: dict[str, Any], result: Callable[[], Result]
+    output: Outputs,
+    oid: str,
+    spec: dict[str, Any],
+    result: Callable[[], Result],
+    chart_render: Callable[[dict[str, Any], dict[str, Any] | None], Any] | None = None,
 ) -> None:
     kind = spec["type"]
 
     @output(id=f"out_{oid}")
-    @render.ui
+    @shiny_render.ui
     def _card() -> TagChild:
         res = result()
         if oid not in res.outputs:
             return ui.tags.small("No output for this run.")
         value = res.outputs[oid]
         if kind == "chart":
-            return _error_tag(value) or chart_tag(value, spec)
+            return _error_tag(value) or chart_tag(value, spec, chart_render)
         return _error_tag(value) or _RENDERERS[kind](value)
 
 
@@ -464,7 +483,7 @@ def _register_download(output: Outputs, oid: str, result: Callable[[], Result]) 
         yield base64.b64decode(_value()["data"])
 
     # Shiny 1.9 renamed render.download to render.download_button.
-    renderer = getattr(render, "download_button", None)
+    renderer = getattr(shiny_render, "download_button", None)
     if renderer is None:  # pragma: no cover - Shiny < 1.9
-        renderer = render.download
+        renderer = shiny_render.download
     output(id=f"dl_{oid}")(renderer(filename=_filename, media_type=_media_type)(_download))

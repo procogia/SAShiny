@@ -53,7 +53,7 @@ test_that("render_chart callback takes precedence", {
   expect_identical(out, "custom")
 })
 
-test_that("base backend renders a scatter plot to a PNG", {
+test_that("base backend renders a scatter plot to a recorded plot", {
   value <- list(
     columns = list(
       list(name = "x", type = "numeric", label = "", format = ""),
@@ -62,7 +62,6 @@ test_that("base backend renders a scatter plot to a PNG", {
     rows = list(list(1, 2), list(2, 4), list(3, 6)),
     total_rows = 3L, truncated = FALSE, formatted = FALSE
   )
-  png <- sas_render_chart(value, list(kind = "scatter", x = "x", y = "y"), backend = "base")
-  expect_type(png, "character")
-  expect_true(nzchar(png))
+  plot <- sas_render_chart(value, list(kind = "scatter", x = "x", y = "y"), backend = "base")
+  expect_s3_class(plot, "recordedplot")
 })
