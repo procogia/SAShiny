@@ -50,13 +50,15 @@ demo_good_result <- function(contract) {
         data <- if (identical(spec$format, "csv")) {
           charToRaw("a,b\n1,2\n")
         } else {
-          c(.demo_magic[[spec$format]], charToRaw("rest"))
-        }
-        list(
-          filename = paste0(spec$filename %||% oid, ".", spec$format), mime = "x",
-          data = openssl::base64_encode(data)
-        )
-      }
+                magic <- .demo_magic[[spec$format]]
+                magic <- if (is.list(magic)) magic[[1]] else magic
+                c(magic, charToRaw("rest"))
+              }
+              list(
+                filename = paste0(spec$filename %||% oid, ".", spec$format), mime = "x",
+                data = openssl::base64_encode(data)
+              )
+            }
     )
   })
   sashiny_result("r", "success", outputs = stats::setNames(outputs, names(contract$data$outputs)))
@@ -70,6 +72,21 @@ test_that("the checker accepts a complete result", {
       info = s$id
     )
   }
+})
+
+test_that("the checker accepts a v8 XPT download", {
+  skip_if_no_demo_scenarios()
+  s <- demo_scenario("pharma")
+  contract <- sas_contract(s$contract_path)
+  result <- demo_good_result(contract)
+  # Replace the pharma ae_xpt download with a v8 header (long member name).
+  v8 <- charToRaw("HEADER RECORD*******LIBV8   HEADER RECORD")
+  result$outputs$ae_xpt <- list(
+    filename = "ae_soc_pt.xpt", mime = "application/x-sas-transport",
+    data = openssl::base64_encode(c(v8, charToRaw("rest")))
+  )
+  problems <- demo_check_result(result, contract, s)
+  expect_false(any(grepl("ae_xpt", problems, fixed = TRUE)), info = paste(problems, collapse = "\n"))
 })
 
 test_that("the checker reports every problem", {
