@@ -6,6 +6,9 @@
 \usage{
 sas_chart_backends()
 }
+\value{
+A named logical vector: \code{ggplot2}, \code{plotly} and \code{base}.
+}
 \description{
 Which optional chart backends are installed
 }

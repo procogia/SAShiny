@@ -17,7 +17,8 @@ sas_render_chart(value, spec = NULL, backend = "ggplot2", render = NULL)
 takes precedence over the declarative spec.}
 }
 \value{
-A plot object for the chosen backend.
+A plot object for the chosen backend: a \code{ggplot}, a
+\code{recordedplot} (base graphics) or a \code{plotly} htmlwidget.
 }
 \description{
 Render a chart value to a plot object
