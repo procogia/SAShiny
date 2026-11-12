@@ -2,12 +2,13 @@
 
 Python library for SAShiny. Use an unchanged SAS program as the server of a Shiny for Python app.
 
-> Status: pre-alpha. The contract is specified in
+> Status: beta (0.1.2). The contract is specified in
 > [`spec/CONTRACT.md`](https://github.com/procogia/SAShiny/blob/main/spec/CONTRACT.md).
 
 ```sh
-# development version (repository is private until the first release)
-uv pip install "git+https://github.com/procogia/SAShiny#subdirectory=Python"
+# released on PyPI
+uv pip install sashiny
+# optional extras: sashiny[shiny], sashiny[saspy], sashiny[plotnine], sashiny[matplotlib], sashiny[plotly]
 ```
 
 SAS is a registered trademark of SAS Institute Inc. Shiny is a registered trademark of Posit
