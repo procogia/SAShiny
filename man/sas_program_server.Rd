@@ -4,7 +4,7 @@
 \alias{sas_program_server}
 \title{The server for a SAS program module}
 \usage{
-sas_program_server(id, contract, engine, server_override = NULL)
+sas_program_server(id, contract, engine, server_override = NULL, render = NULL)
 }
 \arguments{
 \item{id}{The module id.}
@@ -16,6 +16,10 @@ sas_program_server(id, contract, engine, server_override = NULL)
 
 \item{server_override}{An optional function \verb{function(id, contract, engine)}
 that returns a custom server, replacing the auto-generated server.}
+
+\item{render}{An optional named list of chart render callbacks, keyed by
+output id. Each is \verb{function(value, spec, ...)} returning a plot object
+(spec section 8.5). Takes precedence over a declarative \code{spec}.}
 }
 \value{
 A list of reactives: \code{result}, \code{status}, \code{log}.

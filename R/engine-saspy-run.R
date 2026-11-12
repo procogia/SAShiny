@@ -425,11 +425,11 @@ sas_engine_run.sashiny_engine_saspy <- function(engine, contract, values, today 
       as.integer(spec$max_rows %||% 10000L),
       formatted = isTRUE(spec$formatted)
     ),
-      chart = .sashiny_fetch_table(engine, spec$from, spec$columns,
-        as.integer(spec$max_rows %||% 10000L),
-        formatted = FALSE
-      ),
-      plot = .sashiny_extract_plots(main$LST, spec$select),
+    chart = .sashiny_fetch_table(engine, spec$from, spec$columns,
+      as.integer(spec$max_rows %||% 10000L),
+      formatted = FALSE
+    ),
+    plot = .sashiny_extract_plots(main$LST, spec$select),
     html = main$LST,
     log = .sashiny_scope_log(main$LOG, spec$scope %||% "program"),
     download = .sashiny_fetch_download(engine, oid, spec),

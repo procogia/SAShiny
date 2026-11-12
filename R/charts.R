@@ -111,30 +111,26 @@ sas_chart_backends <- function() {
   plot
 }
 
-#' Render with base R graphics to a base64 PNG
+#' Render with base R graphics
 #' @noRd
 .sashiny_chart_base <- function(value, spec) {
   kind <- spec$kind
   x <- spec$x
   y <- spec$y
-  xs <- .sashiny_chart_series(value, x)
-  ys <- if (is.null(y)) NULL else .sashiny_chart_series(value, y)
-    tmp <- tempfile(fileext = ".png")
-    grDevices::png(tmp, width = 800, height = 600)
-    on.exit(unlink(tmp), add = TRUE)
-    switch(kind,
-      scatter = graphics::plot(xs, ys),
-      line = graphics::plot(xs, ys, type = "l"),
-      bar = graphics::barplot(as.numeric(ys), names.arg = xs),
-      histogram = graphics::hist(as.numeric(xs)),
-      box = graphics::boxplot(as.numeric(ys)),
-      stop(sprintf("unknown chart kind '%s'", kind), call. = FALSE)
-    )
-    if (!is.null(spec$title)) {
-      graphics::title(main = spec$title)
-    }
-    grDevices::dev.off()
-    openssl::base64_encode(readBin(tmp, "raw", n = file.info(tmp)$size))
+  xs <- unlist(.sashiny_chart_series(value, x), use.names = FALSE)
+  ys <- if (is.null(y)) NULL else unlist(.sashiny_chart_series(value, y), use.names = FALSE)
+  switch(kind,
+    scatter = graphics::plot(xs, ys),
+    line = graphics::plot(xs, ys, type = "l"),
+    bar = graphics::barplot(as.numeric(ys), names.arg = xs),
+    histogram = graphics::hist(as.numeric(xs)),
+    box = graphics::boxplot(as.numeric(ys)),
+    stop(sprintf("unknown chart kind '%s'", kind), call. = FALSE)
+  )
+  if (!is.null(spec$title)) {
+    graphics::title(main = spec$title)
+  }
+  invisible(grDevices::recordPlot())
 }
 
 #' Render with plotly

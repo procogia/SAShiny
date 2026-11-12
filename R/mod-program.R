@@ -226,7 +226,7 @@
 
 #' Render one output value (or its collection error).
 #' @noRd
-.sashiny_output_tag <- function(kind, value, spec = NULL) {
+.sashiny_output_tag <- function(kind, value, spec = NULL, render = NULL) {
   if (is.list(value) && !is.null(value$error) && length(value) == 1L) {
     message <- paste("Could not collect this output:", value$error)
     return(shiny::tags$div(class = "text-danger", message))
@@ -234,23 +234,27 @@
   switch(kind,
     table = .sashiny_table_tag(value),
     plot = .sashiny_plot_tag(value),
-    chart = .sashiny_chart_tag(value, spec),
+    chart = .sashiny_chart_tag(value, spec, render),
     html = .sashiny_html_tag(value),
     log = .sashiny_log_tag(value)
   )
 }
 
 #' Render a section 8.1 chart value with the client-side graphics engine.
+#'
+#' Follows the `shiny::renderPlot` pattern: a render callback (or a declarative
+#' spec) produces a plot object, which is serialised to a base64 PNG.
 #' @noRd
-.sashiny_chart_tag <- function(value, spec) {
+.sashiny_chart_tag <- function(value, spec, render = NULL) {
   if (is.null(value) || length(value$rows %||% list()) == 0L) {
     return(shiny::tags$small("No data for this chart."))
   }
+  chart_spec <- spec$spec %||% NULL
+  backend <- chart_spec$backend %||% "ggplot2"
   png <- tryCatch(
     {
-      backend <- spec$backend %||% "ggplot2"
-      plot <- sas_render_chart(value, spec$spec, backend = backend)
-      if (identical(backend, "base")) plot else .sashiny_plot_png(plot, backend)
+      plot <- sas_render_chart(value, chart_spec, backend = backend, render = render)
+      .sashiny_plot_png(plot, backend)
     },
     error = function(e) NULL
   )
@@ -261,6 +265,10 @@
 }
 
 #' Serialize a plot object to a base64 PNG.
+#'
+#' Mirrors `shiny::plotPNG` for the three chart backends: `plotly` objects are
+#' saved with `plotly::save_image`, `base` recorded plots are replayed, and
+#' `ggplot2` objects are printed to a PNG device.
 #' @noRd
 .sashiny_plot_png <- function(plot, backend) {
   if (identical(backend, "plotly")) {
@@ -272,7 +280,11 @@
   }
   tmp <- tempfile(fileext = ".png")
   grDevices::png(tmp, width = 800, height = 600)
-  print(plot)
+  if (identical(backend, "base")) {
+    grDevices::replayPlot(plot)
+  } else {
+    print(plot)
+  }
   grDevices::dev.off()
   on.exit(unlink(tmp), add = TRUE)
   openssl::base64_encode(readBin(tmp, "raw", n = file.info(tmp)$size))
@@ -353,9 +365,12 @@ sas_program_ui <- function(id, contract, ui_override = NULL, today = Sys.Date())
 #'   [sas_pool()].
 #' @param server_override An optional function `function(id, contract, engine)`
 #'   that returns a custom server, replacing the auto-generated server.
+#' @param render An optional named list of chart render callbacks, keyed by
+#'   output id. Each is `function(value, spec, ...)` returning a plot object
+#'   (spec section 8.5). Takes precedence over a declarative `spec`.
 #' @return A list of reactives: `result`, `status`, `log`.
 #' @export
-sas_program_server <- function(id, contract, engine, server_override = NULL) {
+sas_program_server <- function(id, contract, engine, server_override = NULL, render = NULL) {
   if (!is.null(server_override)) {
     return(server_override(id, contract, engine))
   }
@@ -392,7 +407,7 @@ sas_program_server <- function(id, contract, engine, server_override = NULL) {
     })
 
     for (oid in names(contract$data$outputs)) {
-          .sashiny_register_output(output, oid, contract$data$outputs[[oid]], result)
+          .sashiny_register_output(output, oid, contract$data$outputs[[oid]], result, render[[oid]])
     }
 
     list(
@@ -426,7 +441,7 @@ sas_program_server <- function(id, contract, engine, server_override = NULL) {
 
 #' Register the renderer for one output id.
 #' @noRd
-.sashiny_register_output <- function(output, oid, spec, result) {
+.sashiny_register_output <- function(output, oid, spec, result, render = NULL) {
   kind <- spec$type
   if (identical(kind, "download")) {
     value <- function() {
@@ -446,7 +461,7 @@ sas_program_server <- function(id, contract, engine, server_override = NULL) {
     if (!(oid %in% names(outputs))) {
       return(shiny::tags$small("No output for this run."))
     }
-      .sashiny_output_tag(kind, outputs[[oid]], spec)
+    .sashiny_output_tag(kind, outputs[[oid]], spec, render)
   })
   invisible(NULL)
 }
