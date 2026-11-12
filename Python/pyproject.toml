@@ -91,8 +91,18 @@ strict = true
 files = ["src"]
 
 [[tool.mypy.overrides]]
-module = ["yaml", "jsonschema", "saspy", "pandas", "plotnine", "matplotlib", "matplotlib.pyplot", "plotly", "plotly.express", "plotly.io", "plotly.offline", "matplotlib.figure"]
+module = ["yaml", "jsonschema", "saspy"]
 ignore_missing_imports = true
+
+# The chart backends and pandas are optional extras: CI type-checks without
+# them, but a developer may have them installed. Skip their stubs everywhere so
+# mypy gives the same result in both environments (no environment-dependent
+# `type: ignore` comments).
+[[tool.mypy.overrides]]
+module = ["pandas", "pandas.*", "plotnine", "plotnine.*", "matplotlib", "matplotlib.*", "plotly", "plotly.*"]
+ignore_missing_imports = true
+follow_imports = "skip"
+follow_imports_for_stubs = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

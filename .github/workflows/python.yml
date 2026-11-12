@@ -40,8 +40,8 @@ jobs:
       - run: uvx twine check dist/*
 
   # The chart backends are optional extras, so the main job skips their tests.
-  # This job installs every extra and runs the chart tests, so a broken
-  # backend fails CI instead of being skipped.
+  # This job installs every extra and runs mypy and the chart tests, so a
+  # broken backend fails CI instead of being skipped.
   charts:
     runs-on: ubuntu-latest
     name: chart backends (all extras)
@@ -58,4 +58,6 @@ jobs:
       - run: >-
           uv run python -c "from sashiny import chart_backends;
           b = chart_backends(); print(b); assert all(b.values()), b"
+      # mypy must pass with and without the extras installed.
+      - run: uv run mypy
       - run: uv run pytest tests/test_charts.py -v -rs

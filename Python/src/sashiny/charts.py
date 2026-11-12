@@ -99,7 +99,7 @@ def _resolve_spec(value: ChartValue, spec: ChartSpec) -> ChartSpec:
 
     Column names in the spec are matched case-insensitively (spec §8.5), so
     ``x: height`` names the SAS column ``Height``. An unknown kind or column is
-    an error.
+    an error, as is a missing ``y`` for every kind except ``histogram``.
     """
     kind = spec.get("kind")
     if kind not in _KINDS:
@@ -111,6 +111,8 @@ def _resolve_spec(value: ChartValue, spec: ChartSpec) -> ChartSpec:
             resolved[field] = value["columns"][_column_index(value, name)]["name"]
     if kind == "histogram":
         resolved.pop("y", None)
+    elif resolved.get("y") is None:
+        raise ValueError(f"chart kind {kind!r} requires a 'y' column")
     return resolved
 
 
@@ -174,7 +176,7 @@ def _render_plotnine(value: ChartValue, spec: ChartSpec) -> Any:
         if spec.get(field) is not None:
             mapping[aesthetic] = str(spec[field])
 
-    plot = ggplot(_frame(value), aes(**mapping)) + geoms[spec["kind"]]()  # type: ignore[no-untyped-call,operator]
+    plot = ggplot(_frame(value), aes(**mapping)) + geoms[spec["kind"]]()
     if spec.get("facet") is not None:
         plot += facet_wrap(spec["facet"])
 
