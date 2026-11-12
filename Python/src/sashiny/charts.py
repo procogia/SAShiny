@@ -44,6 +44,25 @@ def _label(value: ChartValue, name: str) -> str:
     return str(label)
 
 
+def _column_name(value: ChartValue, name: str) -> str:
+    """Return the real (case-corrected) column name for a spec column."""
+    idx = _column_index(value, name)
+    return str(value["columns"][idx]["name"])
+
+
+def _data_frame(value: ChartValue) -> Any:
+    """Build a pandas DataFrame from a chart value (spec §8.1 table shape).
+
+    Columns are named by their real (case-corrected) names, so a spec column
+    such as ``x = "height"`` maps to a SAS column ``Height``.
+    """
+    import pandas as pd  # noqa: PLC0415 - optional dependency
+
+    names = [col["name"] for col in value.get("columns", [])]
+    rows = value.get("rows", [])
+    return pd.DataFrame(rows, columns=names)
+
+
 def render_chart(
     value: ChartValue,
     spec: ChartSpec | None,
@@ -86,6 +105,8 @@ def _validate_spec(value: ChartValue, spec: ChartSpec) -> None:
     if kind not in ("scatter", "line", "bar", "histogram", "box"):
         raise ValueError(f"unknown chart kind {kind!r}")
     _column_index(value, spec["x"])
+    if kind in ("scatter", "line", "bar", "box") and spec.get("y") is None:
+        raise ValueError(f"chart kind {kind!r} requires a 'y' column")
     for field in ("y", "color", "fill", "facet"):
         if field in spec and spec[field] is not None:
             _column_index(value, spec[field])
@@ -117,11 +138,12 @@ def _render_plotnine(value: ChartValue, spec: ChartSpec) -> Any:  # noqa: PLR091
     )
 
     kind = spec["kind"]
-    x = spec["x"]
-    y = spec.get("y")
-    color = spec.get("color")
-    fill = spec.get("fill")
-    facet = spec.get("facet")
+    data = _data_frame(value)
+    x = _column_name(value, spec["x"])
+    y = _column_name(value, spec["y"]) if spec.get("y") is not None else None
+    color = _column_name(value, spec["color"]) if spec.get("color") is not None else None
+    fill = _column_name(value, spec["fill"]) if spec.get("fill") is not None else None
+    facet = _column_name(value, spec["facet"]) if spec.get("facet") is not None else None
 
     mapping: dict[str, str] = {"x": x}
     if y is not None:
@@ -131,7 +153,7 @@ def _render_plotnine(value: ChartValue, spec: ChartSpec) -> Any:  # noqa: PLR091
     if fill is not None:
         mapping["fill"] = fill
 
-    plot = ggplot(value, aes(**mapping))
+    plot = ggplot(data, aes(**mapping))  # type: ignore[no-untyped-call]
     if kind == "scatter":
         plot += geom_point()
     elif kind == "line":
@@ -176,14 +198,18 @@ def _render_matplotlib(value: ChartValue, spec: ChartSpec) -> Any:
 
     fig, ax = plt.subplots()
     if kind == "scatter":
+        assert ys is not None  # noqa: S101 - validated by _validate_spec
         ax.scatter(xs, ys)
     elif kind == "line":
+        assert ys is not None  # noqa: S101 - validated by _validate_spec
         ax.plot(xs, ys)
     elif kind == "bar":
+        assert ys is not None  # noqa: S101 - validated by _validate_spec
         ax.bar(xs, ys)
     elif kind == "histogram":
         ax.hist(xs)
     elif kind == "box":
+        assert ys is not None  # noqa: S101 - validated by _validate_spec
         ax.boxplot(ys)
     else:
         raise ValueError(f"unknown chart kind {kind!r}")
@@ -200,20 +226,21 @@ def _render_plotly(value: ChartValue, spec: ChartSpec) -> Any:
     import plotly.express as px  # noqa: PLC0415 - optional dependency
 
     kind = spec["kind"]
-    x = spec["x"]
-    y = spec.get("y")
-    color = spec.get("color")
+    data = _data_frame(value)
+    x = _column_name(value, spec["x"])
+    y = _column_name(value, spec["y"]) if spec.get("y") is not None else None
+    color = _column_name(value, spec["color"]) if spec.get("color") is not None else None
 
     if kind == "scatter":
-        fig = px.scatter(value, x=x, y=y, color=color)
+        fig = px.scatter(data, x=x, y=y, color=color)
     elif kind == "line":
-        fig = px.line(value, x=x, y=y, color=color)
+        fig = px.line(data, x=x, y=y, color=color)
     elif kind == "bar":
-        fig = px.bar(value, x=x, y=y, color=color)
+        fig = px.bar(data, x=x, y=y, color=color)
     elif kind == "histogram":
-        fig = px.histogram(value, x=x, color=color)
+        fig = px.histogram(data, x=x, color=color)
     elif kind == "box":
-        fig = px.box(value, x=x, y=y, color=color)
+        fig = px.box(data, x=x, y=y, color=color)
     else:
         raise ValueError(f"unknown chart kind {kind!r}")
 

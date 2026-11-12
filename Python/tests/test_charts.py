@@ -60,17 +60,39 @@ def test_render_chart_unknown_kind() -> None:
 
 def test_render_chart_plotnine_when_installed() -> None:
     pytest.importorskip("plotnine")
-    plot = render_chart(_value(), {"kind": "scatter", "x": "x", "y": "y"}, backend="plotnine")
-    assert plot is not None
+    for kind in ("scatter", "line", "bar", "histogram", "box"):
+        plot = render_chart(_value(), {"kind": kind, "x": "x", "y": "y"}, backend="plotnine")
+        assert plot is not None
 
 
 def test_render_chart_matplotlib_when_installed() -> None:
     pytest.importorskip("matplotlib")
-    plot = render_chart(_value(), {"kind": "scatter", "x": "x", "y": "y"}, backend="matplotlib")
-    assert plot is not None
+    for kind in ("scatter", "line", "bar", "histogram", "box"):
+        plot = render_chart(_value(), {"kind": kind, "x": "x", "y": "y"}, backend="matplotlib")
+        assert plot is not None
 
 
 def test_render_chart_plotly_when_installed() -> None:
     pytest.importorskip("plotly")
-    plot = render_chart(_value(), {"kind": "scatter", "x": "x", "y": "y"}, backend="plotly")
+    for kind in ("scatter", "line", "bar", "histogram", "box"):
+        plot = render_chart(_value(), {"kind": kind, "x": "x", "y": "y"}, backend="plotly")
+        assert plot is not None
+
+
+def test_render_chart_maps_spec_names_case_insensitively() -> None:
+    pytest.importorskip("plotnine")
+    value = {
+        "columns": [
+            {"name": "Height", "type": "numeric", "label": "", "format": ""},
+            {"name": "Weight", "type": "numeric", "label": "", "format": ""},
+        ],
+        "rows": [[1, 2], [2, 4], [3, 6]],
+        "total_rows": 3,
+        "truncated": False,
+        "formatted": False,
+    }
+    # A spec using lowercase names must map to the real (capitalised) columns.
+    plot = render_chart(
+        value, {"kind": "scatter", "x": "height", "y": "weight"}, backend="plotnine"
+    )
     assert plot is not None
