@@ -17,6 +17,8 @@
 
 * This is a resubmission of 0.1.1 (which was pending manual inspection). It
   adds the client-side `chart` output type (spec §8.5) and supersedes 0.1.1.
+  The chart backends (ggplot2, base and plotly, all optional) are tested when
+  installed and skipped otherwise.
 * "Possibly misspelled words in DESCRIPTION: PBC". This is the correct legal
   suffix in 'Posit Software, PBC', used in the trademark statement.
 

@@ -44,7 +44,7 @@ shiny = ["shiny>=1.0"]
 upload = ["pandas>=2.0", "openpyxl>=3.1", "pyreadstat>=1.2"]
 plotnine = ["plotnine>=0.13"]
 matplotlib = ["matplotlib>=3.7"]
-plotly = ["plotly>=5.18"]
+plotly = ["plotly>=5.18", "pandas>=2.0"]
 dev = ["pytest>=8", "pytest-cov>=5", "ruff>=0.8", "mypy>=1.13"]
 
 [project.urls]
@@ -91,7 +91,7 @@ strict = true
 files = ["src"]
 
 [[tool.mypy.overrides]]
-module = ["yaml", "jsonschema", "saspy", "pandas", "plotnine", "matplotlib", "matplotlib.pyplot", "plotly", "plotly.express", "plotly.io"]
+module = ["yaml", "jsonschema", "saspy", "pandas", "plotnine", "matplotlib", "matplotlib.pyplot", "plotly", "plotly.express", "plotly.io", "plotly.offline", "matplotlib.figure"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
