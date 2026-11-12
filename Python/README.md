@@ -2,7 +2,7 @@
 
 Python library for SAShiny. Use an unchanged SAS program as the server of a Shiny for Python app.
 
-> Status: beta (0.1.2). The contract is specified in
+> Status: beta (0.1.3). The contract is specified in
 > [`spec/CONTRACT.md`](https://github.com/procogia/SAShiny/blob/main/spec/CONTRACT.md).
 
 ```sh
