@@ -4,7 +4,7 @@ Record each track once against live SAS so the Offline profile can replay it.
 Recordings are shared between R and Python, so record in one app only.
 
 Faster: run the live test suite with `SASHINY_RECORD_TO` set. It records and
-checks all six scenarios below in one go (`docs/live-demo-tests.md`). The
+checks all eight scenarios below in one go (`docs/live-demo-tests.md`). The
 scenarios themselves are defined in `examples/demo-scenarios.yml`.
 
 ## Before you start
@@ -50,6 +50,17 @@ scenarios themselves are defined in `examples/demo-scenarios.yml`.
 - [ ] Transaction dates: 2026-01-01 to 2026-06-30 (default)
 - [ ] Press **Run scenario**; `status: success`, no `collect error` lines
 - [ ] Cards show: ATL/BTL plot, ATL/BTL table, alerts table, log; XLSX and CSV downloads open
+
+## Track 4: Forecasting (`arima_forecast`)
+
+Needs SAS/ETS (`PROC ARIMA`), which ODA, SAS 9.4 with SAS/ETS and Viya provide.
+
+- [ ] Monthly prescriptions: **Use the sample file** ticked
+- [ ] Product: Drug B; Region: West (default)
+- [ ] Months used: 2016-01-01 to 2025-12-31 (default)
+- [ ] Every other input at its default (Final model: Automatic, holdout 12, RMSE, horizon 6, 95%)
+- [ ] Press **Build and compare models**; `status: success`, no `collect error` lines
+- [ ] Cards show: run summary, nine charts, candidate, estimates, Ljung-Box, forecast and series tables, log; four CSV downloads open
 
 ## Optional: a second scenario per track
 

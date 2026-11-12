@@ -4,6 +4,17 @@ All notable changes to the Python library are documented here. The format follow
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- A fourth demo track, **Forecasting** (`examples/forecasting`): monthly
+  prescription demand forecasting with ARIMA and seasonal ARIMA (`PROC ARIMA`,
+  SAS/ETS). It compares eight candidate models on a holdout window, lets the user
+  pick the final model or set its orders, and shows diagnostics and forecasts
+  with prediction intervals. The simulated sample data come from a reproducible
+  generator (`generate_rx_data.py`). The demo app, demo scenarios and live tests
+  include the new track.
+
 ## [0.1.4]
 
 ### Fixed

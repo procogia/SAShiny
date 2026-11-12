@@ -46,11 +46,12 @@ library(SAShiny)
 # Connect to local SAS 9.4.
 engine <- sas_connect("sas94", host = host, port = port, saspath = saspath)
 
-# Run the three example contracts with their default inputs.
+# Run the example contracts with their default inputs.
 examples <- list(
   general = "examples/general/cars_explorer.sashiny.yml",
   pharma = "examples/pharma/ae_summary.sashiny.yml",
-  aml = "examples/aml/cash_aggregation_tuning.sashiny.yml"
+  aml = "examples/aml/cash_aggregation_tuning.sashiny.yml",
+  forecasting = "examples/forecasting/arima_forecast.sashiny.yml"
 )
 
 for (name in names(examples)) {

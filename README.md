@@ -20,7 +20,7 @@ analysis.sashiny.yml    # the contract: inputs → macro variables, outputs → 
 | [`R/`](R) | R package (target: CRAN) |
 | [`Python/`](Python) | Python library (target: PyPI) |
 | [`spec/`](spec) | The contract: [CONTRACT.md](spec/CONTRACT.md), [JSON Schema](spec/sashiny.schema.json), conformance fixtures |
-| [`examples/`](examples) | Demo programs: general (`sashelp.cars`), pharma (TEAE summary), AML (threshold tuning) |
+| [`examples/`](examples) | Demo programs: general (`sashelp.cars`), pharma (TEAE summary), AML (threshold tuning), forecasting (ARIMA / SARIMA) |
 
 ## Development
 

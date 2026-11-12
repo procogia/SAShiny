@@ -26,4 +26,5 @@ jobs:
         run: |
           python examples/pharma/data/make_data.py
           python examples/aml/data/make_data.py
+          python examples/forecasting/data/generate_rx_data.py
           git diff --exit-code -- examples

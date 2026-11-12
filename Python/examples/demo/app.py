@@ -1,6 +1,6 @@
 r"""SAShiny Lisbon demo app (Python).
 
-Three tabs (General / Pharma / AML) run the example contracts. The sidebar picks
+Four tabs (General / Pharma / AML / Forecasting) run the example contracts. The sidebar picks
 the SAS connection:
 
 - **Offline** replays recordings from ``examples/recordings`` (spec §8.3).
@@ -43,6 +43,7 @@ TRACKS = {
     "general": ("General", EXAMPLES / "general" / "cars_explorer.sashiny.yml"),
     "pharma": ("Pharma", EXAMPLES / "pharma" / "ae_summary.sashiny.yml"),
     "aml": ("AML", EXAMPLES / "aml" / "cash_aggregation_tuning.sashiny.yml"),
+    "forecasting": ("Forecasting", EXAMPLES / "forecasting" / "arima_forecast.sashiny.yml"),
 }
 PROFILES = {
     "offline": "Offline (recordings)",
@@ -159,7 +160,7 @@ app_ui = ui.page_navbar(
 
 
 def server(input: Inputs, output: Outputs, session: Session) -> None:
-    """Serve all three tracks through one routing engine."""
+    """Serve every track through one routing engine."""
     profile: reactive.Value[str] = reactive.value("offline")
 
     @reactive.effect
