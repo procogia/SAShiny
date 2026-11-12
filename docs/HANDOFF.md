@@ -120,16 +120,23 @@ cd Python && uv run ruff check . && uv run ruff format --check . && uv run mypy 
   the data, and the Shiny module renders the plot client-side via a declarative
   `spec` or a per-language `render` callback (ggplot2 / base / plotly in R;
   plotnine / matplotlib / plotly in Python).
+- **Prepared** SAShiny 0.1.3 (source commit `d5d2be1`) to supersede 0.1.1.
+  0.1.3 adds the chart-backend fixes (#18, #20, #21), the XPT v8 demo-checker
+  fix (#25) and the Shiny module card-layout fix (#26). `R CMD check --as-cran`
+  is clean (0 errors, 0 warnings, 1 NOTE "New submission"). The tarball is
+  `SAShiny_0.1.3.tar.gz`; submit it via
+  <https://cran.r-project.org/submit.html> (web form, maintainer email
+  `meharpsingh@gmail.com`).
 - **Next:** CRAN reviewers reply to `meharpsingh@gmail.com`. Answer within
   the time they set, fix anything they raise, and resubmit with a bumped
-  version (`0.1.3`) and an updated `NEWS.md`. Do not reply from a different
+  version (`0.1.4`) and an updated `NEWS.md`. Do not reply from a different
   address, and do not resubmit the same version number.
 - PyPI / TestPyPI: both pending publishers are configured. `sashiny` 0.1.1,
-  0.1.2 and 0.1.3 are on real PyPI. 0.1.2 had a chart-backend bug (plotnine
-  received the raw dict instead of a DataFrame), found by a Daytona smoke test
-  on 2026-11-12; 0.1.3 (the fix, from #18/#20/#21) is published and supersedes
-  it. Verified: `sashiny==0.1.3` installs from PyPI and renders charts with
-  matplotlib/plotnine/plotly.
+  0.1.2, 0.1.3 and 0.1.4 are on real PyPI. 0.1.2 had a chart-backend bug
+  (plotnine received the raw dict instead of a DataFrame), found by a Daytona
+  smoke test on 2026-11-12; 0.1.3 (the fix, from #18/#20/#21) supersedes it,
+  and 0.1.4 (the Shiny module card-layout fix, #26) supersedes 0.1.3. Verified:
+  `sashiny==0.1.4` installs from PyPI.
 ## Open issues
 
 - #11 — Live SAS check reports (blocked on VPN + `~/.authinfo`).
