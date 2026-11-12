@@ -4,7 +4,7 @@ All notable changes to the Python library are documented here. The format follow
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.1.5]
 
 ### Added
 - A fourth demo track, **Forecasting** (`examples/forecasting`): monthly
