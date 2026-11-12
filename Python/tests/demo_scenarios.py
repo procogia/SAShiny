@@ -23,12 +23,16 @@ EXAMPLES = REPO / "examples"
 SCENARIOS_FILE = EXAMPLES / "demo-scenarios.yml"
 RECORDINGS = EXAMPLES / "recordings"
 
-# Leading bytes of each download format.
+# Leading bytes of each download format. ``xpt`` accepts both SAS transport
+# versions: v5 (short member/column names) and v8 (any name length).
 MAGIC = {
     "pdf": b"%PDF-",
     "rtf": b"{\\rtf",
     "xlsx": b"PK\x03\x04",
-    "xpt": b"HEADER RECORD*******LIBRARY HEADER RECORD",
+    "xpt": (
+        b"HEADER RECORD*******LIBRARY HEADER RECORD",
+        b"HEADER RECORD*******LIBV8   HEADER RECORD",
+    ),
     "sas7bdat": bytes(12) + bytes.fromhex("c2ea8160b31411cfbd92080009c7318c181f1011"),
 }
 MIME_PREFIX = ("image/png", "image/svg+xml", "image/jpeg", "image/gif")
@@ -114,8 +118,11 @@ def _download_problems(
         rows = list(csv.reader(io.StringIO(data.decode("utf-8"))))
         if len(rows) < 2:
             problems.append(f"{oid}: CSV has no data rows")
-    elif not data.startswith(MAGIC[fmt]):
-        problems.append(f"{oid}: not a valid .{fmt} file (starts with {data[:16]!r})")
+    else:
+        magic = MAGIC[fmt]
+        magics = magic if isinstance(magic, tuple) else (magic,)
+        if not any(data.startswith(m) for m in magics):
+            problems.append(f"{oid}: not a valid .{fmt} file (starts with {data[:16]!r})")
     return problems
 
 

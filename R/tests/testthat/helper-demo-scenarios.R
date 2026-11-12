@@ -10,12 +10,16 @@
 
 .demo_today <- as.Date("2026-11-11")
 
-# Leading bytes of each download format.
+# Leading bytes of each download format. `xpt` accepts both SAS transport
+# versions: v5 (short member/column names) and v8 (any name length).
 .demo_magic <- list(
   pdf = charToRaw("%PDF-"),
   rtf = charToRaw("{\\rtf"),
   xlsx = as.raw(c(0x50, 0x4b, 0x03, 0x04)),
-  xpt = charToRaw("HEADER RECORD*******LIBRARY HEADER RECORD"),
+  xpt = list(
+    charToRaw("HEADER RECORD*******LIBRARY HEADER RECORD"),
+    charToRaw("HEADER RECORD*******LIBV8   HEADER RECORD")
+  ),
   sas7bdat = c(raw(12), as.raw(c(
     0xc2, 0xea, 0x81, 0x60, 0xb3, 0x14, 0x11, 0xcf, 0xbd, 0x92,
     0x08, 0x00, 0x09, 0xc7, 0x31, 0x8c, 0x18, 0x1f, 0x10, 0x11
@@ -83,6 +87,10 @@ demo_default_problems <- function(scenario, contract) {
   length(data) >= length(magic) && identical(data[seq_along(magic)], magic)
 }
 
+.demo_starts_with_any <- function(data, magics) {
+  any(vapply(magics, function(m) .demo_starts_with(data, m), logical(1)))
+}
+
 .demo_download_problems <- function(oid, fmt, value, contract) {
   spec <- contract$data$outputs[[oid]]
   expected <- paste0(spec$filename %||% oid, ".", fmt)
@@ -97,10 +105,14 @@ demo_default_problems <- function(scenario, contract) {
   if (identical(fmt, "csv")) {
     lines <- strsplit(rawToChar(data), "\r?\n")[[1]]
     if (sum(nzchar(lines)) < 2L) problems <- c(problems, sprintf("%s: CSV has no data rows", oid))
-  } else if (!.demo_starts_with(data, .demo_magic[[fmt]])) {
-    problems <- c(problems, sprintf("%s: not a valid .%s file", oid, fmt))
-  }
-  problems
+    } else {
+      magic <- .demo_magic[[fmt]]
+      magics <- if (is.list(magic)) magic else list(magic)
+      if (!.demo_starts_with_any(data, magics)) {
+        problems <- c(problems, sprintf("%s: not a valid .%s file", oid, fmt))
+      }
+    }
+    problems
 }
 
 # Every reason the result is not demo-ready (empty = ready).

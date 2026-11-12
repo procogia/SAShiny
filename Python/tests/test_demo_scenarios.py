@@ -70,7 +70,12 @@ def _good_result(contract: sashiny.Contract) -> sashiny.Result:
             result.outputs[oid] = [{"level": "note", "text": "NOTE: ok"}]
         else:
             fmt = spec["format"]
-            data = b"a,b\n1,2\n" if fmt == "csv" else MAGIC[fmt] + b"rest"
+            if fmt == "csv":
+                data = b"a,b\n1,2\n"
+            else:
+                magic = MAGIC[fmt]
+                magic = magic[0] if isinstance(magic, tuple) else magic
+                data = magic + b"rest"
             result.outputs[oid] = {
                 "filename": f"{spec.get('filename', oid)}.{fmt}",
                 "mime": "x",
@@ -83,6 +88,21 @@ def _good_result(contract: sashiny.Contract) -> sashiny.Result:
 def test_checker_accepts_a_complete_result(scenario) -> None:  # type: ignore[no-untyped-def]
     contract = scenario.load()
     assert check_result(_good_result(contract), contract, scenario) == []
+
+
+def test_checker_accepts_a_v8_xpt_download() -> None:
+    scenario = next(s for s in SCENARIOS if s.id == "pharma")
+    contract = scenario.load()
+    result = _good_result(contract)
+    # Replace the pharma ae_xpt download with a v8 header (long member name).
+    v8 = b"HEADER RECORD*******LIBV8   HEADER RECORD"
+    result.outputs["ae_xpt"] = {
+        "filename": "ae_soc_pt.xpt",
+        "mime": "application/x-sas-transport",
+        "data": base64.b64encode(v8 + b"rest").decode(),
+    }
+    problems = check_result(result, contract, scenario)
+    assert not any("ae_xpt" in p for p in problems), problems
 
 
 def test_checker_reports_every_problem() -> None:
