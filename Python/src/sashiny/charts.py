@@ -174,7 +174,7 @@ def _render_plotnine(value: ChartValue, spec: ChartSpec) -> Any:
         if spec.get(field) is not None:
             mapping[aesthetic] = str(spec[field])
 
-    plot = ggplot(_frame(value), aes(**mapping)) + geoms[spec["kind"]]()
+    plot = ggplot(_frame(value), aes(**mapping)) + geoms[spec["kind"]]()  # type: ignore[no-untyped-call,operator]
     if spec.get("facet") is not None:
         plot += facet_wrap(spec["facet"])
 
@@ -201,10 +201,13 @@ def _render_matplotlib(value: ChartValue, spec: ChartSpec) -> Any:
     fig = Figure()
     ax = fig.subplots()
     if kind == "scatter":
+        assert ys is not None  # noqa: S101 - scatter requires y (spec §8.5)
         ax.scatter(xs, ys)
     elif kind == "line":
+        assert ys is not None  # noqa: S101 - line requires y (spec §8.5)
         ax.plot(xs, ys)
     elif kind == "bar":
+        assert ys is not None  # noqa: S101 - bar requires y (spec §8.5)
         ax.bar([str(v) for v in xs], ys)
     elif kind == "histogram":
         ax.hist([v for v in xs if not _missing(v)])
