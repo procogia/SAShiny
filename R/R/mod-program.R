@@ -446,6 +446,9 @@ sas_program_server <- function(id, contract, engine, server_override = NULL, ren
 #' Register the renderer for one output id.
 #' @noRd
 .sashiny_register_output <- function(output, oid, spec, result, render = NULL) {
+  # The caller passes render[[oid]] from a loop; force it now, or the lazy
+  # promise would be evaluated inside renderUI with the loop's last oid.
+  force(render)
   kind <- spec$type
   if (identical(kind, "download")) {
     value <- function() {
