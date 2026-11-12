@@ -1,0 +1,271 @@
+sashiny: 1
+program: arima_forecast.sas
+title: Pharmaceutical demand forecasting (ARIMA / SARIMA)
+description: >
+  Monthly prescription demand for three fictional products in three regions.
+  PROC ARIMA fits eight candidate ARIMA and seasonal ARIMA models on a training
+  window, scores them on a holdout window, refits the chosen model on all
+  months and forecasts ahead with prediction intervals. Requires SAS/ETS.
+version: "1.0"
+
+inputs:
+  rx_data:
+    type: dataset
+    label: Monthly prescriptions
+    help: >
+      One row per month, product and region. The sample is simulated (120 months,
+      3 products x 3 regions). Your own file needs the same columns and product
+      and region names.
+    target: work.rx_monthly
+    macro: rx_data
+    accept: [csv, xlsx, sas7bdat, xpt]
+    columns:
+      - {name: month, type: date}
+      - {name: product, type: character}
+      - {name: region, type: character}
+      - {name: prescriptions, type: numeric}
+    sample: data/demo_rx_monthly.csv
+  product:
+    type: choice
+    label: Product
+    choices: [Drug A, Drug B, Drug C]
+    default: Drug B
+    render: quoted
+  region:
+    type: choice
+    label: Region
+    choices: [West, Central, East]
+    default: West
+    render: quoted
+  period:
+    type: daterange
+    label: Months used
+    macro: [start_dt, end_dt]
+    min: "2000-01-01"
+    max: "2039-12-31"
+    default: ["2016-01-01", "2025-12-31"]
+  ma_window:
+    type: numeric
+    label: Moving-average window (months)
+    help: Trailing moving average drawn on the history chart.
+    min: 2
+    max: 24
+    step: 1
+    integer: true
+    default: 12
+  transform:
+    type: choice
+    label: Transformation
+    choices:
+      - {value: none, label: "None"}
+      - {value: log, label: "Log (growth and seasonality scale with the level)"}
+    default: none
+    widget: radio
+  final_model:
+    type: choice
+    label: Final model
+    help: >
+      Automatic picks the candidate with the lowest holdout error. Manual uses
+      the orders below. Any candidate can also be chosen directly.
+    choices:
+      - {value: best, label: "Automatic: best holdout score"}
+      - {value: custom, label: "Manual: orders below"}
+      - {value: m1, label: "M1 ARIMA(1,1,0)"}
+      - {value: m2, label: "M2 ARIMA(0,1,1)"}
+      - {value: m3, label: "M3 ARIMA(1,1,1)"}
+      - {value: m4, label: "M4 SARIMA(0,1,1)(0,1,1)[12]"}
+      - {value: m5, label: "M5 SARIMA(1,1,0)(0,1,1)[12]"}
+      - {value: m6, label: "M6 SARIMA(1,1,1)(0,1,1)[12]"}
+      - {value: m7, label: "M7 SARIMA(1,0,0)(0,1,1)[12]"}
+      - {value: m8, label: "M8 SARIMA(2,1,0)(1,1,0)[12]"}
+    default: best
+  ar_p:
+    type: numeric
+    label: "Manual p (AR order)"
+    help: Used only when Final model is Manual.
+    min: 0
+    max: 2
+    step: 1
+    integer: true
+    default: 0
+  diff_d:
+    type: numeric
+    label: "Manual d (differencing)"
+    min: 0
+    max: 1
+    step: 1
+    integer: true
+    default: 1
+  ma_q:
+    type: numeric
+    label: "Manual q (MA order)"
+    min: 0
+    max: 2
+    step: 1
+    integer: true
+    default: 1
+  sar_p:
+    type: numeric
+    label: "Manual P (seasonal AR, lag 12)"
+    min: 0
+    max: 1
+    step: 1
+    integer: true
+    default: 0
+  sdiff_d:
+    type: numeric
+    label: "Manual D (seasonal differencing)"
+    min: 0
+    max: 1
+    step: 1
+    integer: true
+    default: 1
+  sma_q:
+    type: numeric
+    label: "Manual Q (seasonal MA, lag 12)"
+    min: 0
+    max: 1
+    step: 1
+    integer: true
+    default: 1
+  holdout:
+    type: numeric
+    label: Holdout (months)
+    help: The last months are kept out of fitting and used to score the candidates.
+    min: 6
+    max: 24
+    step: 1
+    integer: true
+    default: 12
+  metric:
+    type: choice
+    label: Selection metric
+    choices:
+      - {value: rmse, label: "RMSE"}
+      - {value: mae, label: "MAE"}
+      - {value: wape, label: "WAPE"}
+    default: rmse
+    widget: radio
+  horizon:
+    type: numeric
+    label: Forecast horizon (months)
+    min: 3
+    max: 12
+    step: 1
+    integer: true
+    default: 6
+  conf_level:
+    type: numeric
+    label: Prediction interval (%)
+    min: 80
+    max: 99
+    step: 1
+    integer: true
+    default: 95
+
+outputs:
+  run_summary:
+    type: table
+    label: Run summary
+    from: work.run_status
+  history_plot:
+    type: plot
+    label: "Data: history and moving average"
+    select: 1
+  seasonal_plot:
+    type: plot
+    label: "Explore: seasonal profile"
+    select: 2
+  acf_plot:
+    type: plot
+    label: "Explore: ACF and PACF"
+    select: 3
+  comparison:
+    type: table
+    label: "Evaluation: candidate models"
+    help: Holdout errors are on the prescription scale. AIC and SBC compare models with the same differencing only.
+    from: work.model_comparison
+    formatted: true
+  comparison_plot:
+    type: plot
+    label: "Evaluation: holdout score by candidate"
+    select: 4
+  holdout_plot:
+    type: plot
+    label: "Evaluation: holdout forecasts versus actual"
+    select: 5
+  estimates:
+    type: table
+    label: "Model: final model parameter estimates"
+    from: work.estimates
+    formatted: true
+  white_noise:
+    type: table
+    label: "Diagnostics: residual white-noise test (Ljung-Box)"
+    from: work.white_noise
+    formatted: true
+  residual_plot:
+    type: plot
+    label: "Diagnostics: residuals over time"
+    select: 6
+  residual_acf_plot:
+    type: plot
+    label: "Diagnostics: residual ACF"
+    select: 7
+  residual_hist_plot:
+    type: plot
+    label: "Diagnostics: residual distribution"
+    select: 8
+  forecast_plot:
+    type: plot
+    label: "Forecast: history and forecast"
+    select: 9
+  forecast:
+    type: table
+    label: "Forecast: monthly values and prediction limits"
+    from: work.forecast
+    formatted: true
+  series:
+    type: table
+    label: "Data: series used"
+    from: work.series
+    formatted: true
+    max_rows: 600
+  log:
+    type: log
+    label: SAS log
+  forecast_csv:
+    type: download
+    label: Forecast (CSV)
+    format: csv
+    from: work.forecast
+    filename: forecast
+  comparison_csv:
+    type: download
+    label: Model comparison (CSV)
+    format: csv
+    from: work.model_comparison
+    filename: model_comparison
+  diagnostics_csv:
+    type: download
+    label: Fitted values and residuals (CSV)
+    format: csv
+    from: work.diagnostics
+    filename: diagnostics
+  data_csv:
+    type: download
+    label: Input data (CSV)
+    format: csv
+    from: work.rx_monthly
+    filename: demo_rx_monthly
+
+run:
+  entry: macro
+  macro: arima_forecast
+  timeout_seconds: 300
+
+ui:
+  order: [rx_data, product, region, period, ma_window, transform, final_model,
+          ar_p, diff_d, ma_q, sar_p, sdiff_d, sma_q, holdout, metric, horizon,
+          conf_level]
+  run_label: Build and compare models

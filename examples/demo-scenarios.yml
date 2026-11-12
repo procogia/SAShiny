@@ -60,6 +60,33 @@ scenarios:
       tables: {atl_btl: {min_rows: 1}, alerts: {min_rows: 1}}
       plots: {atl_btl_plot: 1}
 
+  - id: forecasting
+    title: Forecasting - ARIMA / SARIMA model comparison
+    contract: forecasting/arima_forecast.sashiny.yml
+    primary: true
+    values:
+      product: Drug B
+      region: West
+      period: ["2016-01-01", "2025-12-31"]
+      ma_window: 12
+      transform: none
+      final_model: best
+      ar_p: 0
+      diff_d: 1
+      ma_q: 1
+      sar_p: 0
+      sdiff_d: 1
+      sma_q: 1
+      holdout: 12
+      metric: rmse
+      horizon: 6
+      conf_level: 95
+    uploads: {rx_data: sample}
+    expect:
+      status: success
+      tables: {run_summary: {min_rows: 1}, comparison: {min_rows: 1}, forecast: {min_rows: 1}, estimates: {min_rows: 1}}
+      plots: {history_plot: 1, seasonal_plot: 1, acf_plot: 1, comparison_plot: 1, holdout_plot: 1, residual_plot: 1, residual_acf_plot: 1, residual_hist_plot: 1, forecast_plot: 1}
+
   # Optional on-stage variations: one changed input per track.
   - id: general-msrp-40000
     title: General - minimum MSRP 40000
@@ -104,3 +131,30 @@ scenarios:
       status: success
       tables: {atl_btl: {min_rows: 1}}
       plots: {atl_btl_plot: 1}
+
+  - id: forecasting-manual-log
+    title: Forecasting - manual SARIMA(1,1,1)(0,1,1) on the log scale, Drug A East
+    contract: forecasting/arima_forecast.sashiny.yml
+    primary: false
+    values:
+      product: Drug A
+      region: East
+      period: ["2016-01-01", "2025-12-31"]
+      ma_window: 12
+      transform: log
+      final_model: custom
+      ar_p: 1
+      diff_d: 1
+      ma_q: 1
+      sar_p: 0
+      sdiff_d: 1
+      sma_q: 1
+      holdout: 12
+      metric: rmse
+      horizon: 12
+      conf_level: 90
+    uploads: {rx_data: sample}
+    expect:
+      status: success
+      tables: {comparison: {min_rows: 1}, forecast: {min_rows: 1}}
+      plots: {forecast_plot: 1}
