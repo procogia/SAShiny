@@ -7,6 +7,7 @@ endorsed by either company.
 
 from typing import Any
 
+from .charts import chart_backends, render_chart
 from .contract import Contract, Issue, load, validate
 from .engines import Engine, MockEngine, SaspyEngine, connect, load_profiles
 from .lint import lint
@@ -32,11 +33,13 @@ __all__ = [
     "UploadFile",
     "__version__",
     "app",
+    "chart_backends",
     "connect",
     "lint",
     "load",
     "load_profiles",
     "load_recording",
+    "render_chart",
     "render_values",
     "reset_code",
     "run",

@@ -9,6 +9,7 @@ half can be replaced with a custom function.
 from __future__ import annotations
 
 import base64
+import io
 from collections.abc import Callable, Iterator
 from datetime import date
 from pathlib import Path
@@ -227,6 +228,38 @@ def plot_tag(value: list[dict[str, str]]) -> TagChild:
     )
 
 
+def chart_tag(value: dict[str, Any], spec: dict[str, Any] | None) -> TagChild:
+    """Render a §8.1 chart value with the client-side graphics engine."""
+    if not value or not value.get("rows"):
+        return ui.tags.small("No data for this chart.")
+    try:
+        from .charts import render_chart  # noqa: PLC0415 - avoid import cycle
+
+        backend = spec.get("backend", "plotnine") if spec else "plotnine"
+        plot = render_chart(value, (spec or {}).get("spec"), backend=backend)
+        png = _plot_to_png(plot, backend)
+        return ui.img(src=f"data:image/png;base64,{png}", style="max-width: 100%;")
+    except Exception as exc:
+        return ui.tags.small(f"Could not render this chart: {exc}")
+
+
+def _plot_to_png(plot: Any, backend: str) -> str:
+    """Serialize a plot object to a base64 PNG."""
+    if backend == "plotly":
+        import plotly.io as pio  # noqa: PLC0415 - optional dependency
+
+        data = pio.to_image(plot, format="png")
+        return base64.b64encode(data).decode("ascii")
+
+    buf = io.BytesIO()
+    if backend == "plotnine":
+        plot.save(buf, format="png")
+    else:
+        plot.savefig(buf, format="png")
+    buf.seek(0)
+    return base64.b64encode(buf.read()).decode("ascii")
+
+
 def html_tag(value: str) -> TagChild:
     """Render the ODS HTML document in a sandboxed frame (no scripts)."""
     if not value:
@@ -388,7 +421,7 @@ def program_server(  # noqa: PLR0913, PLR0917 - Shiny module signature + overrid
         if spec["type"] == "download":
             _register_download(output, oid, result)
         else:
-            _register_card(output, oid, spec["type"], result)
+            _register_card(output, oid, spec, result)
 
     return {
         "result": result,
@@ -397,7 +430,11 @@ def program_server(  # noqa: PLR0913, PLR0917 - Shiny module signature + overrid
     }
 
 
-def _register_card(output: Outputs, oid: str, kind: str, result: Callable[[], Result]) -> None:
+def _register_card(
+    output: Outputs, oid: str, spec: dict[str, Any], result: Callable[[], Result]
+) -> None:
+    kind = spec["type"]
+
     @output(id=f"out_{oid}")
     @render.ui
     def _card() -> TagChild:
@@ -405,6 +442,8 @@ def _register_card(output: Outputs, oid: str, kind: str, result: Callable[[], Re
         if oid not in res.outputs:
             return ui.tags.small("No output for this run.")
         value = res.outputs[oid]
+        if kind == "chart":
+            return _error_tag(value) or chart_tag(value, spec)
         return _error_tag(value) or _RENDERERS[kind](value)
 
 

@@ -34,9 +34,11 @@ Imports:
     yaml
 Suggests:
     bslib,
+    ggplot2,
     haven,
     knitr,
     openxlsx,
+    plotly,
     reticulate,
     rlang,
     rmarkdown,

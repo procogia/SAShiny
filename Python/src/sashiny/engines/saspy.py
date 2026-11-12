@@ -562,6 +562,13 @@ class SaspyEngine(Engine):
                 int(spec.get("max_rows", 10000)),
                 formatted=bool(spec.get("formatted", False)),
             )
+        if kind == "chart":
+            return self._table(
+                spec["from"],
+                spec.get("columns"),
+                int(spec.get("max_rows", 10000)),
+                formatted=False,
+            )
         if kind == "plot":
             return extract_plots(html, spec.get("select"))
         if kind == "html":

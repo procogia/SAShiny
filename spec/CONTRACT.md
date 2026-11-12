@@ -79,6 +79,7 @@ only (see 6.4).
 |---|---|---|
 | `table` | dataset after the run | `from` (`lib.member`), `columns`, `max_rows` (10000), `formatted` (false) |
 | `plot` | ODS graphics of the run | `select` (1-based position; omit for all) |
+| `chart` | dataset after the run, rendered client-side | `from` (`lib.member`), `columns`, `max_rows` (10000), `spec` or `render` |
 | `html` | full ODS HTML listing | — |
 | `log` | SAS log | `scope`: `program` (default) or `full` |
 | `download` | file | `format`: `csv`, `xlsx`, `xpt`, `sas7bdat` (need `from`); `rtf`, `pdf` (ODS, no `from`); `filename` |
@@ -358,6 +359,7 @@ recordings store it (8.3), so R and Python see identical data.
 |---|---|
 | `table` | `{"columns": [{"name", "type", "label", "format"}], "rows": [[...], ...], "total_rows": int or null, "truncated": bool, "formatted": bool}` |
 | `plot` | `[{"mime": "image/png" \| "image/svg+xml" \| "image/jpeg" \| "image/gif", "data": "<base64>"}, ...]` |
+| `chart` | The same shape as `table`: `{"columns": [...], "rows": [[...], ...], "total_rows": int or null, "truncated": bool, "formatted": bool}` |
 | `html` | The ODS HTML document of the main submission, as a string |
 | `log` | `[{"level": "error" \| "warning" \| "note" \| "text", "text": "<line>"}, ...]` |
 | `download` | `{"filename": "<name>.<ext>", "mime": "<type>", "data": "<base64>"}` |
@@ -412,6 +414,11 @@ Temporary members (`work._sx_*`) are deleted after use.
 base64-encoded with mime `image/svg+xml`. With `select: k` the value is a one-item list. If fewer than
 `k` images exist, collection fails for that output.
 
+**chart**: Read the dataset exactly like a `table` (the same column-metadata and row-read steps above),
+and return the same value shape. The chart is rendered client-side by the Shiny module from this data;
+SAS produces no image. `spec` (declarative) or `render` (a per-language callback) describes the chart
+(see 8.5).
+
 **html**: The ODS HTML listing returned by the main submission.
 
 **log**: Split the main-submission log on line breaks (`CRLF`, `CR` or `LF`). If the log ends with a line
@@ -463,6 +470,35 @@ status `success` with empty outputs and sets `metadata.recording` to `"missing"`
 Every result carries run metadata: `run_id`, `contract_sha256` (of the YAML bytes), `program_sha256`
 (of the program file bytes as stored on disk), rendered macro values, start/end timestamps (UTC, ISO 8601),
 engine name and version, SAS version (`&SYSVLONG`), status, and `collect_errors` (list, possibly empty).
+
+### 8.5 Chart spec (client-side rendering)
+
+A `chart` output is rendered by the Shiny module, not by SAS. Exactly one of `spec` or `render` is
+given.
+
+**`spec` (declarative)** — a mapping with these fields:
+
+| Field | Required | Meaning |
+|---|---|---|
+| `kind` | yes | `scatter`, `line`, `bar`, `histogram` or `box` |
+| `x` | yes | column mapped to the x axis (or the single variable for `histogram`) |
+| `y` | no | column mapped to the y axis (required for `scatter`, `line`, `bar`, `box`) |
+| `color` | no | column mapped to colour |
+| `fill` | no | column mapped to fill |
+| `facet` | no | column mapped to a facet |
+| `title` | no | chart title |
+| `subtitle` | no | chart subtitle |
+| `xlab` | no | x-axis label (defaults to the column name) |
+| `ylab` | no | y-axis label (defaults to the column name) |
+
+Column names are matched case-insensitively against the collected columns. An unknown column is a
+collection error. The exact visual output is backend-specific; the data and the mapping are the
+portable contract.
+
+**`render` (callback)** — a per-language extension, not part of the cross-language fixtures. In R it is
+a function `function(value, spec, ...)` returning a plot object; in Python it is a callable
+`(value, spec) -> object`. The Shiny module calls it with the collected chart value and the output's
+`spec` mapping (or `None`/`NULL` when absent).
 
 ---
 

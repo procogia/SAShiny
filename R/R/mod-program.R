@@ -226,7 +226,7 @@
 
 #' Render one output value (or its collection error).
 #' @noRd
-.sashiny_output_tag <- function(kind, value) {
+.sashiny_output_tag <- function(kind, value, spec = NULL) {
   if (is.list(value) && !is.null(value$error) && length(value) == 1L) {
     message <- paste("Could not collect this output:", value$error)
     return(shiny::tags$div(class = "text-danger", message))
@@ -234,9 +234,48 @@
   switch(kind,
     table = .sashiny_table_tag(value),
     plot = .sashiny_plot_tag(value),
+    chart = .sashiny_chart_tag(value, spec),
     html = .sashiny_html_tag(value),
     log = .sashiny_log_tag(value)
   )
+}
+
+#' Render a section 8.1 chart value with the client-side graphics engine.
+#' @noRd
+.sashiny_chart_tag <- function(value, spec) {
+  if (is.null(value) || length(value$rows %||% list()) == 0L) {
+    return(shiny::tags$small("No data for this chart."))
+  }
+  png <- tryCatch(
+    {
+      backend <- spec$backend %||% "ggplot2"
+      plot <- sas_render_chart(value, spec$spec, backend = backend)
+      if (identical(backend, "base")) plot else .sashiny_plot_png(plot, backend)
+    },
+    error = function(e) NULL
+  )
+  if (is.null(png)) {
+    return(shiny::tags$small("Could not render this chart."))
+  }
+  shiny::tags$img(src = sprintf("data:image/png;base64,%s", png), style = "max-width: 100%;")
+}
+
+#' Serialize a plot object to a base64 PNG.
+#' @noRd
+.sashiny_plot_png <- function(plot, backend) {
+  if (identical(backend, "plotly")) {
+    rlang::check_installed("plotly", reason = "to render charts with plotly")
+    tmp <- tempfile(fileext = ".png")
+    plotly::save_image(plot, tmp)
+    on.exit(unlink(tmp), add = TRUE)
+    return(openssl::base64_encode(readBin(tmp, "raw", n = file.info(tmp)$size)))
+  }
+  tmp <- tempfile(fileext = ".png")
+  grDevices::png(tmp, width = 800, height = 600)
+  print(plot)
+  grDevices::dev.off()
+  on.exit(unlink(tmp), add = TRUE)
+  openssl::base64_encode(readBin(tmp, "raw", n = file.info(tmp)$size))
 }
 
 #' A card (bslib when installed, otherwise a panel).
@@ -353,7 +392,7 @@ sas_program_server <- function(id, contract, engine, server_override = NULL) {
     })
 
     for (oid in names(contract$data$outputs)) {
-      .sashiny_register_output(output, oid, contract$data$outputs[[oid]]$type, result)
+          .sashiny_register_output(output, oid, contract$data$outputs[[oid]], result)
     }
 
     list(
@@ -387,7 +426,8 @@ sas_program_server <- function(id, contract, engine, server_override = NULL) {
 
 #' Register the renderer for one output id.
 #' @noRd
-.sashiny_register_output <- function(output, oid, kind, result) {
+.sashiny_register_output <- function(output, oid, spec, result) {
+  kind <- spec$type
   if (identical(kind, "download")) {
     value <- function() {
       v <- result()$outputs[[oid]]
@@ -406,7 +446,7 @@ sas_program_server <- function(id, contract, engine, server_override = NULL) {
     if (!(oid %in% names(outputs))) {
       return(shiny::tags$small("No output for this run."))
     }
-    .sashiny_output_tag(kind, outputs[[oid]])
+      .sashiny_output_tag(kind, outputs[[oid]], spec)
   })
   invisible(NULL)
 }

@@ -14,6 +14,14 @@ outputs:
     select: 1
   all_plots:
     type: plot
+  scatter:
+    type: chart
+    label: MPG vs HP
+    from: work.stats
+    spec:
+      kind: scatter
+      x: origin
+      y: mean_msrp
   report:
     type: html
   log:
