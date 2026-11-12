@@ -113,8 +113,10 @@ cd Python && uv run ruff check . && uv run ruff format --check . && uv run mypy 
   empty-table fixes (issue #17).
 - The 0.1.0 submission was auto-processed and was "pending a manual inspection"
   (CRAN email 12:32 PT); the 0.1.1 resubmission replaces it.
-- **Resubmitted** SAShiny 0.1.2 (source commit `dd4eb54`) to supersede 0.1.1.
-  0.1.2 adds the client-side `chart` output type (spec §8.5): SAS produces only
+- **Prepared** SAShiny 0.1.2 to supersede 0.1.1. As of 2026-11-12 CRAN's
+  incoming queue holds only 0.1.1 (`newbies`), so 0.1.2 has not been received;
+  submit it from `main` after the chart-backend fixes (#18, #20, #21) are
+  merged. 0.1.2 adds the client-side `chart` output type (spec §8.5): SAS produces only
   the data, and the Shiny module renders the plot client-side via a declarative
   `spec` or a per-language `render` callback (ggplot2 / base / plotly in R;
   plotnine / matplotlib / plotly in Python).
