@@ -5,11 +5,13 @@
   locally.
 * GitHub Actions: ubuntu (R devel, release, oldrel-1, 4.1), macOS (release) and
   Windows (release): all pass.
-* R-hub: Linux, Windows, macOS, `clang-asan` and `nosuggests` (R-devel):
-  `Status: OK`.
-* macOS builder, R-release (arm64): Status: OK, 0 errors, 0 warnings, 0 notes.
-* win-builder, R-release (4.6.2) and R-oldrelease (4.5.3): 1 note.
-* win-builder, R-devel: see the note below.
+* macOS builder, R-release (arm64): Status: OK, 0 errors, 0 warnings, 0 notes
+  (0.1.4, 2026-11-12).
+* win-builder, R-devel, R-release and R-oldrelease: submitted for 0.1.4 on
+  2026-11-12; results arrive by email to the maintainer.
+* R-hub: not re-run for 0.1.4 (the `RHUB_TOKEN` secret is not configured in the
+  repository). The 0.1.1-era R-hub results (Linux, Windows, macOS, clang-asan,
+  nosuggests) were `Status: OK`.
 
 ## R CMD check results
 
@@ -23,20 +25,6 @@
   skipped otherwise.
 * "Possibly misspelled words in DESCRIPTION: PBC". This is the correct legal
   suffix in 'Posit Software, PBC', used in the trademark statement.
-
-## win-builder R-devel
-
-Recent win-builder R-devel runs reported
-`Files named as vignettes but with no recognized vignette engine:
-'inst/doc/getting-started.Rmd'`. The package contains no `.Rmd` file: the
-vignette is `vignettes/getting-started.Rhtml`, built with `knitr::knitr`, and
-the built tarball ships only the `.Rhtml`, `.R` and `.html` files. The same
-tarball passes on win-builder R-release and R-oldrelease, on R-hub Windows,
-Linux, macOS and `nosuggests` with R-devel, and on the macOS builder. An earlier
-win-builder R-devel run on the previous `.Rmd` version of the vignette passed.
-We believe the message comes from stale state on the win-builder R-devel
-machine, and we would appreciate it if the CRAN team could confirm on their own
-R-devel.
 
 ## Downstream dependencies
 
