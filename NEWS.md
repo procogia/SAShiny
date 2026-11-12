@@ -9,6 +9,25 @@
   graphics and `plotly` in R; `plotnine`, `matplotlib` and `plotly` in Python.
   The existing `plot` (ODS graphics) type is unchanged.
 
+## Chart backend fixes
+
+* The `ggplot2` (default) and `plotly` backends now build a data frame from the
+  collected value before plotting; they previously failed for every chart
+  kind (#18).
+* Spec column names (`x`, `y`, `color`, `fill`, `facet`) are resolved
+  case-insensitively to the collected SAS column names, as spec §8.5
+  requires, for every backend. A histogram ignores `y`. SAS missing values
+  become `NA`.
+* The `base` backend now draws on its own null device, so charts render when
+  R runs headless (Rscript, Shiny Server, Posit Connect, Docker). It
+  previously produced no image outside RStudio (#20). Rendering no longer
+  leaves an `Rplots.pdf` device open.
+* In the Shiny module, `plotly` charts are shown as interactive plotly
+  widgets, so no static-image export (`kaleido`) is needed. `ggplot2` and base
+  charts are drawn at 1200 x 900 pixels (8 x 6 in at 150 dpi).
+* When a chart cannot be rendered, the module now shows the reason and logs
+  it with `message()` (#21).
+
 # SAShiny 0.1.1
 
 ## Wrapper quoting fix

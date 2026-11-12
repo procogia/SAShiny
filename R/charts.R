@@ -33,6 +33,60 @@
   if (is.null(col$label) || !nzchar(col$label)) col$name else col$label
 }
 
+#' The chart kinds of spec section 8.5
+#' @noRd
+.sashiny_chart_kinds <- c("scatter", "line", "bar", "histogram", "box")
+
+#' The spec fields that name a column (spec section 8.5)
+#' @noRd
+.sashiny_chart_fields <- c("x", "y", "color", "fill", "facet")
+
+#' Validate a chart spec and resolve its column names
+#'
+#' Checks the kind, then replaces each column field (`x`, `y`, `color`,
+#' `fill`, `facet`) with the collected column's own name, matched
+#' case-insensitively (spec section 8.5). An unknown column is an error.
+#' @noRd
+.sashiny_chart_resolve <- function(value, spec) {
+  kind <- spec$kind %||% ""
+  if (!kind %in% .sashiny_chart_kinds) {
+    stop(sprintf("unknown chart kind '%s'", kind), call. = FALSE)
+  }
+  for (field in .sashiny_chart_fields) {
+    if (!is.null(spec[[field]])) {
+      spec[[field]] <- value$columns[[.sashiny_chart_col(value, spec[[field]])]]$name
+    }
+  }
+  spec
+}
+
+#' A chart value as a data frame
+#'
+#' One column per collected column, in order and under its own name. Numeric
+#' columns of an unformatted value become numeric vectors with SAS missing
+#' (`NULL`) as `NA`; every other column becomes a character vector.
+#' @noRd
+.sashiny_chart_frame <- function(value) {
+  cols <- value$columns %||% list()
+  rows <- value$rows %||% list()
+  numeric_ok <- !isTRUE(value$formatted)
+  out <- lapply(seq_along(cols), function(i) {
+    cells <- lapply(rows, function(row) {
+      cell <- row[[i]]
+      if (is.null(cell)) NA else cell
+    })
+    cells <- unlist(cells, use.names = FALSE)
+    if (is.null(cells)) cells <- logical(0)
+    if (numeric_ok && identical(cols[[i]]$type, "numeric")) {
+      suppressWarnings(as.numeric(cells))
+    } else {
+      as.character(cells)
+    }
+  })
+  names(out) <- vapply(cols, function(col) col$name, character(1))
+  as.data.frame(out, stringsAsFactors = FALSE, check.names = FALSE, optional = TRUE)
+}
+
 #' Render a chart value to a plot object
 #'
 #' @param value The collected chart value (spec section 8.1 table shape).
@@ -40,7 +94,8 @@
 #' @param backend One of `"ggplot2"`, `"base"` or `"plotly"`.
 #' @param render An optional user callback `function(value, spec, ...)` that
 #'   takes precedence over the declarative spec.
-#' @return A plot object for the chosen backend.
+#' @return A plot object for the chosen backend: a `ggplot`, a
+#'   `recordedplot` (base graphics) or a `plotly` htmlwidget.
 #' @export
 sas_render_chart <- function(value, spec = NULL, backend = "ggplot2", render = NULL) {
   if (!is.null(render)) {
@@ -49,19 +104,19 @@ sas_render_chart <- function(value, spec = NULL, backend = "ggplot2", render = N
   if (is.null(spec)) {
     stop("chart has no spec and no render callback", call. = FALSE)
   }
-  if (identical(backend, "ggplot2")) {
-    return(.sashiny_chart_ggplot2(value, spec))
+  if (!backend %in% c("ggplot2", "base", "plotly")) {
+    stop(sprintf("unknown chart backend '%s'", backend), call. = FALSE)
   }
-  if (identical(backend, "base")) {
-    return(.sashiny_chart_base(value, spec))
-  }
-  if (identical(backend, "plotly")) {
-    return(.sashiny_chart_plotly(value, spec))
-  }
-  stop(sprintf("unknown chart backend '%s'", backend), call. = FALSE)
+  spec <- .sashiny_chart_resolve(value, spec)
+  switch(backend,
+    ggplot2 = .sashiny_chart_ggplot2(value, spec),
+    base = .sashiny_chart_base(value, spec),
+    plotly = .sashiny_chart_plotly(value, spec)
+  )
 }
 
 #' Which optional chart backends are installed
+#' @return A named logical vector: `ggplot2`, `plotly` and `base`.
 #' @export
 sas_chart_backends <- function() {
   c(
@@ -71,86 +126,105 @@ sas_chart_backends <- function() {
   )
 }
 
+#' Stop unless an optional backend package is installed
+#' @noRd
+.sashiny_chart_need <- function(pkg) {
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    stop(
+      sprintf(
+        "the '%s' package is needed to render this chart; install it with install.packages(\"%s\")",
+        pkg, pkg
+      ),
+      call. = FALSE
+    )
+  }
+}
+
 #' Render with ggplot2
 #' @noRd
 .sashiny_chart_ggplot2 <- function(value, spec) {
-  rlang::check_installed("ggplot2", reason = "to render charts with ggplot2")
-  kind <- spec$kind
-  x <- spec$x
-  y <- spec$y
-  mapping <- ggplot2::aes(x = rlang::.data[[x]])
-  if (!is.null(y)) {
-    mapping <- ggplot2::aes(x = rlang::.data[[x]], y = rlang::.data[[y]])
-  }
-  if (!is.null(spec$color)) {
-    mapping$colour <- rlang::sym(spec$color)
-  }
-  if (!is.null(spec$fill)) {
-    mapping$fill <- rlang::sym(spec$fill)
-  }
-  plot <- ggplot2::ggplot(value, mapping)
-  plot <- plot + switch(kind,
+  .sashiny_chart_need("ggplot2")
+  data <- .sashiny_chart_frame(value)
+  .data <- ggplot2::.data
+  mapping <- ggplot2::aes(x = .data[[spec$x]])
+  if (!is.null(spec$y) && spec$kind != "histogram") mapping$y <- ggplot2::aes(y = .data[[spec$y]])$y
+  if (!is.null(spec$color)) mapping$colour <- ggplot2::aes(colour = .data[[spec$color]])$colour
+  if (!is.null(spec$fill)) mapping$fill <- ggplot2::aes(fill = .data[[spec$fill]])$fill
+  plot <- ggplot2::ggplot(data, mapping) + switch(spec$kind,
     scatter = ggplot2::geom_point(),
     line = ggplot2::geom_line(),
-    bar = ggplot2::geom_bar(stat = "identity"),
-    histogram = ggplot2::geom_histogram(),
-    box = ggplot2::geom_boxplot(),
-    stop(sprintf("unknown chart kind '%s'", kind), call. = FALSE)
+    bar = ggplot2::geom_col(),
+    histogram = ggplot2::geom_histogram(bins = 30L),
+    box = ggplot2::geom_boxplot()
   )
   if (!is.null(spec$facet)) {
-    plot <- plot + ggplot2::facet_wrap(stats::as.formula(paste0("~", spec$facet)))
+    plot <- plot + ggplot2::facet_wrap(ggplot2::vars(.data[[spec$facet]]))
   }
-  labels <- list()
-  if (!is.null(spec$title)) labels$title <- spec$title
-  if (!is.null(spec$subtitle)) labels$subtitle <- spec$subtitle
-  if (!is.null(spec$xlab)) labels$x <- spec$xlab
-  if (!is.null(spec$ylab)) labels$y <- spec$ylab
-  if (length(labels)) {
-    plot <- plot + do.call(ggplot2::labs, labels)
-  }
-  plot
+  plot + ggplot2::labs(
+    title = spec$title, subtitle = spec$subtitle,
+    x = spec$xlab %||% spec$x,
+    y = spec$ylab %||% (if (spec$kind == "histogram") NULL else spec$y) %||% ggplot2::waiver()
+  )
 }
 
 #' Render with base R graphics
+#'
+#' Draws on a private null device with its display list enabled, so the
+#' recorded plot replays on any device. The current device of a headless R
+#' session (`pdf`) records nothing, so it is not used.
 #' @noRd
 .sashiny_chart_base <- function(value, spec) {
-  kind <- spec$kind
-  x <- spec$x
-  y <- spec$y
-  xs <- unlist(.sashiny_chart_series(value, x), use.names = FALSE)
-  ys <- if (is.null(y)) NULL else unlist(.sashiny_chart_series(value, y), use.names = FALSE)
-  switch(kind,
-    scatter = graphics::plot(xs, ys),
-    line = graphics::plot(xs, ys, type = "l"),
-    bar = graphics::barplot(as.numeric(ys), names.arg = xs),
-    histogram = graphics::hist(as.numeric(xs)),
-    box = graphics::boxplot(as.numeric(ys)),
-    stop(sprintf("unknown chart kind '%s'", kind), call. = FALSE)
+  data <- .sashiny_chart_frame(value)
+  xs <- data[[spec$x]]
+  ys <- if (is.null(spec$y)) NULL else data[[spec$y]]
+  xlab <- spec$xlab %||% spec$x
+  ylab <- spec$ylab %||% spec$y %||% ""
+  previous <- grDevices::dev.cur()
+  grDevices::pdf(NULL)
+  device <- grDevices::dev.cur()
+  on.exit(
+    {
+      grDevices::dev.off(device)
+      if (previous > 1L) grDevices::dev.set(previous)
+    },
+    add = TRUE
   )
-  if (!is.null(spec$title)) {
-    graphics::title(main = spec$title)
-  }
-  invisible(grDevices::recordPlot())
+  grDevices::dev.control("enable")
+  switch(spec$kind,
+    scatter = graphics::plot(xs, ys, xlab = xlab, ylab = ylab),
+    line = graphics::plot(xs, ys, type = "l", xlab = xlab, ylab = ylab),
+    bar = graphics::barplot(as.numeric(ys), names.arg = xs, xlab = xlab, ylab = ylab),
+    histogram = graphics::hist(as.numeric(xs), main = "", xlab = xlab),
+    box = if (is.null(ys)) {
+      graphics::boxplot(as.numeric(xs), xlab = xlab)
+    } else {
+      graphics::boxplot(as.numeric(ys) ~ xs, xlab = xlab, ylab = ylab)
+    }
+  )
+  graphics::title(main = spec$title %||% "", sub = spec$subtitle %||% "")
+  grDevices::recordPlot()
 }
 
 #' Render with plotly
 #' @noRd
 .sashiny_chart_plotly <- function(value, spec) {
-  rlang::check_installed("plotly", reason = "to render charts with plotly")
-  kind <- spec$kind
-  x <- spec$x
-  y <- spec$y
-  color <- spec$color
-  fig <- switch(kind,
-    scatter = plotly::plot_ly(value, x = ~.data[[x]], y = ~.data[[y]], color = color, type = "scatter", mode = "markers"),
-    line = plotly::plot_ly(value, x = ~.data[[x]], y = ~.data[[y]], color = color, type = "scatter", mode = "lines"),
-    bar = plotly::plot_ly(value, x = ~.data[[x]], y = ~.data[[y]], color = color, type = "bar"),
-    histogram = plotly::plot_ly(value, x = ~.data[[x]], color = color, type = "histogram"),
-    box = plotly::plot_ly(value, x = ~.data[[x]], y = ~.data[[y]], color = color, type = "box"),
-    stop(sprintf("unknown chart kind '%s'", kind), call. = FALSE)
+  .sashiny_chart_need("plotly")
+  data <- .sashiny_chart_frame(value)
+  col <- function(name) stats::as.formula(paste0("~`", name, "`"))
+  args <- list(data, x = col(spec$x))
+  if (!is.null(spec$y) && spec$kind != "histogram") args$y <- col(spec$y)
+  if (!is.null(spec$color)) args$color <- col(spec$color)
+  args <- c(args, switch(spec$kind,
+    scatter = list(type = "scatter", mode = "markers"),
+    line = list(type = "scatter", mode = "lines"),
+    bar = list(type = "bar"),
+    histogram = list(type = "histogram"),
+    box = list(type = "box")
+  ))
+  fig <- do.call(plotly::plot_ly, args)
+  plotly::layout(fig,
+    title = spec$title %||% "",
+    xaxis = list(title = spec$xlab %||% spec$x),
+    yaxis = list(title = spec$ylab %||% (if (spec$kind == "histogram") NULL else spec$y) %||% "")
   )
-  if (!is.null(spec$title)) {
-    fig <- plotly::layout(fig, title = spec$title)
-  }
-  fig
 }

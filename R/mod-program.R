@@ -243,7 +243,9 @@
 #' Render a section 8.1 chart value with the client-side graphics engine.
 #'
 #' Follows the `shiny::renderPlot` pattern: a render callback (or a declarative
-#' spec) produces a plot object, which is serialised to a base64 PNG.
+#' spec) produces a plot object. `plotly` widgets are returned as interactive
+#' widgets (`renderUI` serves their HTML dependencies); other plots are
+#' serialised to a base64 PNG.
 #' @noRd
 .sashiny_chart_tag <- function(value, spec, render = NULL) {
   if (is.null(value) || length(value$rows %||% list()) == 0L) {
@@ -251,42 +253,44 @@
   }
   chart_spec <- spec$spec %||% NULL
   backend <- chart_spec$backend %||% "ggplot2"
-  png <- tryCatch(
+  out <- tryCatch(
     {
       plot <- sas_render_chart(value, chart_spec, backend = backend, render = render)
-      .sashiny_plot_png(plot, backend)
+      if (inherits(plot, "plotly")) plot else .sashiny_plot_png(plot)
     },
-    error = function(e) NULL
+    error = function(e) e
   )
-  if (is.null(png)) {
-    return(shiny::tags$small("Could not render this chart."))
+  if (inherits(out, "error")) {
+    reason <- conditionMessage(out)
+    message("SAShiny: could not render chart: ", reason)
+    return(shiny::tags$small(paste0("Could not render this chart: ", reason)))
   }
-  shiny::tags$img(src = sprintf("data:image/png;base64,%s", png), style = "max-width: 100%;")
+  if (inherits(out, "plotly")) {
+    return(shiny::tagList(out))
+  }
+  shiny::tags$img(src = sprintf("data:image/png;base64,%s", out), style = "max-width: 100%;")
 }
 
 #' Serialize a plot object to a base64 PNG.
 #'
-#' Mirrors `shiny::plotPNG` for the three chart backends: `plotly` objects are
-#' saved with `plotly::save_image`, `base` recorded plots are replayed, and
-#' `ggplot2` objects are printed to a PNG device.
+#' Mirrors `shiny::plotPNG`, choosing the method from the plot object so that
+#' render callbacks may return either: recorded base plots are replayed, and
+#' anything else (`ggplot` objects) is printed. Charts are drawn at 8 x 6
+#' inches and 150 dpi (1200 x 900 pixels), the same as the Python module, so
+#' they stay sharp when a card scales them to its width.
 #' @noRd
-.sashiny_plot_png <- function(plot, backend) {
-  if (identical(backend, "plotly")) {
-    rlang::check_installed("plotly", reason = "to render charts with plotly")
-    tmp <- tempfile(fileext = ".png")
-    plotly::save_image(plot, tmp)
-    on.exit(unlink(tmp), add = TRUE)
-    return(openssl::base64_encode(readBin(tmp, "raw", n = file.info(tmp)$size)))
-  }
+.sashiny_plot_png <- function(plot) {
   tmp <- tempfile(fileext = ".png")
-  grDevices::png(tmp, width = 800, height = 600)
-  if (identical(backend, "base")) {
-    grDevices::replayPlot(plot)
-  } else {
-    print(plot)
-  }
-  grDevices::dev.off()
   on.exit(unlink(tmp), add = TRUE)
+  grDevices::png(tmp, width = 1200, height = 900, res = 150)
+  device <- grDevices::dev.cur()
+  tryCatch(
+    if (inherits(plot, "recordedplot")) grDevices::replayPlot(plot) else print(plot),
+    finally = grDevices::dev.off(device)
+  )
+  if (!file.exists(tmp) || file.info(tmp)$size == 0) {
+    stop("the chart produced no image", call. = FALSE)
+  }
   openssl::base64_encode(readBin(tmp, "raw", n = file.info(tmp)$size))
 }
 
