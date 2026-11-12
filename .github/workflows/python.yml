@@ -38,3 +38,24 @@ jobs:
       - run: uv run pytest --cov=sashiny --cov-report=term-missing
       - run: uv build
       - run: uvx twine check dist/*
+
+  # The chart backends are optional extras, so the main job skips their tests.
+  # This job installs every extra and runs the chart tests, so a broken
+  # backend fails CI instead of being skipped.
+  charts:
+    runs-on: ubuntu-latest
+    name: chart backends (all extras)
+    defaults:
+      run:
+        working-directory: Python
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - run: uv sync --locked --all-extras
+      - run: >-
+          uv run python -c "from sashiny import chart_backends;
+          b = chart_backends(); print(b); assert all(b.values()), b"
+      - run: uv run pytest tests/test_charts.py -v -rs
