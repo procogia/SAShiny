@@ -11,6 +11,10 @@
 
 ## Chart backend fixes
 
+* `sas_program_server(render = )` now gives each `chart` output its own
+  callback. Previously every chart received the callback of the contract's
+  last output id (usually none), so callback-drawn charts showed "Could not
+  render this chart: chart has no spec and no render callback".
 * The `ggplot2` (default) and `plotly` backends now build a data frame from the
   collected value before plotting; they previously failed for every chart
   kind (#18).

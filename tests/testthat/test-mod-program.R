@@ -160,3 +160,36 @@ test_that("the module replays a recording into its output cards", {
     }
   )
 })
+
+test_that("each chart output gets its own render callback", {
+  skip_on_cran()
+  skip_if_not_installed("shiny")
+  dir <- tempfile("sashiny-render-")
+  dir.create(dir)
+  writeLines("data a; x = 1; run;", file.path(dir, "p.sas"))
+  writeLines(c(
+    "sashiny: 1", "program: p.sas", "outputs:",
+    "  first:", "    type: chart", "    from: work.a",
+    "  second:", "    type: chart", "    from: work.a",
+    "  log:", "    type: log"
+  ), file.path(dir, "p.sashiny.yml"))
+  contract <- sas_contract(file.path(dir, "p.sashiny.yml"))
+  value <- list(columns = list(list(name = "x", type = "numeric", label = "", format = "")),
+                rows = list(list(1)), total_rows = 1L, truncated = FALSE, formatted = FALSE)
+  engine <- structure(list(), class = c("sashiny_test_engine", "sashiny_engine"))
+  registerS3method("sas_engine_run", "sashiny_test_engine", function(engine, contract, values, ...) {
+    sashiny_result("r1", "success", outputs = list(first = value, second = value, log = list()))
+  }, envir = asNamespace("SAShiny"))
+  # Each callback names itself in its error, which the chart card shows.
+  render <- list(
+    first = function(value, spec) stop("first callback"),
+    second = function(value, spec) stop("second callback")
+  )
+  shiny::testServer(
+    sas_program_server, args = list(contract = contract, engine = engine, render = render), {
+      session$setInputs(run = 1)
+      expect_match(output$out_first$html, "first callback", fixed = TRUE)
+      expect_match(output$out_second$html, "second callback", fixed = TRUE)
+    }
+  )
+})
