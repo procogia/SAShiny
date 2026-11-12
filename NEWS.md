@@ -1,4 +1,4 @@
-# SAShiny (development version)
+# SAShiny 0.1.4
 
 ## Demo
 
