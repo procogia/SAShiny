@@ -298,7 +298,7 @@
 #' @noRd
 .sashiny_card <- function(title, ...) {
   if (requireNamespace("bslib", quietly = TRUE)) {
-    bslib::card(bslib::card_header(title), ...)
+    bslib::card(bslib::card_header(title), ..., fill = FALSE)
   } else {
     shiny::wellPanel(shiny::tags$h4(title), ...)
   }
@@ -354,9 +354,12 @@ sas_program_ui <- function(id, contract, ui_override = NULL, today = Sys.Date())
     return(shiny::tagList(shiny::wellPanel(controls), status, outputs))
   }
   if (requireNamespace("bslib", quietly = TRUE)) {
-    layout <- bslib::layout_sidebar(sidebar = bslib::sidebar(controls), status, outputs)
-    return(shiny::tagList(layout))
-  }
+      layout <- bslib::layout_sidebar(
+        sidebar = bslib::sidebar(controls), status, outputs,
+        fillable = FALSE
+      )
+      return(shiny::tagList(layout))
+    }
   layout <- shiny::sidebarLayout(shiny::sidebarPanel(controls), shiny::mainPanel(status, outputs))
   shiny::tagList(layout)
 }
