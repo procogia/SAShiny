@@ -176,7 +176,7 @@ def _render_plotnine(value: ChartValue, spec: ChartSpec) -> Any:
         if spec.get(field) is not None:
             mapping[aesthetic] = str(spec[field])
 
-    plot = ggplot(_frame(value), aes(**mapping)) + geoms[spec["kind"]]()  # type: ignore[no-untyped-call,operator]
+    plot = ggplot(_frame(value), aes(**mapping)) + geoms[spec["kind"]]()
     if spec.get("facet") is not None:
         plot += facet_wrap(spec["facet"])
 
