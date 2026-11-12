@@ -1,6 +1,6 @@
 # SAShiny Lisbon demo app (R).
 #
-# Three tabs (General / Pharma / AML) run the example contracts. The sidebar
+# Four tabs (General / Pharma / AML / Forecasting) run the example contracts. The sidebar
 # picks the SAS connection:
 #
 # - Offline replays recordings from examples/recordings (spec section 8.3).
@@ -50,7 +50,11 @@ recordings_dir <- file.path(examples_dir, "recordings")
 tracks <- list(
   general = list("General", file.path(examples_dir, "general", "cars_explorer.sashiny.yml")),
   pharma = list("Pharma", file.path(examples_dir, "pharma", "ae_summary.sashiny.yml")),
-  aml = list("AML", file.path(examples_dir, "aml", "cash_aggregation_tuning.sashiny.yml"))
+  aml = list("AML", file.path(examples_dir, "aml", "cash_aggregation_tuning.sashiny.yml")),
+  forecasting = list(
+    "Forecasting",
+    file.path(examples_dir, "forecasting", "arima_forecast.sashiny.yml")
+  )
 )
 contracts <- lapply(tracks, function(t) sas_contract(t[[2]]))
 

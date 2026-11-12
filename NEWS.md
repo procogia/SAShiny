@@ -1,3 +1,13 @@
+# SAShiny (development version)
+
+## Demo
+
+* The demo app has a fourth tab, **Forecasting** (`examples/forecasting`):
+  monthly prescription demand forecasting with ARIMA and seasonal ARIMA
+  (`PROC ARIMA`, SAS/ETS), with holdout comparison of eight candidate models,
+  a user-selectable final model, diagnostics and forecasts with prediction
+  intervals.
+
 # SAShiny 0.1.3
 
 ## Shiny module layout
