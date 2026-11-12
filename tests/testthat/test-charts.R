@@ -130,6 +130,12 @@ test_that("spec columns resolve case-insensitively to the collected names", {
     spec[c("x", "y", "color", "facet")],
     list(x = "Height", y = "Weight", color = "Sex", facet = "Sex")
   )
+  expect_error(
+    SAShiny:::.sashiny_chart_resolve(chart_value(), list(kind = "line", x = "height")),
+    "chart kind 'line' requires a 'y' column"
+  )
+  hist <- list(kind = "histogram", x = "height", y = "weight")
+  expect_null(SAShiny:::.sashiny_chart_resolve(chart_value(), hist)$y)
   bad <- list(kind = "scatter", x = "height", color = "nope")
   expect_error(
     SAShiny:::.sashiny_chart_resolve(chart_value(), bad),

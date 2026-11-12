@@ -45,7 +45,8 @@
 #'
 #' Checks the kind, then replaces each column field (`x`, `y`, `color`,
 #' `fill`, `facet`) with the collected column's own name, matched
-#' case-insensitively (spec section 8.5). An unknown column is an error.
+#' case-insensitively (spec section 8.5). An unknown column is an error, as is
+#' a missing `y` for every kind except `histogram`, which ignores `y`.
 #' @noRd
 .sashiny_chart_resolve <- function(value, spec) {
   kind <- spec$kind %||% ""
@@ -56,6 +57,11 @@
     if (!is.null(spec[[field]])) {
       spec[[field]] <- value$columns[[.sashiny_chart_col(value, spec[[field]])]]$name
     }
+  }
+  if (kind == "histogram") {
+    spec$y <- NULL
+  } else if (is.null(spec$y)) {
+    stop(sprintf("chart kind '%s' requires a 'y' column", kind), call. = FALSE)
   }
   spec
 }
