@@ -48,7 +48,8 @@ ui:      {...}             # optional
 Identifiers (`id`, input and output keys) match `^[a-z][a-z0-9_]{0,31}$` and are used directly as
 Shiny ids. The default module `id` is derived from the program file name. Take the base name without
 the `.sas` extension, lower-case it, replace each character outside `[a-z0-9_]` with `_`, prefix `p_`
-if it does not start with a letter, and truncate to 32 characters.
+if it does not start with a letter, and truncate to 32 characters. Two programs that resolve to the
+same module `id` (whether explicit or derived) MUST be rejected when the app is built.
 
 ### 2.1 Input types
 
@@ -162,7 +163,7 @@ MUST reject the whole run if any value is invalid, reporting all invalid inputs.
 | `V006` | Text longer than `max_length` (counted in Unicode code points, after trimming). |
 | `V007` | Text or choice contains a control character (U+0000–U+001F, U+007F–U+009F). |
 | `V008` | Multichoice selection count outside `[min_selected, max_selected]`, or duplicate selections. |
-| `V009` | Date not a real calendar date, or outside `[min, max]`. |
+| `V009` | Date not a real calendar date, or outside `[min, max]`. A date with year `0000` is not a real calendar date and is `V009`. |
 | `V010` | Daterange start after end. |
 | `V011` | Value supplied for an id that is not an input of this contract. |
 | `V012` | `integer: true` and value is not an integer. |
@@ -283,7 +284,7 @@ indentation inside `data _null_`. `<...>` are placeholders. Bracketed lines are 
 [ods <fmt>(id=<output_id>) file="%sysfunc(pathname(work))/sashiny_<output_id>.<fmt>";] one per rtf/pdf download, contract order
 %put NOTE: SASHINY-BEGIN-PROGRAM;
 <PROGRAM TEXT, verbatim>
-[%<MACRO>(<NAME1>=&<NAME1>, <NAME2>=&<NAME2>, ...);] only if run.entry is macro; all input macro names, order of 5.7
+[%<MACRO>(<NAME1>=%bquote(&<NAME1>), <NAME2>=%bquote(&<NAME2>), ...);] only if run.entry is macro; all input macro names, order of 5.7
 %put NOTE: SASHINY-END-PROGRAM;
 [ods <fmt>(id=<output_id>) close;               ] one per rtf/pdf download, contract order
 %put NOTE: SASHINY-END run=<run_id> syscc=&syscc;
@@ -303,7 +304,11 @@ Rules:
   converted to LF. Nothing else changes. A newline is inserted after the program text if it does not end
   with one. The file on disk is never changed.
 - With `entry: macro`, if the contract sets no macro variables the call is `%<MACRO>();`. Dataset-input
-  macros are included in the call only when declared.
+  macros are included in the call only when declared. Each argument is passed as
+  `NAME=%bquote(&NAME)`: `%bquote` resolves `&NAME` and then macro-quotes the result, so a rendered
+  value containing a comma or parenthesis (for example a `multichoice` with `separator: comma`, which
+  renders as `'A', 'B'`) is not split by the macro processor. `%superq` is not used here because it
+  would keep the value macro-quoted and break `WHERE` clauses (see §9).
 - Each `rtf`/`pdf` download opens its own ODS destination instance, `id=` set to the output id, so several
   downloads of the same format can coexist. `<fmt>` is `rtf` or `pdf`.
 
@@ -331,6 +336,11 @@ The engine reads the log of the main submission:
 | `success` | otherwise |
 
 A timeout MUST abort the SAS session. The pool MUST then discard and replace that session.
+
+When every pooled session is busy, a pool MUST wait for a free session up to a configurable
+`acquire_timeout` (default 30 seconds) rather than failing immediately. If no session becomes free
+within the timeout, the run returns an error `Result` with `metadata.engine_error` set to
+`pool exhausted: all N sessions busy` (it MUST NOT raise).
 
 ---
 
