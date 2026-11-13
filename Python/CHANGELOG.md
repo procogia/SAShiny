@@ -4,6 +4,34 @@ All notable changes to the Python library are documented here. The format follow
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [0.1.6]
+
+### Added
+- Advisory lint (`sashiny.lint`) reporting L001–L005 program-vs-contract
+  consistency findings (spec §10): an injected macro assigned outside a
+  `%symexist` guard, an injected macro never referenced, a `table`/`download`
+  `from` dataset never created, more than one rtf/pdf download, and
+  `entry: macro` without a matching `%macro` (#28).
+
+### Fixed
+- `extract_plots` now rejects `select < 1` with a clean `ValueError` instead of
+  returning the wrong plot or leaking `IndexError` (#29).
+- R/Python parity in cell and upload normalisation: character cells strip ASCII
+  whitespace only (not Unicode), a literal `NA` in a date column is unparseable,
+  a whitespace-only non-CSV numeric cell is missing, and character columns drop
+  the `.0` of integer-valued floats (#30–#33).
+- Contract/value validation parity: impossible calendar-date bounds return
+  `S003` instead of raising, `^`/`$` inside character classes are allowed, text
+  `pattern` uses ASCII `\d`/`\w`/`\s` semantics, and choice values are no longer
+  whitespace-trimmed (spec §3.2, §3.3, §4; #38–#40, #46).
+- Upload parsing: duplicate CSV headers resolve to `x`, `x_2`; XLSX reads with
+  `keep_default_na=False` preserve literal `NA` and leading zeros; date columns
+  require the exact `YYYY-MM-DD` shape (#41–#43).
+- Engine and pool lifecycle: failed SAS sessions are closed before their
+  reference is dropped, the pool warms `min_size` sessions and discards a
+  session whose `engine.run` raises, and `run.timeout_seconds` is enforced
+  (#34–#37, #44–#45).
+
 ## [0.1.5]
 
 ### Added

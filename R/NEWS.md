@@ -1,3 +1,28 @@
+# SAShiny 0.1.5
+
+## Lint
+
+* `sashiny_lint()` now reports the advisory L001–L005 findings (spec §10):
+  an injected macro assigned outside a `%symexist` guard, an injected macro
+  never referenced, a `table`/`download` `from` dataset never created, more
+  than one rtf/pdf download, and `entry: macro` without a matching `%macro`
+  (#28).
+
+## Fixes
+
+* `.sashiny_extract_plots()` rejects `select < 1` with a clean error instead of
+  returning an empty list (#29).
+* R/Python parity in cell and upload normalisation: character cells strip ASCII
+  whitespace only, a literal `NA` in a date column is unparseable, a
+  whitespace-only non-CSV numeric cell is missing, and character columns drop
+  the `.0` of integer-valued floats (#30–#33).
+* Contract/value validation parity: impossible calendar-date bounds return
+  `S003` instead of raising, `^`/`$` inside character classes are allowed, and
+  choice values are no longer whitespace-trimmed (spec §3.2, §3.3, §4;
+  #38–#40, #46).
+* Engine and pool lifecycle: failed SAS sessions are closed before their
+  reference is dropped and the pool warms `min_size` sessions (#35, #37).
+
 # SAShiny 0.1.4
 
 ## Demo
