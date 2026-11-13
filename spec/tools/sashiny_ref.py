@@ -537,6 +537,8 @@ def extract_plots(html: str, select: int | None = None) -> list[dict[str, str]]:
     plots = [p for _, p in sorted(found, key=lambda t: t[0])]
     if select is None:
         return plots
+    if select < 1:
+        raise ValueError(f"select={select} but graph positions are 1-based")
     if select > len(plots):
         raise ValueError(f"select={select} but only {len(plots)} graph(s) were produced")
     return [plots[select - 1]]

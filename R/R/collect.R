@@ -114,6 +114,9 @@
   if (is.null(select)) {
     return(plots)
   }
+  if (select < 1) {
+    stop(sprintf("select=%d but graph positions are 1-based", select), call. = FALSE)
+  }
   if (select > length(plots)) {
     stop(sprintf("select=%d but the run produced %d graph(s)", select, length(plots)),
       call. = FALSE

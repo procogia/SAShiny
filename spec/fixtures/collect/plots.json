@@ -33,6 +33,16 @@
       "name": "select_out_of_range",
       "select": 4,
       "expected_error": true
-    }
-  ]
+        },
+        {
+          "name": "select_zero",
+          "select": 0,
+          "expected_error": true
+        },
+        {
+          "name": "select_negative",
+          "select": -1,
+          "expected_error": true
+        }
+      ]
 }
