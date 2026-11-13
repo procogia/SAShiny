@@ -88,17 +88,18 @@
                       horizon=6, conf_level=95);
   %local t0 n n_gaps n_train n_bad alpha i n_cand n_conv rec_id rec_name fin_id
          fin_name fin_note msg ok last_month lb12 _first _last _usable _lbl _scale
-         _p _d _q _sp _sd _sq _cc _cerr n_shock;
+         _p _d _q _sp _sd _sq _cc _cerr n_shock _transform _metric _final_model;
   %global _log;
   %let t0 = %sysfunc(datetime());
-  /* Keyword values may arrive macro-quoted (SAShiny raw choices) */
-  %let transform = %lowcase(%unquote(&transform));
-  %let metric = %lowcase(%unquote(&metric));
-  %let final_model = %lowcase(%unquote(&final_model));
+  /* Keyword values may arrive macro-quoted (SAShiny raw choices); normalise
+     them into local macros so the injected names are never reassigned. */
+  %let _transform = %lowcase(%unquote(&transform));
+  %let _metric = %lowcase(%unquote(&metric));
+  %let _final_model = %lowcase(%unquote(&final_model));
   %let ok = 1;
   %let msg = ;
   %let alpha = %sysevalf((100 - &conf_level) / 100);
-  %let _log = %eval(%lowcase(&transform) = log);
+  %let _log = %eval(%lowcase(&_transform) = log);
   %let _scale = ;
   %if &_log %then %let _scale = log;
   %let n_conv = 0;
@@ -215,7 +216,7 @@
     end;
     keep id p d q sp sd sq;
   run;
-  %if %lowcase(&final_model) = custom %then %do;
+  %if %lowcase(&_final_model) = custom %then %do;
     data work._cand_c;
       length id $8;
       id = 'custom'; p = &ar_p; d = &diff_d; q = &ma_q; sp = &sar_p; sd = &sdiff_d; sq = &sma_q;
@@ -324,7 +325,7 @@
   data work.model_comparison;
     set work.model_comparison;
     usable = (converged = 1 and n_missing_fc = 0);
-    score = ifn(usable, &metric, .);
+    score = ifn(usable, &_metric, .);
   run;
 
   proc sql noprint;
@@ -353,8 +354,8 @@
 
   /* Final model: the recommendation, the custom orders or a named candidate */
   %let fin_note = ;
-  %if %lowcase(&final_model) = best %then %let fin_id = &rec_id;
-  %else %let fin_id = %lowcase(&final_model);
+  %if %lowcase(&_final_model) = best %then %let fin_id = &rec_id;
+  %else %let fin_id = %lowcase(&_final_model);
   proc sql noprint;
     select model, usable into :fin_name trimmed, :_usable trimmed
       from work.model_comparison where id = "&fin_id";
@@ -559,10 +560,10 @@
     value = 'Candidate';          fillcolor = 'cxB8C2CC'; output;
     value = 'Not converged';      fillcolor = 'cxE8A0A0'; output;
   run;
-  title "4. Holdout %upcase(&metric) by candidate (last &holdout months)";
+  title "4. Holdout %upcase(&_metric) by candidate (last &holdout months)";
   proc sgplot data=work._cmp dattrmap=work._attr;
-    hbar model / response=&metric group=group attrid=dec categoryorder=respasc datalabel;
-    xaxis label="Holdout %upcase(&metric)" grid;
+    hbar model / response=&_metric group=group attrid=dec categoryorder=respasc datalabel;
+    xaxis label="Holdout %upcase(&_metric)" grid;
     yaxis display=(nolabel);
     keylegend / title='';
   run;
@@ -629,10 +630,10 @@
     %if &ok %then %do;
       item = 'Months used';       value = catx(' ', &n, 'months, to', "&last_month"); output;
       item = 'Missing months';    value = put(&n_gaps, 8. -l); output;
-      item = 'Transform';         value = "%lowcase(&transform)"; output;
+      item = 'Transform';         value = "%lowcase(&_transform)"; output;
       item = 'Training / holdout'; value = catx(' ', &n_train, 'months /', &holdout, 'months'); output;
       item = 'Candidates fitted'; value = catx(' ', &n_cand, 'fitted,', &n_conv, 'usable'); output;
-      item = 'Selection metric';  value = "Holdout %upcase(&metric)"; output;
+      item = 'Selection metric';  value = "Holdout %upcase(&_metric)"; output;
       item = 'Recommended model'; value = "&rec_name"; output;
       item = 'Final model';       value = strip("&fin_name &fin_note"); output;
       item = 'Forecast';          value = catx(' ', &horizon, 'months at', "&conf_level%"); output;
