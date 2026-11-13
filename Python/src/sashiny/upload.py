@@ -107,9 +107,23 @@ def _read(upload: UploadFile) -> tuple[Any, bool]:
 
     ext = upload.extension
     if ext == "csv":
-        return pd.read_csv(upload.path, dtype=str, keep_default_na=False, encoding="utf-8"), True
+        # Read with header=None so duplicate header names survive verbatim
+        # (pandas otherwise mangles "x,x" to "x,x.1" before §7 step 2 can
+        # resolve them to "x","x_2"). The first row is the header; sanitise it
+        # before assigning so the frame never holds duplicate column names.
+        raw = pd.read_csv(
+            upload.path, header=None, dtype=str, keep_default_na=False, encoding="utf-8"
+        )
+        header = [str(c) for c in raw.iloc[0].tolist()]
+        df = raw.iloc[1:].reset_index(drop=True)
+        df.columns = sanitize_names(header)
+        return df, True
     if ext == "xlsx":
-        return pd.read_excel(upload.path, sheet_name=0), False
+        # keep_default_na=False preserves literal "NA"/"nan"/"None" text and
+        # leading-zero strings (spec §7 step 3: only empty/whitespace is missing;
+        # any other non-conforming text is unparseable V014). Native numeric and
+        # date cell types are still inferred for undeclared columns (§7 step 4).
+        return pd.read_excel(upload.path, sheet_name=0, keep_default_na=False), False
     if ext in ("xpt", "sas7bdat"):
         try:
             import pyreadstat  # noqa: PLC0415
@@ -161,7 +175,10 @@ def _to_date(series: Any, name: str) -> Any:
     # any other non-ISO text (including the literal "NA", "nan", "NaT", "None")
     # is unparseable and reported as V014.
     blank = series.isna() | (text == "")
-    parsed = pd.to_datetime(text.where(~blank), format="%Y-%m-%d", errors="coerce")
+    # Enforce the exact ISO shape (spec §7 step 3): pandas' "%Y-%m-%d" format
+    # accepts non-zero-padded fields such as "2026-1-2", which R rejects.
+    shape_ok = text.str.fullmatch(r"\d{4}-\d{2}-\d{2}", na=False)
+    parsed = pd.to_datetime(text.where(~blank & shape_ok), format="%Y-%m-%d", errors="coerce")
     if (parsed.isna() & ~blank).any():
         raise UploadError(f"column {name} has values that are not YYYY-MM-DD dates")
     return parsed
