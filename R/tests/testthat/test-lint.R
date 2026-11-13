@@ -129,3 +129,25 @@ test_that("L005 ignores a present %macro", {
   program <- "%macro report;\nproc print data=sashelp.class; run;\n%mend report;"
   expect_false("L005" %in% lint_codes(sashiny_lint(data, program)))
 })
+
+test_that("L001 path uses the input id when the macro name differs", {
+  data <- lint_data(inputs = list(
+    min_msrp = list(type = "numeric", label = "Min MSRP", macro = "MSRP")
+  ))
+  program <- "%let MSRP = 5;\nproc print data=sashelp.class; run;"
+  issues <- sashiny_lint(data, program)
+  l001 <- Filter(function(i) i$code == "L001", issues)
+  expect_length(l001, 1L)
+  expect_identical(l001[[1]]$path, "/inputs/min_msrp")
+})
+
+test_that("L001 dedupes a daterange's two macro names", {
+  data <- lint_data(inputs = list(
+    period = list(type = "daterange", label = "Period", macro = list("start_dt", "end_dt"))
+  ))
+  program <- "%let START_DT = 1;\n%let END_DT = 2;\nproc print data=sashelp.class; run;"
+  issues <- sashiny_lint(data, program)
+  l001 <- Filter(function(i) i$code == "L001", issues)
+  expect_length(l001, 1L)
+  expect_identical(l001[[1]]$path, "/inputs/period")
+})

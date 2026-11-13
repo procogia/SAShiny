@@ -149,6 +149,12 @@ sas_render_values <- function(data, values, today = Sys.Date(), only = NULL,
       next
     }
     if (kind %in% c("multichoice", "daterange") && is.list(raw)) {
+          # Every element must be a string (spec §2.1). A nested list, NULL or
+          # non-string element is a type error (V002), not silently flattened.
+          if (length(raw) > 0L && !all(vapply(raw, is.character, logical(1)))) {
+            add("V002", iid)
+            next
+          }
       raw <- if (length(raw) == 0L) character() else unlist(raw, use.names = FALSE)
     }
 
@@ -169,9 +175,12 @@ sas_render_values <- function(data, values, today = Sys.Date(), only = NULL,
     }
     optional <- isTRUE(spec$optional)
 
-    if (identical(kind, "multichoice") && identical(raw, character())) {
-      absent <- optional
-      if (!optional && (spec$min_selected %||% 1L) >= 1L) {
+    if (identical(kind, "multichoice")) {
+          # Only an empty selection is "absent" for multichoice (spec §4 V001).
+          # A single empty string `[""]` is a non-empty selection and is validated
+          # as a value (V004), not treated as absent.
+          absent <- is.null(raw) || identical(raw, character())
+          if (absent && !optional && (spec$min_selected %||% 1L) >= 1L) {
         add("V001", iid)
         next
       }

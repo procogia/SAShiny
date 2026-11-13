@@ -66,3 +66,40 @@ test_that("contract_sha256 hashes the YAML bytes and program_sha256 the program 
   expect_identical(res$metadata$program_sha256, unclass(as.character(openssl::sha256(prog_bytes))))
   expect_false(identical(res$metadata$contract_sha256, res$metadata$program_sha256))
 })
+
+test_that("mock engine reports V014 for a missing upload (spec section 7)", {
+  contract <- sas_contract(file.path(.sashiny_fixtures(), "contracts", "valid",
+                                     "dataset", "contract.sashiny.yml"))
+  result <- sas_engine_run(sas_engine_mock(), contract, list(),
+                           uploads = list(adsl = "/nonexistent/path.csv"))
+  expect_identical(result$status, "error")
+  expect_identical(result$metadata$issues[[1]]$code, "V014")
+  expect_match(result$metadata$issues[[1]]$message, "file not found")
+})
+
+test_that("mock engine reports V014 for a bad extension (spec section 7)", {
+  contract <- sas_contract(file.path(.sashiny_fixtures(), "contracts", "valid",
+                                     "dataset", "contract.sashiny.yml"))
+  result <- sas_engine_run(sas_engine_mock(), contract, list(),
+                           uploads = list(adsl = "sample.txt"))
+  expect_identical(result$status, "error")
+  expect_identical(result$metadata$issues[[1]]$code, "V014")
+  expect_match(result$metadata$issues[[1]]$message, "not accepted")
+})
+
+test_that("recordings round-trip full-precision numbers (spec section 8.3)", {
+  dir <- tempfile("sashiny-mock-")
+  dir.create(dir)
+  on.exit(unlink(dir, recursive = TRUE), add = TRUE)
+  engine <- sas_engine_mock(recordings_dir = dir)
+  contract <- sas_contract(file.path(.sashiny_fixtures(), "contracts", "valid",
+                                     "minimal", "contract.sashiny.yml"))
+  big <- 2^53 + 2  # not representable in 15 significant digits
+  sas_engine_record(engine, contract, list(), list(
+    status = "success", log = "",
+    outputs = list(log = list(list(text = "x", level = "text", value = big)))
+  ))
+  key <- .sashiny_recording_key(contract, list())
+  raw <- jsonlite::fromJSON(file.path(dir, paste0(key, ".json")), simplifyVector = FALSE)
+  expect_identical(raw$outputs$log[[1]]$value, big)
+})

@@ -87,7 +87,7 @@ sas_wrapper_code <- function(data, macros, program_bytes, run_id = "fixture") {
   tail <- character()
   run <- data$run %||% list()
   if (identical(run$entry, "macro")) {
-    args <- paste0(names(macros), "=&", names(macros), collapse = ", ")
+    args <- paste0(names(macros), "=%bquote(&", names(macros), ")", collapse = ", ")
     tail <- c(tail, paste0("%", run$macro, "(", args, ");"))
   }
   tail <- c(tail, "%put NOTE: SASHINY-END-PROGRAM;")

@@ -91,7 +91,7 @@
   )
   path <- file.path(directory, paste0(key, ".json"))
   json <- jsonlite::toJSON(payload,
-    auto_unbox = TRUE, null = "null", na = "null", digits = NA, pretty = TRUE
+      auto_unbox = TRUE, null = "null", na = "null", digits = I(17), pretty = TRUE
   )
   writeLines(enc2utf8(as.character(json)), path, useBytes = TRUE)
   path
@@ -325,7 +325,7 @@ sas_engine_record <- function(engine, contract, macros, recording, files = list(
   key <- .sashiny_recording_key(contract, macros, files)
   path <- file.path(engine$recordings_dir, paste0(key, ".json"))
   payload <- c(list(sashiny_recording = 1L), recording)
-  json <- jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null", digits = NA, pretty = TRUE)
+    json <- jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null", digits = I(17), pretty = TRUE)
   writeLines(enc2utf8(as.character(json)), path, useBytes = TRUE)
   invisible(path)
 }

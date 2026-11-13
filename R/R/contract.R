@@ -202,7 +202,34 @@ sas_validate <- function(contract, today = Sys.Date()) {
 #' Resolve a date value, mapping "today" to `today`.
 #' @noRd
 .sashiny_resolve_date <- function(value, today) {
-  if (identical(value, "today")) today else as.Date(value)
+  if (identical(value, "today")) {
+    return(today)
+  }
+  # Year 0000 is not a real calendar date (spec §4 V009). R's `as.Date` would
+  # otherwise accept it and map it to a "year 0" date.
+  if (grepl("^0000-", value)) {
+    stop("year 0000 is not a real calendar date", call. = FALSE)
+  }
+  as.Date(value)
+}
+
+#' Derive the default module id from a program file name (spec section 2).
+#'
+#' Take the base name without the `.sas` extension, lower-case it, replace each
+#' character outside `[a-z0-9_]` with `_`, prefix `p_` if it does not start with
+#' a letter, and truncate to 32 characters.
+#' @noRd
+.sashiny_default_module_id <- function(program) {
+  base <- basename(program)
+  if (grepl("\\.sas$", base, ignore.case = TRUE)) {
+    base <- substr(base, 1L, nchar(base) - 4L)
+  }
+  base <- tolower(base)
+  base <- gsub("[^a-z0-9_]", "_", base)
+  if (!nzchar(base) || !grepl("^[a-z]", base)) {
+    base <- paste0("p_", base)
+  }
+  substr(base, 1L, 32L)
 }
 
 #' Resolve a date bound, returning NULL when it is not a real calendar date.

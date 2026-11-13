@@ -9,7 +9,8 @@ sas_pool(
   min_size = 0L,
   max_size = 4L,
   idle_timeout = 300,
-  max_runs_per_session = 100L
+  max_runs_per_session = 100L,
+  acquire_timeout = 30
 )
 }
 \arguments{
@@ -25,6 +26,9 @@ session; or a single engine shared by all pooled sessions (suitable for
 \item{idle_timeout}{Seconds after which an idle session is discarded.}
 
 \item{max_runs_per_session}{Runs before a session is discarded and replaced.}
+
+\item{acquire_timeout}{Seconds to wait for a free session when every session
+is busy before reporting \code{pool exhausted} (spec section 6.5).}
 }
 \value{
 A \code{sashiny_pool} object (an environment).

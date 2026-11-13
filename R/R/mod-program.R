@@ -405,7 +405,13 @@ sas_program_server <- function(id, contract, engine, server_override = NULL, ren
     )
 
     output$status <- shiny::renderText({
-      text <- .sashiny_status_text(result())
+      res <- result()
+      if (is.null(res)) {
+        # Before the first run, surface a choices_from load failure so the
+        # user is not left with empty dropdowns and no explanation (#68).
+        return(if (nzchar(choice_error())) choice_error() else "")
+      }
+      text <- .sashiny_status_text(res)
       if (nzchar(choice_error())) paste(text, choice_error(), sep = "\n") else text
     })
     output$log <- shiny::renderText({

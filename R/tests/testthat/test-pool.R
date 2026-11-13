@@ -51,11 +51,12 @@ test_that("pool discards and closes a factory session after a SAS failure", {
 })
 
 test_that("a factory pool gives each session its own engine", {
-  pool <- sas_pool(function() sas_engine_mock(), max_size = 2L)
+  pool <- sas_pool(function() sas_engine_mock(), max_size = 2L, acquire_timeout = 0.05)
   a <- .sashiny_acquire(pool)
   b <- .sashiny_acquire(pool)
   expect_length(pool$sessions, 2L)
-  expect_error(.sashiny_acquire(pool), "pool exhausted")
+  # Every session is busy: acquire waits then returns NULL (spec section 6.5).
+  expect_null(.sashiny_acquire(pool))
   .sashiny_release(pool, a)
   .sashiny_release(pool, b)
   sas_pool_close(pool)
@@ -76,4 +77,16 @@ test_that("pool warms min_size sessions", {
 test_that("pool rejects invalid bounds", {
   expect_error(sas_pool(sas_engine_mock(), min_size = 3L, max_size = 2L), "min_size")
   expect_error(sas_pool(sas_engine_mock(), min_size = -1L), "non-negative")
+})
+
+test_that("pool returns an error result when exhausted (spec section 6.5)", {
+  pool <- sas_pool(function() sas_engine_mock(), max_size = 1L, acquire_timeout = 0.05)
+  contract <- sas_contract(file.path(.sashiny_fixtures(), "contracts", "valid",
+                                     "minimal", "contract.sashiny.yml"))
+  a <- .sashiny_acquire(pool)
+  result <- sas_pool_run(pool, contract, list(), today = .sashiny_today)
+  expect_identical(result$status, "error")
+  expect_match(result$metadata$engine_error, "pool exhausted")
+  .sashiny_release(pool, a)
+  sas_pool_close(pool)
 })

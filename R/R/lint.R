@@ -172,5 +172,13 @@ sashiny_lint <- function(data, program_text) {
     }
   }
 
+    # A daterange or multichoice input sets several macro names that all map to
+    # the same input id, so the same (code, path) can be reported more than once.
+    # Deduplicate by (code, path) while preserving first-seen order.
+    if (length(issues) > 0L) {
+      keys <- vapply(issues, function(i) paste(i$code, i$path, sep = "\r"), character(1))
+      issues <- issues[!duplicated(keys)]
+    }
+
   issues
 }

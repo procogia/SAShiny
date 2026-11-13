@@ -57,7 +57,12 @@
     spec <- inputs[[iid]]
     if (!identical(spec$type, "dataset")) next
     upload <- .sashiny_resolve_upload(uploads[[iid]], spec, contract$base_dir)
-    if (!is.null(upload)) files[[iid]] <- upload
+    if (!is.null(upload)) {
+      # Check extension, existence and size (section 7 step 1); a bad file is
+      # reported as V014 rather than a raw error.
+      .sashiny_check_upload(upload, spec)
+      files[[iid]] <- upload
+    }
   }
   files
 }

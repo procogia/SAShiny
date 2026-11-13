@@ -344,7 +344,15 @@ sas_engine_run.sashiny_engine_saspy <- function(engine, contract, values, today 
   )
   if (!is.null(engine$record_to)) {
     key <- .sashiny_recording_key(contract, res$macros, submitted$files)
-    result$metadata$recording <- .sashiny_save_recording(engine$record_to, key, result)
+    recording <- tryCatch(
+      .sashiny_save_recording(engine$record_to, key, result),
+      error = function(e) e
+    )
+    if (inherits(recording, "error")) {
+      result$metadata$recording_error <- conditionMessage(recording)
+    } else {
+      result$metadata$recording <- recording
+    }
   }
   result
 }

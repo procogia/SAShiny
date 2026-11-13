@@ -161,6 +161,25 @@ test_that("the module replays a recording into its output cards", {
   )
 })
 
+test_that("the module shows a choices_from error before the first run", {
+  skip_on_cran()
+  skip_if_not_installed("shiny")
+  contract <- sas_contract(file.path(.sashiny_fixtures(), "contracts", "valid",
+                                     "choice", "contract.sashiny.yml"))
+  engine <- structure(list(), class = c("sashiny_broken_choices", "sashiny_engine"))
+  registerS3method("sas_engine_choices", "sashiny_broken_choices",
+    function(engine, contract) stop("SAS unreachable"),
+    envir = asNamespace("SAShiny")
+  )
+  shiny::testServer(
+    sas_program_server, args = list(contract = contract, engine = engine), {
+      # No Run click yet: the status card must already show the choice error.
+      expect_match(output$status, "could not read choices", fixed = TRUE)
+      expect_match(output$status, "SAS unreachable", fixed = TRUE)
+    }
+  )
+})
+
 test_that("each chart output gets its own render callback", {
   skip_on_cran()
   skip_if_not_installed("shiny")
