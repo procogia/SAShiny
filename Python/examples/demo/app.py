@@ -35,8 +35,18 @@ from shiny import App, Inputs, Outputs, Session, reactive, ui
 import sashiny
 from sashiny import modules
 
-REPO = Path(__file__).resolve().parents[3]
-EXAMPLES = REPO / "examples"
+
+def _examples_dir() -> Path:
+    """Locate the shared ``examples/`` directory (repo or extracted sdist)."""
+    here = Path(__file__).resolve()
+    for parent in (here.parents[2], here.parents[3], here.parents[4]):
+        candidate = parent / "examples"
+        if (candidate / "general").is_dir():
+            return candidate
+    return here.parents[3] / "examples"
+
+
+EXAMPLES = _examples_dir()
 RECORDINGS = EXAMPLES / "recordings"
 
 TRACKS = {

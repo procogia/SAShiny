@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import sashiny
+from _repo import repo_root
 from sashiny import modules
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = repo_root()
 
 
 def test_program_ui_has_one_card_per_output() -> None:

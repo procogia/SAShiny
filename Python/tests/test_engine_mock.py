@@ -8,8 +8,9 @@ from datetime import date
 from pathlib import Path
 
 import sashiny
+from _repo import repo_root
 
-SPEC = Path(__file__).resolve().parents[2] / "spec"
+SPEC = repo_root() / "spec"
 FIX = SPEC / "fixtures"
 TODAY = date(2026, 11, 11)
 
@@ -66,10 +67,7 @@ def test_mock_engine_save_recording(tmp_path: Path) -> None:
 
 def test_contract_sha256_hashes_yaml_not_program() -> None:
     """Spec §8: contract_sha256 is the YAML bytes; program_sha256 the program bytes."""
-    path = (
-        Path(__file__).resolve().parents[2]
-        / "spec/fixtures/contracts/valid/minimal/contract.sashiny.yml"
-    )
+    path = repo_root() / "spec/fixtures/contracts/valid/minimal/contract.sashiny.yml"
     contract = sashiny.load(path)
     res = sashiny.MockEngine().run(contract, {}, today=date(2026, 11, 11))
     assert res.metadata["contract_sha256"] == hashlib.sha256(path.read_bytes()).hexdigest()

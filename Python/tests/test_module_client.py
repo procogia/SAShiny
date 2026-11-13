@@ -13,14 +13,16 @@ Run on Linux/CI (or a Daytona VM) where the dev Shiny is installed:
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 
 import pytest
 
 import sashiny
+from _repo import repo_root
 from sashiny import modules
 
-SPEC = Path(__file__).resolve().parents[2] / "spec"
+SPEC = repo_root() / "spec"
 FIX = SPEC / "fixtures"
 
 pytest.importorskip("shiny.testserver")
@@ -31,6 +33,24 @@ from shiny.testserver import test_server  # noqa: E402
 
 def _minimal_contract() -> sashiny.Contract:
     return sashiny.load(FIX / "contracts" / "valid" / "minimal" / "contract.sashiny.yml")
+
+
+def _wait_for_run(session: object, timeout: float = 5.0) -> str:
+    """Flush until the module's run finishes (extended tasks run off the loop)."""
+    deadline = time.monotonic() + timeout
+    status = "running..."
+    while time.monotonic() < deadline:
+        session.flush()  # type: ignore[attr-defined]
+        status = session.get_output("mod-status").value  # type: ignore[attr-defined]
+        if status != "running...":
+            break
+        time.sleep(0.05)
+    # Flush a few more times so every output card (each its own async render)
+    # settles after the result becomes available.
+    for _ in range(5):
+        session.flush()  # type: ignore[attr-defined]
+        time.sleep(0.02)
+    return status
 
 
 def _make_app(contract: sashiny.Contract) -> App:
@@ -49,14 +69,15 @@ def test_module_runs_and_renders_status() -> None:
     app = _make_app(_minimal_contract())
     with test_server(app) as session:
         session.set_inputs(**{"mod-run": 1})
-        status = session.get_output("mod-status")
-        assert "status: success" in status.value
+        status = _wait_for_run(session)
+        assert "status: success" in status
 
 
 def test_module_renders_log() -> None:
     app = _make_app(_minimal_contract())
     with test_server(app) as session:
         session.set_inputs(**{"mod-run": 1})
+        _wait_for_run(session)
         log = session.get_output("mod-log")
         assert log.value == "(no log)"
 
@@ -67,8 +88,8 @@ def test_module_reports_invalid_values() -> None:
     with test_server(app) as session:
         session.set_inputs(**{"mod-min_msrp": "not-a-number", "mod-ratio": 0.5, "mod-big": 1})
         session.set_inputs(**{"mod-run": 1})
-        status = session.get_output("mod-status")
-        assert "status: error" in status.value
+        status = _wait_for_run(session)
+        assert "status: error" in status
 
 
 def _recorded_app(tmp_path: Path) -> tuple[App, sashiny.Contract]:
@@ -97,7 +118,7 @@ def test_module_replays_recording_into_cards(tmp_path: Path) -> None:
     app, _ = _recorded_app(tmp_path)
     with test_server(app) as session:
         session.set_inputs(**{"mod-min_age": 18, "mod-adsl__sample": True, "mod-run": 1})
-        status = session.get_output("mod-status").value
+        status = _wait_for_run(session)
         assert "status: success" in status
         assert "replayed recording" in status
         stats = str(session.get_output("mod-out_stats").value)
@@ -112,6 +133,6 @@ def test_module_reports_missing_recording(tmp_path: Path) -> None:
     app, _ = _recorded_app(tmp_path)
     with test_server(app) as session:
         session.set_inputs(**{"mod-min_age": 99, "mod-adsl__sample": True, "mod-run": 1})
-        status = session.get_output("mod-status").value
+        status = _wait_for_run(session)
         assert "no recording matches" in status
         assert "No output for this run" in str(session.get_output("mod-out_stats").value)

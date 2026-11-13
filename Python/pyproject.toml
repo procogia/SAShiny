@@ -71,7 +71,14 @@ path = "src/sashiny/__init__.py"
 packages = ["src/sashiny"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src/sashiny", "tests", "README.md", "LICENSE", "CHANGELOG.md"]
+include = ["src/sashiny", "tests", "examples", "README.md", "LICENSE", "CHANGELOG.md"]
+
+# The tests read the shared conformance fixtures and demo inputs from sibling
+# directories (spec/, examples/) at the repository root. Ship them in the sdist
+# so the included tests run from an extracted source package without a checkout.
+[tool.hatch.build.targets.sdist.force-include]
+"../spec" = "spec"
+"../examples" = "examples"
 
 [tool.ruff]
 line-length = 100

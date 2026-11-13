@@ -6,13 +6,13 @@ import base64
 import csv
 import io
 import json
-from pathlib import Path
 
 import pytest
 
+from _repo import repo_root
 from sashiny import collect
 
-FIX = Path(__file__).resolve().parents[2] / "spec" / "fixtures" / "collect"
+FIX = repo_root() / "spec" / "fixtures" / "collect"
 
 
 def _cases(name: str) -> dict:
