@@ -84,6 +84,17 @@ def _live_engine(profile: str) -> sashiny.Engine:
     return sashiny.Pool(factory, max_size=2)
 
 
+# One shared live pool per profile, so `max_size` bounds live SAS sessions
+# across every browser session rather than per session (issue #62).
+_LIVE_ENGINES: dict[str, sashiny.Engine] = {}
+
+
+def _shared_live_engine(profile: str) -> sashiny.Engine:
+    if profile not in _LIVE_ENGINES:
+        _LIVE_ENGINES[profile] = _live_engine(profile)
+    return _LIVE_ENGINES[profile]
+
+
 class DemoEngine(sashiny.Engine):
     """Routes runs to the selected profile and falls back to recordings."""
 
@@ -91,19 +102,16 @@ class DemoEngine(sashiny.Engine):
     version = sashiny.__version__
 
     def __init__(self, profile: reactive.Value[str]) -> None:
-        """Route to ``profile``; live engines are created on first use."""
+        """Route to ``profile``; live engines are shared across sessions."""
         self.profile = profile
         self.offline = sashiny.MockEngine(RECORDINGS)
-        self.live: dict[str, sashiny.Engine] = {}
 
     def _current(self) -> tuple[str, sashiny.Engine]:
         with reactive.isolate():
             name = self.profile()
         if name == "offline":
             return name, self.offline
-        if name not in self.live:
-            self.live[name] = _live_engine(name)
-        return name, self.live[name]
+        return name, _shared_live_engine(name)
 
     def choices(self, contract: sashiny.Contract) -> dict[str, list[dict[str, str]]]:
         """Read ``choices_from`` choices on the selected engine."""
@@ -139,9 +147,8 @@ class DemoEngine(sashiny.Engine):
         return fallback
 
     def close(self) -> None:
-        """Close every live session."""
-        for engine in self.live.values():
-            engine.close()
+        """Close the offline engine (live pools are shared across sessions)."""
+        self.offline.close()
 
 
 app_ui = ui.page_navbar(

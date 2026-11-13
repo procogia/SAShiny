@@ -74,3 +74,19 @@ def test_contract_sha256_hashes_yaml_not_program() -> None:
     program = (path.parent / "program.sas").read_bytes()
     assert res.metadata["program_sha256"] == hashlib.sha256(program).hexdigest()
     assert res.metadata["contract_sha256"] != res.metadata["program_sha256"]
+
+
+def test_mock_engine_reports_v014_for_missing_upload() -> None:
+    """The mock engine runs §7 step-1 checks: a missing file is V014, not a crash."""
+    contract = sashiny.load(FIX / "contracts" / "valid" / "dataset" / "contract.sashiny.yml")
+    result = sashiny.MockEngine().run(contract, {}, uploads={"adsl": "/nonexistent/path.csv"})
+    assert result.status == "error"
+    assert result.metadata["issues"] == [{"code": "V014", "message": "file not found: path.csv"}]
+
+
+def test_mock_engine_reports_v014_for_bad_extension() -> None:
+    contract = sashiny.load(FIX / "contracts" / "valid" / "dataset" / "contract.sashiny.yml")
+    result = sashiny.MockEngine().run(contract, {}, uploads={"adsl": "sample.txt"})
+    assert result.status == "error"
+    assert result.metadata["issues"][0]["code"] == "V014"
+    assert "not accepted" in result.metadata["issues"][0]["message"]

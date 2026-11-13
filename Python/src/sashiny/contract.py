@@ -22,7 +22,7 @@ from jsonschema import Draft202012Validator
 
 from ._schema import SCHEMA
 
-__all__ = ["Contract", "Issue", "load", "validate"]
+__all__ = ["Contract", "Issue", "default_module_id", "load", "validate"]
 
 # Reserved macro-name prefixes (spec §3.2 S002).
 RESERVED = re.compile(r"^(SYS|SASHINY|_SX_)", re.IGNORECASE)
@@ -187,6 +187,22 @@ def choice_values(spec: dict[str, Any]) -> list[str] | None:
 def resolve_date(value: str, today: date) -> date:
     """Resolve a date value, mapping ``"today"`` to ``today``."""
     return today if value == "today" else date.fromisoformat(value)
+
+
+def default_module_id(program: str) -> str:
+    """Derive the default module id from a program file name (spec §2).
+
+    Take the base name without the ``.sas`` extension, lower-case it, replace
+    each character outside ``[a-z0-9_]`` with ``_``, prefix ``p_`` if it does
+    not start with a letter, and truncate to 32 characters.
+    """
+    base = Path(program).name
+    if base.lower().endswith(".sas"):
+        base = base[:-4]
+    base = re.sub(r"[^a-z0-9_]", "_", base.lower())
+    if not base or not base[0].isalpha():
+        base = "p_" + base
+    return base[:32]
 
 
 def _resolve_bound(value: Any, today: date) -> date | None:

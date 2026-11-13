@@ -279,6 +279,43 @@ def test_run_within_timeout_succeeds(contract: sashiny.Contract) -> None:
     assert result.status == "success"
 
 
+def test_recording_write_failure_keeps_result(contract: sashiny.Contract, tmp_path: Path) -> None:
+    # A recording write failure must not discard a completed run (issue #67).
+    blocker = tmp_path / "notadir"
+    blocker.write_text("x")  # a file, not a directory
+    engine = _engine(_fake(), record_to=blocker / "rec")
+    result = engine.run(contract, {"min_age": 1}, today=TODAY)
+    assert result.status == "success"
+    assert "recording_error" in result.metadata
+    assert "recording" not in result.metadata
+
+
+def test_timeout_worker_does_not_reopen_session(contract: sashiny.Contract) -> None:
+    # After a timeout, the worker must not call the factory again (issue #69).
+    calls: list[int] = []
+
+    class Slow(FakeSAS):
+        def submit(self, code: str, results: str = "HTML") -> dict[str, str]:
+            if "SASHINY-BEGIN" in code:
+                time.sleep(1.2)
+            return super().submit(code, results)
+
+    def factory() -> FakeSAS:
+        calls.append(1)
+        return Slow(_fake().datasets)
+
+    engine = SaspyEngine({}, session_factory=factory)
+    contract.data["run"] = {"timeout_seconds": 1}
+    result = engine.run(contract, {"min_age": 1}, today=TODAY)
+    assert result.status == "error"
+    assert "timeout" in result.metadata["engine_error"]
+    # The worker's submit() returns after the timeout; give it a moment to
+    # finish, then assert the factory was called exactly once (the initial
+    # session), never again by the old worker.
+    time.sleep(1.5)
+    assert len(calls) == 1
+
+
 def test_record_and_replay_round_trip(contract: sashiny.Contract, tmp_path: Path) -> None:
     rec = tmp_path / "recordings"
     live = _engine(_fake(), record_to=rec).run(

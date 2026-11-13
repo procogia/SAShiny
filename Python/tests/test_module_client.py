@@ -136,3 +136,72 @@ def test_module_reports_missing_recording(tmp_path: Path) -> None:
         status = _wait_for_run(session)
         assert "no recording matches" in status
         assert "No output for this run" in str(session.get_output("mod-out_stats").value)
+
+
+def test_module_shows_choices_error_before_first_run() -> None:
+    # A choices_from load failure must be visible before any Run click (#68).
+    contract = sashiny.load(FIX / "contracts" / "valid" / "choice" / "contract.sashiny.yml")
+
+    class BrokenChoices(sashiny.MockEngine):
+        def choices(self, contract: sashiny.Contract) -> dict[str, list[dict[str, str]]]:
+            raise RuntimeError("SAS unreachable")
+
+    engine = BrokenChoices()
+    app_ui = ui.page_fluid(modules.program_ui("mod", contract))
+
+    def server(input, output, session):
+        modules.program_server("mod", contract, engine)
+
+    app = App(app_ui, server)
+    with test_server(app) as session:
+        session.flush()
+        status = session.get_output("mod-status").value
+        assert "could not read choices" in status
+        assert "SAS unreachable" in status
+
+
+def test_module_card_does_not_stick_on_running_after_error() -> None:
+    # After an engine error, an output card must not keep showing "Running..."
+    # forever (issue #52); it shows "No output for this run." instead.
+    class Failing(sashiny.MockEngine):
+        def run(self, contract, values, *, today=None, uploads=None, run_id=None):
+            result = sashiny.Result.new(run_id or "r", "error", engine="mock")
+            result.metadata["engine_error"] = "boom"
+            return result
+
+    contract = sashiny.load(FIX / "contracts" / "valid" / "minimal" / "contract.sashiny.yml")
+    app_ui = ui.page_fluid(modules.program_ui("mod", contract))
+
+    def server(input, output, session):
+        modules.program_server("mod", contract, Failing())
+
+    app = App(app_ui, server)
+    with test_server(app) as session:
+        session.set_inputs(**{"mod-run": 1})
+        _wait_for_run(session)
+        card = str(session.get_output("mod-out_log").value)
+        assert "Running..." not in card
+
+
+def test_module_coalesces_run_clicks() -> None:
+    # A burst of Run clicks must not queue one engine run per click (issue #49).
+    runs: list[int] = []
+
+    class Counting(sashiny.MockEngine):
+        def run(self, contract, values, *, today=None, uploads=None, run_id=None):
+            runs.append(1)
+            time.sleep(0.2)
+            return super().run(contract, values, today=today, uploads=uploads, run_id=run_id)
+
+    contract = sashiny.load(FIX / "contracts" / "valid" / "minimal" / "contract.sashiny.yml")
+    app_ui = ui.page_fluid(modules.program_ui("mod", contract))
+
+    def server(input, output, session):
+        modules.program_server("mod", contract, Counting())
+
+    app = App(app_ui, server)
+    with test_server(app) as session:
+        for i in range(5):
+            session.set_inputs(**{"mod-run": i + 1})
+        _wait_for_run(session)
+        assert len(runs) == 1

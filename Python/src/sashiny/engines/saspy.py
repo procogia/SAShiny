@@ -366,10 +366,13 @@ class SaspyEngine(Engine):
         self._sas_version_text: str | None = None
         self._tmp: tempfile.TemporaryDirectory[str] | None = None
         self._choices: dict[tuple[str, str], list[dict[str, str]]] = {}
+        self._cancelled = False
 
     # ------------------------------------------------------------------ session
 
     def _session(self) -> Any:
+        if self._cancelled:
+            raise RuntimeError("run was cancelled (timeout)")
         if self._sas is None:
             if self._factory is not None:
                 self._sas = self._factory()
@@ -478,14 +481,21 @@ class SaspyEngine(Engine):
         # enforce the whole-run deadline (spec §2.3, §6.5). On timeout the session
         # is aborted and the pool discards it.
         box: dict[str, Result] = {}
+        self._cancelled = False
 
         def work() -> None:
-            box["result"] = self._run(contract, values, today, uploads, run_id, started)
+            try:
+                box["result"] = self._run(contract, values, today, uploads, run_id, started)
+            except Exception as exc:  # reported on the result, never raised
+                failed = Result.new(run_id, "error", engine=self.name, engine_version=self.version)
+                failed.metadata["engine_error"] = f"{type(exc).__name__}: {exc}"
+                box["result"] = failed
 
         thread = threading.Thread(target=work, name=f"sashiny-run-{run_id}", daemon=True)
         thread.start()
         thread.join(timeout)
         if thread.is_alive():
+            self._cancelled = True
             self._discard_session()
             result = Result.new(run_id, "error", engine=self.name, engine_version=self.version)
             result.metadata["engine_error"] = f"run exceeded timeout_seconds={timeout:g}"
@@ -552,8 +562,11 @@ class SaspyEngine(Engine):
         result.metadata["ended_at"] = ended.isoformat()
         result.metadata["seconds"] = round((ended - started).total_seconds(), 2)
         if self.record_to is not None:
-            path = save_recording(self.record_to, key_for(contract, macros, files), result)
-            result.metadata["recording"] = str(path)
+            try:
+                path = save_recording(self.record_to, key_for(contract, macros, files), result)
+                result.metadata["recording"] = str(path)
+            except Exception as exc:  # a recording failure never discards a run
+                result.metadata["recording_error"] = f"{type(exc).__name__}: {exc}"
         return result
 
     @staticmethod

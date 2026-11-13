@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import threading
+import time
 from datetime import date
 
 import pytest
@@ -119,3 +121,53 @@ def test_pool_rejects_invalid_bounds() -> None:
         sashiny.Pool(sashiny.MockEngine(), min_size=3, max_size=2)
     with pytest.raises(ValueError, match="non-negative"):
         sashiny.Pool(sashiny.MockEngine(), min_size=-1)
+
+
+class _SlowEngine(sashiny.Engine):
+    def __init__(self) -> None:
+        self._started = threading.Event()
+
+    def run(self, contract, values, *, today=None, uploads=None, run_id=None):  # type: ignore[no-untyped-def]
+        self._started.set()
+        time.sleep(0.3)
+        return sashiny.Result.new(run_id or "r", "success")
+
+    def close(self) -> None:
+        pass
+
+
+def test_pool_waits_for_a_free_session() -> None:
+    pool = sashiny.Pool(_SlowEngine, max_size=1, acquire_timeout=5.0)
+    contract = _minimal_contract()
+    results: list[sashiny.Result] = []
+
+    def run() -> None:
+        results.append(pool.run(contract, {}, today=TODAY))
+
+    threads = [threading.Thread(target=run) for _ in range(3)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert all(r.status == "success" for r in results)
+    pool.close()
+
+
+def test_pool_returns_error_result_when_exhausted() -> None:
+    pool = sashiny.Pool(_SlowEngine, max_size=1, acquire_timeout=0.1)
+    contract = _minimal_contract()
+    results: list[sashiny.Result] = []
+
+    def run() -> None:
+        results.append(pool.run(contract, {}, today=TODAY))
+
+    threads = [threading.Thread(target=run) for _ in range(3)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    statuses = sorted(r.status for r in results)
+    assert statuses == ["error", "error", "success"]
+    exhausted = [r for r in results if r.status == "error"]
+    assert all("pool exhausted" in r.metadata["engine_error"] for r in exhausted)
+    pool.close()

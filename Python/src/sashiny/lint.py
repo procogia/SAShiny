@@ -60,7 +60,7 @@ def _dataset_targets(data: dict[str, Any]) -> set[str]:
 def _input_id_for_macro(data: dict[str, Any], name: str) -> str:
     """Return the input id that sets ``name``, or ``name`` lower-cased."""
     for iid, spec in (data.get("inputs") or {}).items():
-        if name in all_macro_names({str(iid): spec}):
+        if name in all_macro_names({"inputs": {str(iid): spec}}):
             return str(iid)
     return name.lower()
 
@@ -180,4 +180,15 @@ def lint(data: dict[str, Any], program_text: str) -> list[Issue]:
     issues.extend(_lint_l003(data, text))
     issues.extend(_lint_l004(data))
     issues.extend(_lint_l005(data, text))
-    return issues
+    # A daterange or multichoice input sets several macro names that all map to
+    # the same input id, so the same (code, path) can be reported more than once.
+    # Deduplicate by (code, path) while preserving first-seen order.
+    seen: set[tuple[str, str]] = set()
+    deduped: list[Issue] = []
+    for issue in issues:
+        key = issue.key()
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(issue)
+    return deduped

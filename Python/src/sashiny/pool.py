@@ -20,7 +20,11 @@ from .contract import Contract
 from .engines import Engine
 from .result import Result
 
-__all__ = ["Pool", "PoolSession"]
+__all__ = ["Pool", "PoolExhausted", "PoolSession"]
+
+
+class PoolExhausted(Exception):
+    """No pooled session became free within ``acquire_timeout``."""
 
 
 @dataclass
@@ -55,7 +59,7 @@ class Pool(Engine):
     name = "pool"
     version = "0.1.0"
 
-    def __init__(
+    def __init__(  # noqa: PLR0913 - pool configuration knobs
         self,
         engine: Engine | Callable[[], Engine],
         *,
@@ -63,6 +67,7 @@ class Pool(Engine):
         max_size: int = 4,
         idle_timeout: float = 300.0,
         max_runs_per_session: int = 100,
+        acquire_timeout: float = 30.0,
     ) -> None:
         """Create a bounded pool.
 
@@ -72,6 +77,8 @@ class Pool(Engine):
             max_size: Maximum number of concurrent sessions.
             idle_timeout: Seconds after which an idle session is discarded.
             max_runs_per_session: Runs before a session is discarded.
+            acquire_timeout: Seconds to wait for a free session when every
+                session is busy before reporting ``pool exhausted`` (spec §6.5).
 
         """
         if isinstance(engine, Engine):
@@ -88,8 +95,9 @@ class Pool(Engine):
         self.max_size = max_size
         self.idle_timeout = idle_timeout
         self.max_runs_per_session = max_runs_per_session
+        self.acquire_timeout = acquire_timeout
         self._sessions: list[PoolSession] = []
-        self._lock = threading.Lock()
+        self._cond = threading.Condition()
         self._top_up()
 
     def _new_session(self) -> PoolSession:
@@ -99,7 +107,7 @@ class Pool(Engine):
 
     def _top_up(self) -> None:
         """Create sessions until the warm minimum `min_size` is met."""
-        with self._lock:
+        with self._cond:
             while len(self._sessions) < self.min_size:
                 session = self._new_session()
                 self._sessions.append(session)
@@ -110,7 +118,7 @@ class Pool(Engine):
             session.engine.close()
 
     def _discard(self, session: PoolSession) -> None:
-        with self._lock:
+        with self._cond:
             self._sessions = [s for s in self._sessions if s is not session]
         self._close(session)
 
@@ -124,49 +132,56 @@ class Pool(Engine):
 
     def close(self) -> None:
         """Close every pooled session."""
-        with self._lock:
+        with self._cond:
             sessions, self._sessions = self._sessions, []
         for s in sessions:
             self._close(s)
 
     def _acquire(self) -> PoolSession:
-        with self._lock:
-            now = time.monotonic()
-            # Reap idle sessions past the timeout.
-            idle = [
-                s
-                for s in self._sessions
-                if not s.in_use and (now - s.last_used) >= self.idle_timeout
-            ]
-            self._sessions = [s for s in self._sessions if s not in idle]
-            found: PoolSession | None = None
-            # Reuse an idle session.
-            for s in self._sessions:
-                if not s.in_use:
-                    s.in_use = True
-                    s.last_used = now
-                    found = s
+        deadline = time.monotonic() + self.acquire_timeout
+        with self._cond:
+            while True:
+                now = time.monotonic()
+                # Reap idle sessions past the timeout.
+                idle = [
+                    s
+                    for s in self._sessions
+                    if not s.in_use and (now - s.last_used) >= self.idle_timeout
+                ]
+                self._sessions = [s for s in self._sessions if s not in idle]
+                found: PoolSession | None = None
+                # Reuse an idle session.
+                for s in self._sessions:
+                    if not s.in_use:
+                        s.in_use = True
+                        s.last_used = now
+                        found = s
+                        break
+                # Create a new session if under max.
+                if found is None and len(self._sessions) < self.max_size:
+                    found = self._new_session()
+                    found.in_use = True
+                    self._sessions.append(found)
+                if found is not None:
                     break
-            # Create a new session if under max.
-            if found is None and len(self._sessions) < self.max_size:
-                found = self._new_session()
-                found.in_use = True
-                self._sessions.append(found)
+                # Every session is busy: wait for a release (spec §6.5).
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise PoolExhausted(f"pool exhausted: all {self.max_size} sessions busy")
+                self._cond.wait(timeout=remaining)
         for s in idle:
             self._close(s)
         self._top_up()
-        if found is not None:
-            return found
-        # Pool exhausted.
-        raise RuntimeError("pool exhausted")
+        return found
 
     def _release(self, session: PoolSession, discard: bool) -> None:
-        with self._lock:
+        with self._cond:
             session.in_use = False
             session.last_used = time.monotonic()
             drop = discard or session.runs >= self.max_runs_per_session
             if drop:
                 self._sessions = [s for s in self._sessions if s is not session]
+            self._cond.notify_all()
         if drop:
             self._close(session)
         self._top_up()
@@ -184,8 +199,15 @@ class Pool(Engine):
 
         The session is discarded if a submitted run errors, times out, or raises
         (spec §6.5). Input validation errors never reach SAS and keep the session.
+        When every session is busy for ``acquire_timeout``, an error result with
+        ``engine_error`` ``pool exhausted`` is returned (never raised).
         """
-        session = self._acquire()
+        try:
+            session = self._acquire()
+        except PoolExhausted as exc:
+            result = Result.new(run_id or str(uuid.uuid4()), "error", engine=self.name)
+            result.metadata["engine_error"] = str(exc)
+            return result
         discard = False
         try:
             try:

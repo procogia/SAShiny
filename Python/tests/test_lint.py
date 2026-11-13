@@ -162,3 +162,37 @@ def test_l005_ignores_present_macro() -> None:
     program = "%macro report;\nproc print data=sashelp.class; run;\n%mend report;"
     issues = sashiny.lint(data, program)
     assert "L005" not in _codes(issues)
+
+
+def test_l001_path_uses_input_id_when_macro_name_differs() -> None:
+    # A macro name that differs from the input id must still map back to the
+    # input id (not the lower-cased macro name) in the finding path.
+    data = _data(
+        inputs={
+            "min_msrp": {"type": "numeric", "label": "Min MSRP", "macro": "MSRP"},
+        }
+    )
+    program = "%let MSRP = 5;\nproc print data=sashelp.class; run;"
+    issues = sashiny.lint(data, program)
+    l001 = [i for i in issues if i.code == "L001"]
+    assert len(l001) == 1
+    assert l001[0].path == "/inputs/min_msrp"
+
+
+def test_lint_dedupes_daterange_macro_names() -> None:
+    # A daterange sets two macro names that both map to the same input id; the
+    # same (code, path) must not be reported twice.
+    data = _data(
+        inputs={
+            "period": {
+                "type": "daterange",
+                "label": "Period",
+                "macro": ["start_dt", "end_dt"],
+            },
+        }
+    )
+    program = "%let START_DT = 1;\n%let END_DT = 2;\nproc print data=sashelp.class; run;"
+    issues = sashiny.lint(data, program)
+    l001 = [i for i in issues if i.code == "L001"]
+    assert len(l001) == 1
+    assert l001[0].path == "/inputs/period"

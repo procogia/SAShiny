@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from htmltools import HTMLDependency
-from shiny import Inputs, Outputs, Session, module, reactive, req, ui
+from shiny import Inputs, Outputs, Session, module, reactive, ui
 from shiny import render as shiny_render
 from shiny.ui import TagChild
 
@@ -464,8 +464,21 @@ def program_server(  # noqa: PLR0913, PLR0917 - Shiny module signature + overrid
     @reactive.effect
     @reactive.event(input.run, ignore_none=not settings.get("auto_run", False))
     def _trigger() -> None:
+        # Coalesce: ignore a Run click while a run is already in flight, so a
+        # burst of clicks does not queue one engine run per click (issue #49).
+        if run_task.status() == "running":
+            return
         values, uploads = shiny_values(contract, _read)
         run_task(values, uploads)
+
+    # Cancel any in-flight or queued run when the session ends, so a slow SAS
+    # run does not keep executing after the browser disconnects (issue #50).
+    session.on_ended(run_task.cancel)
+
+    @reactive.calc
+    def running() -> bool:
+        """Return whether a run is in flight (used to show progress, not a stuck card)."""
+        return run_task.status() == "running"
 
     @reactive.calc
     def result() -> Result | None:
@@ -484,7 +497,9 @@ def program_server(  # noqa: PLR0913, PLR0917 - Shiny module signature + overrid
             return f"engine error: {run_task.error()}"
         res = result()
         if res is None:
-            return "idle"
+            # Before the first run, surface a choices_from load failure so the
+            # user is not left with empty dropdowns and no explanation (#68).
+            return choice_error() or "idle"
         text = _status_text(res)
         return f"{text}\n{choice_error()}" if choice_error() else text
 
@@ -500,7 +515,7 @@ def program_server(  # noqa: PLR0913, PLR0917 - Shiny module signature + overrid
         if spec["type"] == "download":
             _register_download(output, oid, result)
         else:
-            _register_card(output, oid, spec, result, (chart_render or {}).get(oid))
+            _register_card(output, oid, spec, result, running, (chart_render or {}).get(oid))
 
     return {
         "result": result,
@@ -514,11 +529,12 @@ def _empty_result() -> Result:
     return Result.new("", "idle")
 
 
-def _register_card(
+def _register_card(  # noqa: PLR0913, PLR0917 - Shiny render callback + running flag
     output: Outputs,
     oid: str,
     spec: dict[str, Any],
     result: Callable[[], Result | None],
+    running: Callable[[], bool],
     chart_render: Callable[[dict[str, Any], dict[str, Any] | None], Any] | None = None,
 ) -> None:
     kind = spec["type"]
@@ -526,9 +542,13 @@ def _register_card(
     @output(id=f"out_{oid}")
     @shiny_render.ui
     def _card() -> TagChild:
+        if running():
+            return ui.tags.small("Running...")
         res = result()
         if res is None:
-            return ui.tags.small("Running...")
+            # Not running and no result: before the first run, or after a failed
+            # run. Do not leave a stuck "Running..." spinner (issue #52).
+            return ui.tags.small("No output for this run.")
         if oid not in res.outputs:
             return ui.tags.small("No output for this run.")
         value = res.outputs[oid]
@@ -538,23 +558,30 @@ def _register_card(
 
 
 def _register_download(output: Outputs, oid: str, result: Callable[[], Result | None]) -> None:
-    def _value() -> dict[str, str]:
+    def _value() -> dict[str, str] | None:
+        # Return None (not a `req()` SilentException) when there is no result or
+        # no download value yet, so the download handler returns an empty body
+        # instead of an HTTP 500 + traceback (issue #51; R returns 404).
         res = result()
-        req(res is not None)
-        assert res is not None  # noqa: S101 - narrowed by req()
+        if res is None:
+            return None
         value = res.outputs.get(oid)
-        req(isinstance(value, dict) and "data" in value)
-        assert isinstance(value, dict)  # noqa: S101 - narrowed by req()
+        if not (isinstance(value, dict) and "data" in value):
+            return None
         return value
 
     def _filename() -> str:
-        return _value()["filename"]
+        value = _value()
+        return value["filename"] if value else ""
 
     def _media_type() -> str:
-        return _value()["mime"]
+        value = _value()
+        return value["mime"] if value else ""
 
     def _download() -> Iterator[bytes]:
-        yield base64.b64decode(_value()["data"])
+        value = _value()
+        if value:
+            yield base64.b64decode(value["data"])
 
     # Shiny 1.9 renamed render.download to render.download_button.
     renderer = getattr(shiny_render, "download_button", None)

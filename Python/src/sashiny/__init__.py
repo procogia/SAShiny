@@ -8,7 +8,7 @@ endorsed by either company.
 from typing import Any
 
 from .charts import chart_backends, render_chart
-from .contract import Contract, Issue, load, validate
+from .contract import Contract, Issue, default_module_id, load, validate
 from .engines import Engine, MockEngine, SaspyEngine, connect, load_profiles
 from .lint import lint
 from .pool import Pool
@@ -35,6 +35,7 @@ __all__ = [
     "app",
     "chart_backends",
     "connect",
+    "default_module_id",
     "lint",
     "load",
     "load_profiles",

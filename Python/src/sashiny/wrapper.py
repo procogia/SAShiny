@@ -81,7 +81,7 @@ def wrapper_code(
     tail: list[str] = []
     run = data.get("run") or {}
     if run.get("entry") == "macro":
-        args = ", ".join(f"{n}=&{n}" for n in macros)
+        args = ", ".join(f"{n}=%bquote(&{n})" for n in macros)
         tail.append(f"%{run['macro']}({args});")
     tail.append("%put NOTE: SASHINY-END-PROGRAM;")
     tail.extend(f"ods {fmt}(id={oid}) close;" for oid, fmt in ods)

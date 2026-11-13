@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime as dt
 from pathlib import Path
 
 import pytest
@@ -91,6 +92,38 @@ def test_read_xlsx(tmp_path: Path) -> None:
     df, datetimes = read_upload(UploadFile(path=path, name="adsl.xlsx"), SPEC)
     assert datetimes == {"TRTSDT": "date"}
     assert df["AGE"].tolist() == [50]
+
+
+def test_read_xlsx_date_column_with_blank_cell(tmp_path: Path) -> None:
+    # Spec §7 step 3: an empty cell in a date column is missing, not an error
+    # (issue #66). Native date cells mixed with blanks must be accepted.
+    pytest.importorskip("openpyxl")
+    from openpyxl import Workbook  # noqa: PLC0415 - optional dependency
+
+    wb = Workbook()
+    ws = wb.active
+    ws.append(["month", "n"])
+    ws.append([dt.date(2024, 1, 1), 1])
+    ws.append([None, 2])  # empty date cell
+    ws.append([dt.date(2024, 3, 1), 3])
+    path = tmp_path / "gap.xlsx"
+    wb.save(path)
+
+    spec = {
+        "type": "dataset",
+        "target": "work.gap",
+        "columns": [
+            {"name": "month", "type": "date"},
+            {"name": "n", "type": "numeric"},
+        ],
+    }
+    df, datetimes = read_upload(UploadFile(path=path, name="gap.xlsx"), spec)
+    assert datetimes == {"month": "date"}
+    assert df["n"].tolist() == [1, 2, 3]
+    # First and third months are dates; the middle is missing.
+    assert pd.notna(df["month"].iloc[0])
+    assert pd.isna(df["month"].iloc[1])
+    assert pd.notna(df["month"].iloc[2])
 
 
 def test_read_csv_rejects_literal_na_in_date(tmp_path: Path) -> None:

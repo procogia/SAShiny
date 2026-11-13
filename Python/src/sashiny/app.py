@@ -10,7 +10,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from .contract import Contract, load
+from .contract import Contract, default_module_id, load
 from .engines import Engine
 from .modules import program_server, program_ui
 
@@ -34,19 +34,33 @@ def app(
     Returns:
         A Shiny ``App`` with one tab per contract.
 
+    Raises:
+        ValueError: If two contracts resolve to the same module id.
+
     """
     from shiny import App, ui  # noqa: PLC0415 - optional dependency
 
     loaded = [c if isinstance(c, Contract) else load(c) for c in contracts]
 
-    def _module_id(i: int, contract: Contract) -> str:
-        return contract.data.get("id") or f"program_{i}"
+    def _module_id(contract: Contract) -> str:
+        return contract.data.get("id") or default_module_id(contract.data["program"])
+
+    # Reject duplicate module ids (spec §2): two tabs sharing a namespace would
+    # collide on every input and output id.
+    ids = [_module_id(c) for c in loaded]
+    seen: dict[str, int] = {}
+    for i, mid in enumerate(ids):
+        if mid in seen:
+            raise ValueError(
+                f"duplicate module id {mid!r}: contracts {seen[mid]} and {i} resolve to the same id"
+            )
+        seen[mid] = i
 
     app_ui = ui.page_navbar(
         *[
             ui.nav_panel(
                 contract.data.get("title", f"Program {i}"),
-                program_ui(_module_id(i, contract), contract),
+                program_ui(ids[i], contract),
             )
             for i, contract in enumerate(loaded)
         ],
@@ -55,6 +69,6 @@ def app(
 
     def server(input: Any, output: Any, session: Any) -> None:
         for i, contract in enumerate(loaded):
-            program_server(_module_id(i, contract), contract, engine)
+            program_server(ids[i], contract, engine)
 
     return App(app_ui, server)

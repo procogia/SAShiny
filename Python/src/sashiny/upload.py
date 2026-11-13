@@ -10,6 +10,7 @@ Requires the ``upload`` extra (``pandas``; ``openpyxl`` for ``xlsx``;
 
 from __future__ import annotations
 
+import datetime
 import hashlib
 import re
 from dataclasses import dataclass
@@ -170,6 +171,12 @@ def _to_date(series: Any, name: str) -> Any:
 
     if pd.api.types.is_datetime64_any_dtype(series):
         return series
+    # A column read from xlsx with a blank cell is object dtype: native
+    # date/datetime/Timestamp values mixed with "" (empty) cells. Native date
+    # values are valid; only empty/whitespace is missing (spec §7 step 3).
+    # Detect native date-like cells so they are not stringified to
+    # "2024-01-01 00:00:00" (which would fail the YYYY-MM-DD check).
+    native = series.map(_is_native_date)
     text = series.astype(str).str.strip()
     # Only native missing and empty/whitespace are "missing" (spec §7 step 3);
     # any other non-ISO text (including the literal "NA", "nan", "NaT", "None")
@@ -178,10 +185,22 @@ def _to_date(series: Any, name: str) -> Any:
     # Enforce the exact ISO shape (spec §7 step 3): pandas' "%Y-%m-%d" format
     # accepts non-zero-padded fields such as "2026-1-2", which R rejects.
     shape_ok = text.str.fullmatch(r"\d{4}-\d{2}-\d{2}", na=False)
-    parsed = pd.to_datetime(text.where(~blank & shape_ok), format="%Y-%m-%d", errors="coerce")
+    # Native date cells are valid regardless of their string form; text cells
+    # must match the exact ISO shape.
+    valid = native | shape_ok
+    parsed = pd.to_datetime(series.where(~blank & valid), errors="coerce")
     if (parsed.isna() & ~blank).any():
         raise UploadError(f"column {name} has values that are not YYYY-MM-DD dates")
     return parsed
+
+
+def _is_native_date(v: Any) -> bool:
+    """Return whether ``v`` is a native date/datetime/Timestamp cell value.
+
+    ``pandas.Timestamp`` subclasses ``datetime.datetime``, so a single
+    ``isinstance`` check covers date, datetime and Timestamp alike.
+    """
+    return isinstance(v, (datetime.date, datetime.datetime))
 
 
 def _to_character(series: Any) -> Any:

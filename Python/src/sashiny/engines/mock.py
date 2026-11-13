@@ -19,7 +19,7 @@ from typing import Any
 from ..contract import Contract
 from ..recording import contract_sha256, key_for, load_recording, program_sha256
 from ..result import Result
-from ..upload import UploadError, resolve_upload
+from ..upload import UploadError, _check_file, resolve_upload
 from ..values import render_values
 from .base import Engine
 
@@ -34,13 +34,18 @@ def _recording_key(
 
 
 def resolve_files(contract: Contract, uploads: dict[str, Any] | None) -> dict[str, Path]:
-    """Resolve ``uploads`` entries to file paths (``True`` = the contract's sample)."""
+    """Resolve ``uploads`` entries to file paths (``True`` = the contract's sample).
+
+    Each supplied file is checked per §7 step 1 (extension, existence, size); a
+    bad file raises :class:`UploadError`, which the mock engine reports as ``V014``.
+    """
     files: dict[str, Path] = {}
     for iid, spec in (contract.data.get("inputs") or {}).items():
         if spec["type"] != "dataset":
             continue
         upload = resolve_upload((uploads or {}).get(iid), spec, contract.base_dir)
         if upload is not None:
+            _check_file(upload, spec)
             files[iid] = upload.path
     return files
 
