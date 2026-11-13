@@ -39,7 +39,7 @@ Suggests:
     knitr,
     openxlsx,
     plotly,
-    reticulate,
+    reticulate (>= 1.45.0),
     rlang,
     rmarkdown,
     shiny,

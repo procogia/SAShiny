@@ -1,3 +1,14 @@
+# SAShiny (development version)
+
+## Fixes
+
+* Live saspy runs work with pandas 3. Every table output was reported as
+  "dataset not found", because reticulate before 1.45.0 does not convert
+  pandas 3 data frames; reticulate 1.45.0 or later is now required for live
+  runs, with a clear error for older versions. Dataset uploads no longer fail
+  with "call stack is not deep enough", because the pandas date conversion and
+  `df2sd` now run inside a Python function.
+
 # SAShiny 0.1.5
 
 ## Lint

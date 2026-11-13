@@ -51,8 +51,11 @@ COPY R/inst ./R/inst
 COPY R/man ./R/man
 
 # Install the R package and its dependencies.
+# reticulate then comes from current CRAN: the base image's CRAN snapshot has
+# a release too old for pandas 3 (live runs need reticulate 1.45.0 or later).
 RUN Rscript -e 'install.packages(c("remotes"), repos="https://cloud.r-project.org")' \
- && Rscript -e 'remotes::install_local("R", dependencies=TRUE, upgrade="never")'
+ && Rscript -e 'remotes::install_local("R", dependencies=TRUE, upgrade="never")' \
+ && Rscript -e 'install.packages("reticulate", repos="https://cloud.r-project.org"); stopifnot(packageVersion("reticulate") >= "1.45.0")'
 
 # --- Shared spec + examples -------------------------------------------------
 COPY spec ./spec
