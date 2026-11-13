@@ -175,7 +175,10 @@
     return(as.Date(x, tz = "UTC"))
   }
   text <- trimws(as.character(x))
-  blank <- is.na(x) | text %in% c("", "NA", "NaT", "None", "nan")
+  # Only native missing and empty/whitespace are "missing" (spec section 7 step 3);
+  # any other non-ISO text (including the literal "NA", "nan", "NaT", "None")
+  # is unparseable and reported as V014.
+  blank <- is.na(x) | !nzchar(text)
   ok <- grepl("^[0-9]{4}-[0-9]{2}-[0-9]{2}$", text)
   parsed <- as.Date(ifelse(blank | !ok, NA, text), format = "%Y-%m-%d")
   if (any(is.na(parsed) & !blank)) {

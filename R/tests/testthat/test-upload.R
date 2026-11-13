@@ -86,6 +86,36 @@ test_that("bad uploads are rejected with V014 messages", {
   expect_s3_class(err, "sashiny_upload_error")
 })
 
+test_that("a literal NA in a date column is rejected (parity with Python)", {
+  upload <- write_csv(c("USUBJID,AGE,TRTSDT", "S1,45,NA"))
+  expect_error(.sashiny_read_upload(upload, upload_spec), "YYYY-MM-DD")
+})
+
+test_that("a whitespace-only numeric cell in xlsx is missing (parity with Python)", {
+  skip_if_not_installed("openxlsx")
+  dir <- tempfile("sashiny-up-")
+  dir.create(dir)
+  df <- data.frame(USUBJID = c("S1", "S2"), AGE = c(50, " "), TRTSDT = c("2024-01-01", "2024-01-02"))
+  openxlsx::write.xlsx(df, file.path(dir, "adsl.xlsx"))
+  read <- .sashiny_read_upload(.sashiny_upload_file(file.path(dir, "adsl.xlsx")), upload_spec)
+  expect_identical(read$df$AGE[1], 50)
+  expect_true(is.na(read$df$AGE[2]))
+})
+
+test_that("a character column drops the .0 of integer-valued floats (parity with Python)", {
+  skip_if_not_installed("openxlsx")
+  dir <- tempfile("sashiny-up-")
+  dir.create(dir)
+  spec <- list(
+    type = "dataset", target = "work.adsl",
+    columns = list(list(name = "code", type = "character"))
+  )
+  df <- data.frame(code = c(1.0, 1.5))
+  openxlsx::write.xlsx(df, file.path(dir, "adsl.xlsx"))
+  read <- .sashiny_read_upload(.sashiny_upload_file(file.path(dir, "adsl.xlsx")), spec)
+  expect_identical(read$df$code, c("1", "1.5"))
+})
+
 test_that("xlsx and xpt uploads are read", {
   skip_if_not_installed("openxlsx")
   skip_if_not_installed("haven")

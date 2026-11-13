@@ -226,7 +226,9 @@
   out_rows <- lapply(rows, function(row) {
     cells <- lapply(seq_along(meta), function(j) .sashiny_clean_cell(row[[j]], numeric[[j]]))
     if (formatted) {
-      cells <- lapply(cells, function(c) if (is.null(c)) "" else trimws(as.character(c)))
+      cells <- lapply(cells, function(c) {
+        if (is.null(c)) "" else trimws(as.character(c), whitespace = "[[:space:]]")
+      })
     }
     cells
   })

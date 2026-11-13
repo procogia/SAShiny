@@ -93,6 +93,43 @@ def test_read_xlsx(tmp_path: Path) -> None:
     assert df["AGE"].tolist() == [50]
 
 
+def test_read_csv_rejects_literal_na_in_date(tmp_path: Path) -> None:
+    # Spec §7 step 3: only empty/whitespace is missing; the literal text "NA"
+    # is unparseable and reported as V014 (parity with R).
+    upload = _csv(tmp_path, "USUBJID,AGE,TRTSDT\nS1,45,NA\n")
+    with pytest.raises(UploadError, match="YYYY-MM-DD"):
+        read_upload(upload, SPEC)
+
+
+def test_read_xlsx_character_column_drops_float_dot_zero(tmp_path: Path) -> None:
+    # Spec §7 step 3: character columns convert numbers like R's as.character,
+    # so an integer-valued float 1.0 becomes "1", not "1.0".
+    pytest.importorskip("openpyxl")
+    spec = {
+        "type": "dataset",
+        "target": "work.adsl",
+        "columns": [{"name": "code", "type": "character"}],
+    }
+    path = tmp_path / "adsl.xlsx"
+    pd.DataFrame({"code": [1.0, 1.5]}).to_excel(path, index=False)
+    df, _ = read_upload(UploadFile(path=path, name="adsl.xlsx"), spec)
+    assert df["code"].tolist() == ["1", "1.5"]
+
+
+def test_read_xlsx_numeric_whitespace_is_missing(tmp_path: Path) -> None:
+    # Spec §7 step 3: "empty = missing"; a whitespace-only cell in a non-CSV
+    # numeric column is empty (parity with R).
+    pytest.importorskip("openpyxl")
+    path = tmp_path / "adsl.xlsx"
+    frame = pd.DataFrame(
+        {"USUBJID": ["S1", "S2"], "AGE": [50, " "], "TRTSDT": ["2024-01-01", "2024-01-02"]}
+    )
+    frame.to_excel(path, index=False)
+    df, _ = read_upload(UploadFile(path=path, name="adsl.xlsx"), SPEC)
+    assert df["AGE"].tolist()[0] == 50
+    assert pd.isna(df["AGE"].tolist()[1])
+
+
 def test_read_unreadable_file(tmp_path: Path) -> None:
     path = tmp_path / "bad.xlsx"
     path.write_bytes(b"not a workbook")

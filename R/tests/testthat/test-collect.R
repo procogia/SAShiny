@@ -78,6 +78,20 @@ test_that("build_table produces raw and formatted values", {
   expect_false(fmt$truncated)
 })
 
+test_that("build_table preserves Unicode whitespace (parity with Python)", {
+  meta <- list(list(name = "s", type = "character", label = "", format = ""))
+  raw <- .sashiny_build_table(
+    meta, list(list("abc\u00a0"), list("abc\u2003"), list("abc ")),
+    total_rows = 3L, max_rows = 10L, formatted = FALSE
+  )
+  expect_identical(raw$rows, list(list("abc\u00a0"), list("abc\u2003"), list("abc")))
+  fmt <- .sashiny_build_table(
+    meta, list(list("abc\u00a0"), list("abc ")),
+    total_rows = 2L, max_rows = 10L, formatted = TRUE
+  )
+  expect_identical(fmt$rows, list(list("abc\u00a0"), list("abc")))
+})
+
 test_that("select_columns matches case-insensitively in contract order", {
   meta <- list(list(name = "A"), list(name = "b"))
   expect_identical(.sashiny_select_columns(meta, NULL), meta)

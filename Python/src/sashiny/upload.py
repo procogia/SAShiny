@@ -141,6 +141,10 @@ def _to_numeric(series: Any, name: str, all_text: bool) -> Any:
     import pandas as pd  # noqa: PLC0415 - optional dependency
 
     blank = series.astype(str).str.strip() == "" if all_text else series.isna()
+    if not all_text:
+        # Non-CSV readers may leave whitespace-only cells as strings; treat them
+        # as empty (spec §7 step 3 "empty = missing").
+        blank = blank | (series.astype(str).str.strip() == "")
     converted = pd.to_numeric(series.where(~blank), errors="coerce")
     if (converted.isna() & ~blank & series.notna()).any():
         raise UploadError(f"column {name} has values that are not numbers")
@@ -153,11 +157,29 @@ def _to_date(series: Any, name: str) -> Any:
     if pd.api.types.is_datetime64_any_dtype(series):
         return series
     text = series.astype(str).str.strip()
-    blank = text.isin(["", "nan", "NaT", "None"])
+    # Only native missing and empty/whitespace are "missing" (spec §7 step 3);
+    # any other non-ISO text (including the literal "NA", "nan", "NaT", "None")
+    # is unparseable and reported as V014.
+    blank = series.isna() | (text == "")
     parsed = pd.to_datetime(text.where(~blank), format="%Y-%m-%d", errors="coerce")
     if (parsed.isna() & ~blank).any():
         raise UploadError(f"column {name} has values that are not YYYY-MM-DD dates")
     return parsed
+
+
+def _to_character(series: Any) -> Any:
+    """Convert a declared character column to strings (spec §7 step 3).
+
+    Integer-valued floats render without a trailing ``.0`` (``1.0`` -> ``"1"``),
+    matching R's ``as.character``. Native missing values become ``""``.
+    """
+
+    def _fmt(v: Any) -> str:
+        if isinstance(v, float) and v.is_integer():
+            return str(int(v))
+        return str(v)
+
+    return series.where(series.notna(), "").map(_fmt)
 
 
 def _infer_csv_numbers(df: Any, declared: set[str]) -> None:
@@ -214,7 +236,7 @@ def read_upload(upload: UploadFile, spec: dict[str, Any]) -> tuple[Any, dict[str
             df[name] = _to_date(series, name)
             datetimes[name] = "date"
         else:
-            df[name] = series.where(series.notna(), "").astype(str)
+            df[name] = _to_character(series)
     if all_text:
         _infer_csv_numbers(df, declared)
     return df, datetimes

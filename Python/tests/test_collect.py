@@ -87,6 +87,20 @@ def test_build_table_raw_and_formatted() -> None:
     assert fmt["truncated"] is False
 
 
+def test_build_table_preserves_unicode_whitespace() -> None:
+    # Spec §8.1: "trailing blanks" = ASCII whitespace only. Unicode whitespace
+    # (NBSP, em-space) is data and must be preserved identically in R and Python.
+    meta = [{"name": "s", "type": "character", "label": "", "format": ""}]
+    raw = collect.build_table(
+        meta, [["abc\u00a0"], ["abc\u2003"], ["abc "]], total_rows=3, max_rows=10, formatted=False
+    )
+    assert raw["rows"] == [["abc\u00a0"], ["abc\u2003"], ["abc"]]
+    fmt = collect.build_table(
+        meta, [["abc\u00a0"], ["abc "]], total_rows=2, max_rows=10, formatted=True
+    )
+    assert fmt["rows"] == [["abc\u00a0"], ["abc"]]
+
+
 def test_select_columns() -> None:
     meta = [{"name": "A"}, {"name": "b"}]
     assert collect.select_columns(meta, None) == meta

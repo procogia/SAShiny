@@ -334,7 +334,10 @@ A timeout MUST abort the SAS session. The pool MUST then discard and replace tha
    a digit; truncate to 32 bytes; resolve case-insensitive duplicates by suffixing `_2`, `_3`, ... (truncating
    further to fit). Declared `columns` are matched case-insensitively **after** this step.
 3. Declared column types: `numeric` (parse as number, empty = missing; unparseable = `V014`), `character`,
-   `date` (ISO `YYYY-MM-DD`, or a native date type; stored as SAS date with format `DATE9.`).
+   `date` (ISO `YYYY-MM-DD`, or a native date type; stored as SAS date with format `DATE9.`). For `numeric`
+   and `date` columns, a value is "empty" (missing) when it is the empty string or whitespace only; any
+   other non-conforming value (including the literal text `NA`, `nan`, `NaT` or `None`) is unparseable and
+   reported as `V014`.
 4. Undeclared columns: native numeric/date types are kept. In `csv`, a column whose non-empty values all
    parse as numbers becomes numeric, otherwise character.
 5. The result is written to `target`. Column order is preserved.
@@ -370,6 +373,8 @@ Table details:
   cells are strings with trailing blanks removed. SAS dates stay numbers.
 - With `formatted: true`, every cell is the string SAS displays (`vvalue`), with leading and trailing
   blanks removed.
+- "Blanks" here means ASCII whitespace (space, tab, CR, LF, vertical tab, form feed), not the full
+  Unicode `White_Space` set. R and Python MUST strip the same characters so the JSON value is identical.
 - `total_rows` is the logical observation count (`nlobs`). It is `null` when SAS cannot report it, for
   example for views. `truncated` is `total_rows > max_rows`.
 

@@ -54,6 +54,9 @@ DOWNLOAD_MIME = {
 CSV_MAX_ROWS = 1_000_000
 XPT_V5_MAX_NAME = 8
 
+# ASCII whitespace only (spec §8.1 "trailing blanks"): space, tab, CR, LF, VT, FF.
+_ASCII_WS = " \t\n\r\f\v"
+
 _LINE_BREAK = re.compile(r"\r\n|\r|\n")
 _TRAILING_BREAK = re.compile(r"(\r\n|\r|\n)$")
 _IMG = re.compile(
@@ -224,7 +227,7 @@ def _clean_cell(value: Any, numeric: bool) -> Any:
         return int(number) if number.is_integer() and abs(number) < 2**53 else number
     if isinstance(value, float) and math.isnan(value):
         return ""
-    return str(value).rstrip()
+    return str(value).rstrip(_ASCII_WS)
 
 
 def build_table(
@@ -253,7 +256,7 @@ def build_table(
     for row in rows:
         cells = [_clean_cell(v, n) for v, n in zip(row, numeric, strict=True)]
         if formatted:
-            cells = ["" if c is None else str(c).strip() for c in cells]
+            cells = ["" if c is None else str(c).strip(_ASCII_WS) for c in cells]
         out_rows.append(cells)
     return {
         "columns": [
