@@ -94,7 +94,8 @@ print.sashiny_engine_saspy <- function(x, ...) {
     return(engine$session_factory())
   }
   if (is.list(engine$cfg)) .sashiny_preflight(engine$cfg)
-  .sashiny_need("reticulate", "to run live SAS via saspy")
+  # reticulate 1.45.0 is the first release that converts pandas 3 data frames.
+  .sashiny_need("reticulate", "to run live SAS via saspy", version = "1.45.0")
   saspy <- reticulate::import("saspy")
   cfgfile <- engine$cfg
   if (is.list(cfgfile)) {
@@ -378,31 +379,30 @@ sas_engine_run.sashiny_engine_saspy <- function(engine, contract, values, today 
 #' Through reticulate, date columns are sent as pandas datetimes so `df2sd`
 #' writes SAS dates; other sessions (tests) receive the R data frame.
 #'
-#' `reticulate::r_to_py()` creates a string `Index` from R row names, which
-#' triggers `warnings.warn()` inside saspy's `dataframe2sasdata()`. When
-#' `df2sd` is invoked directly from C (reticulate) with no Python frame on the
-#' call stack, Python's `warnings.warn()` raises `ValueError: call stack is not
-#' deep enough`. Resetting the index to a `RangeIndex` and invoking `df2sd`
-#' through a Python wrapper function avoids both issues.
+#' The pandas work runs inside a small Python function. pandas 3 inspects the
+#' calling Python frames when a column is assigned, and saspy calls
+#' `warnings.warn()` in `df2sd`. Both raise `ValueError: call stack is not deep
+#' enough` when reticulate calls them directly from R, with no Python frame
+#' above them.
 #' @noRd
 .sashiny_df2sd <- function(sas, df, lib, mem, datetimes) {
   if (inherits(sas, "python.builtin.object")) {
-    pd <- reticulate::import("pandas", convert = FALSE)
     dates <- names(datetimes)
     for (n in dates) df[[n]] <- format(df[[n]], "%Y-%m-%d")
     rownames(df) <- NULL
-    py_df <- reticulate::r_to_py(df)$reset_index(drop = TRUE)
-    for (n in dates) {
-      col <- pd$to_datetime(reticulate::py_get_item(py_df, n),
-        format = "%Y-%m-%d", errors = "coerce"
-      )
-      reticulate::py_set_item(py_df, n, col)
-    }
-    call_df2sd <- reticulate::py_eval(
-      "lambda sas, df, mem, lib, dt: sas.df2sd(df, table=mem, libref=lib, datetimes=dt)",
-      convert = FALSE
+    send <- reticulate::py_run_string(paste(
+      "def _sashiny_df2sd(sas, df, mem, lib, dates, dt):",
+      "    import pandas as pd",
+      "    df = df.reset_index(drop=True)",
+      "    for n in dates:",
+      "        df[n] = pd.to_datetime(df[n], format='%Y-%m-%d', errors='coerce')",
+      "    return sas.df2sd(df, table=mem, libref=lib, datetimes=dt)",
+      sep = "\n"
+    ), local = TRUE, convert = FALSE)[["_sashiny_df2sd"]]
+    send(
+      sas, reticulate::r_to_py(df), mem, lib,
+      reticulate::r_to_py(as.list(dates)), reticulate::dict(datetimes)
     )
-    call_df2sd(sas, py_df, mem, lib, reticulate::dict(datetimes))
   } else {
     sas$df2sd(df, table = mem, libref = lib, datetimes = datetimes)
   }
