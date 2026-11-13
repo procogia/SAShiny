@@ -80,17 +80,29 @@ class Pool(Engine):
         else:
             self.engine = None
             self._factory = engine
+        if min_size < 0 or max_size < 0:
+            raise ValueError("min_size and max_size must be non-negative")
+        if min_size > max_size:
+            raise ValueError("min_size must not exceed max_size")
         self.min_size = min_size
         self.max_size = max_size
         self.idle_timeout = idle_timeout
         self.max_runs_per_session = max_runs_per_session
         self._sessions: list[PoolSession] = []
         self._lock = threading.Lock()
+        self._top_up()
 
     def _new_session(self) -> PoolSession:
         engine = self.engine if self._factory is None else self._factory()
         assert engine is not None  # noqa: S101 - set in __init__
         return PoolSession(engine=engine)
+
+    def _top_up(self) -> None:
+        """Create sessions until the warm minimum `min_size` is met."""
+        with self._lock:
+            while len(self._sessions) < self.min_size:
+                session = self._new_session()
+                self._sessions.append(session)
 
     def _close(self, session: PoolSession) -> None:
         """Close a factory-made session's engine (shared engines stay open)."""
@@ -142,6 +154,7 @@ class Pool(Engine):
                 self._sessions.append(found)
         for s in idle:
             self._close(s)
+        self._top_up()
         if found is not None:
             return found
         # Pool exhausted.
@@ -156,6 +169,7 @@ class Pool(Engine):
                 self._sessions = [s for s in self._sessions if s is not session]
         if drop:
             self._close(session)
+        self._top_up()
 
     def run(
         self,
@@ -168,15 +182,21 @@ class Pool(Engine):
     ) -> Result:
         """Run a contract on a pooled session.
 
-        The session is discarded if a submitted run errors or times out (spec
-        §6.5). Input validation errors never reach SAS and keep the session.
+        The session is discarded if a submitted run errors, times out, or raises
+        (spec §6.5). Input validation errors never reach SAS and keep the session.
         """
         session = self._acquire()
         discard = False
         try:
-            result = session.engine.run(
-                contract, values, today=today, uploads=uploads, run_id=run_id
-            )
+            try:
+                result = session.engine.run(
+                    contract, values, today=today, uploads=uploads, run_id=run_id
+                )
+            except Exception as exc:  # a raised failure poisons the session
+                discard = True
+                result = Result.new(run_id or str(uuid.uuid4()), "error", engine=self.name)
+                result.metadata["engine_error"] = f"{type(exc).__name__}: {exc}"
+                return result
             session.runs += 1
             discard = result.status == "error" and "issues" not in result.metadata
             return result

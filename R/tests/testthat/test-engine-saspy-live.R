@@ -127,6 +127,25 @@ test_that("a broken session is reported and replaced on the next run", {
   expect_identical(starts, 2L)
 })
 
+test_that("a failed session is ended before it is replaced", {
+  ended <- 0L
+  fake <- fake_session()
+  submit <- fake$submit
+  fake$submit <- function(code, results = "HTML") {
+    if (grepl("SASHINY-BEGIN", code, fixed = TRUE)) stop("lost connection")
+    submit(code, results)
+  }
+  endsas <- fake$endsas
+  fake$endsas <- function() {
+    ended <<- ended + 1L
+    endsas()
+  }
+  engine <- sas_engine_saspy(list(), session_factory = function() fake)
+  result <- sas_engine_run(engine, fake_contract(), list(min_age = 1), today = .sashiny_today)
+  expect_identical(result$status, "error")
+  expect_identical(ended, 1L)
+})
+
 test_that("live runs are recorded and replayed by the mock engine", {
   rec <- tempfile("sashiny-rec-")
   contract <- fake_contract()

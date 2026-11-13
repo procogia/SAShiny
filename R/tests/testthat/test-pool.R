@@ -61,3 +61,19 @@ test_that("a factory pool gives each session its own engine", {
   sas_pool_close(pool)
   expect_length(pool$sessions, 0L)
 })
+
+test_that("pool warms min_size sessions", {
+  made <- 0L
+  pool <- sas_pool(function() {
+    made <<- made + 1L
+    sas_engine_mock()
+  }, min_size = 2L, max_size = 3L)
+  expect_identical(made, 2L)
+  expect_length(pool$sessions, 2L)
+  sas_pool_close(pool)
+})
+
+test_that("pool rejects invalid bounds", {
+  expect_error(sas_pool(sas_engine_mock(), min_size = 3L, max_size = 2L), "min_size")
+  expect_error(sas_pool(sas_engine_mock(), min_size = -1L), "non-negative")
+})

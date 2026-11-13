@@ -22,6 +22,12 @@
 #' @export
 sas_pool <- function(engine, min_size = 0L, max_size = 4L,
                      idle_timeout = 300, max_runs_per_session = 100L) {
+  if (min_size < 0L || max_size < 0L) {
+    stop("min_size and max_size must be non-negative", call. = FALSE)
+  }
+  if (min_size > max_size) {
+    stop("min_size must not exceed max_size", call. = FALSE)
+  }
   pool <- new.env(parent = emptyenv())
   if (is.function(engine)) {
     pool$engine <- NULL
@@ -36,7 +42,18 @@ sas_pool <- function(engine, min_size = 0L, max_size = 4L,
   pool$max_runs_per_session <- max_runs_per_session
   pool$sessions <- list()
   class(pool) <- c("sashiny_pool", "sashiny_engine")
+  .sashiny_top_up(pool)
   pool
+}
+
+#' Create sessions until the warm minimum `min_size` is met.
+#' @noRd
+.sashiny_top_up <- function(pool) {
+  while (length(pool$sessions) < pool$min_size) {
+    s <- .sashiny_new_session(pool)
+    pool$sessions[[length(pool$sessions) + 1L]] <- s
+  }
+  invisible(NULL)
 }
 
 #' Create a new pooled session.
@@ -69,6 +86,7 @@ sas_pool <- function(engine, min_size = 0L, max_size = 4L,
   idle <- pool$sessions[expired]
   pool$sessions <- pool$sessions[!expired]
   for (s in idle) .sashiny_close_session(pool, s)
+  .sashiny_top_up(pool)
   for (s in pool$sessions) {
     if (!s$in_use) {
       s$in_use <- TRUE
@@ -94,6 +112,7 @@ sas_pool <- function(engine, min_size = 0L, max_size = 4L,
     pool$sessions <- Filter(function(s) !identical(s, session), pool$sessions)
     .sashiny_close_session(pool, session)
   }
+  .sashiny_top_up(pool)
 }
 
 #' @export
