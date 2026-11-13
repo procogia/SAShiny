@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -29,7 +30,13 @@ def test_demo_offline_runs_every_track() -> None:
     with test_server(demo.app) as session:
         for tid in demo.TRACKS:
             session.set_inputs(**{f"{tid}-run": 1})
-            status = session.get_output(f"{tid}-status").value
+            # The module runs the engine via an extended task; flush until it settles.
+            for _ in range(50):
+                session.flush()
+                status = session.get_output(f"{tid}-status").value
+                if status != "running...":
+                    break
+                time.sleep(0.05)
             assert "status:" in status, tid
 
 
@@ -39,6 +46,11 @@ def test_demo_live_without_settings_falls_back(monkeypatch: pytest.MonkeyPatch) 
     with test_server(demo.app) as session:
         session.set_inputs(profile="viya")
         session.set_inputs(**{"general-run": 1})
-        status = session.get_output("general-status").value
+        for _ in range(50):
+            session.flush()
+            status = session.get_output("general-status").value
+            if status != "running...":
+                break
+            time.sleep(0.05)
         assert "unavailable" in status
         assert "url is required" in status

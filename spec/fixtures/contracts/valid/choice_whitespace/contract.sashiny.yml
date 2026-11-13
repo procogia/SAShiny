@@ -1,0 +1,12 @@
+sashiny: 1
+program: program.sas
+title: Choice inputs with whitespace-distinct values
+inputs:
+  padded:
+    type: choice
+    label: Padded
+    choices: [" A ", "A"]
+    default: " A "
+outputs:
+  log:
+    type: log

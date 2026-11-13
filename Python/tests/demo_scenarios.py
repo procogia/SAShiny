@@ -17,8 +17,9 @@ from typing import Any
 import yaml
 
 import sashiny
+from _repo import repo_root
 
-REPO = Path(__file__).resolve().parents[2]
+REPO = repo_root()
 EXAMPLES = REPO / "examples"
 SCENARIOS_FILE = EXAMPLES / "demo-scenarios.yml"
 RECORDINGS = EXAMPLES / "recordings"

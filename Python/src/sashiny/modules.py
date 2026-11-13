@@ -8,6 +8,7 @@ half can be replaced with a custom function.
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import io
 import logging
@@ -409,15 +410,15 @@ def program_server(  # noqa: PLR0913, PLR0917 - Shiny module signature + overrid
         output: Shiny outputs.
         session: Shiny session.
         contract: The loaded contract.
-        engine: The engine to run on (mock, saspy or a :class:`sashiny.Pool`).
-        server_override: An optional callable ``(input, output, session,
-            contract, engine)`` that replaces the auto-generated server.
+        engine: The engine to run on (mock, saspy or a :class:sashiny.Pool).
+        server_override: An optional callable `(input, output, session,
+            contract, engine)` that replaces the auto-generated server.
         chart_render: An optional mapping of chart render callbacks keyed by
-            output id. Each is ``(value, spec) -> object`` returning a plot
-            object (spec §8.5). Takes precedence over a declarative ``spec``.
+            output id. Each is `(value, spec) -> object` returning a plot
+            object (spec §8.5). Takes precedence over a declarative `spec`.
 
     Returns:
-        ``{"result", "status", "log"}`` reactive calcs for custom extensions.
+        `{"result", "status", "log"}` reactive calcs for custom extensions.
 
     """
     if server_override is not None:
@@ -428,7 +429,7 @@ def program_server(  # noqa: PLR0913, PLR0917 - Shiny module signature + overrid
 
     @reactive.effect
     def _load_choices() -> None:
-        """Fill ``choices_from`` inputs once at session start (spec §6.4)."""
+        """Fill `choices_from` inputs once at session start (spec §6.4)."""
         if not any("choices_from" in s for s in inputs.values()):
             return
         try:
@@ -454,22 +455,46 @@ def program_server(  # noqa: PLR0913, PLR0917 - Shiny module signature + overrid
         except Exception:  # unknown or not-yet-initialised input
             return None
 
-    @reactive.calc
+    @reactive.extended_task
+    async def run_task(values: dict[str, Any], uploads: dict[str, Any]) -> Result:
+        # Run the engine off the event loop so a slow SAS run never blocks other
+        # sessions (spec §5.1 / PLAN.md). Inputs are snapshotted in _trigger.
+        return await asyncio.to_thread(engine.run, contract, values, uploads=uploads)
+
+    @reactive.effect
     @reactive.event(input.run, ignore_none=not settings.get("auto_run", False))
-    def result() -> Result:
+    def _trigger() -> None:
         values, uploads = shiny_values(contract, _read)
-        return engine.run(contract, values, uploads=uploads)
+        run_task(values, uploads)
+
+    @reactive.calc
+    def result() -> Result | None:
+        """Return the completed :class:`Result`, or ``None`` while running/errored."""
+        if run_task.status() == "success":
+            return run_task.result()
+        return None
 
     @output(id="status")
     @shiny_render.code
     def _status() -> str:
-        text = _status_text(result())
+        status = run_task.status()
+        if status == "running":
+            return "running..."
+        if status == "error":
+            return f"engine error: {run_task.error()}"
+        res = result()
+        if res is None:
+            return "idle"
+        text = _status_text(res)
         return f"{text}\n{choice_error()}" if choice_error() else text
 
     @output(id="log")
     @shiny_render.code
     def _log() -> str:
-        return result().log or "(no log)"
+        res = result()
+        if res is None:
+            return "(no log)"
+        return res.log or "(no log)"
 
     for oid, spec in contract.data["outputs"].items():
         if spec["type"] == "download":
@@ -479,16 +504,21 @@ def program_server(  # noqa: PLR0913, PLR0917 - Shiny module signature + overrid
 
     return {
         "result": result,
-        "status": reactive.calc(lambda: result().status),
-        "log": reactive.calc(lambda: result().log),
+        "status": reactive.calc(lambda: (result() or _empty_result()).status),
+        "log": reactive.calc(lambda: (result() or _empty_result()).log),
     }
+
+
+def _empty_result() -> Result:
+    """Return a placeholder result for a run that is in progress or errored."""
+    return Result.new("", "idle")
 
 
 def _register_card(
     output: Outputs,
     oid: str,
     spec: dict[str, Any],
-    result: Callable[[], Result],
+    result: Callable[[], Result | None],
     chart_render: Callable[[dict[str, Any], dict[str, Any] | None], Any] | None = None,
 ) -> None:
     kind = spec["type"]
@@ -497,6 +527,8 @@ def _register_card(
     @shiny_render.ui
     def _card() -> TagChild:
         res = result()
+        if res is None:
+            return ui.tags.small("Running...")
         if oid not in res.outputs:
             return ui.tags.small("No output for this run.")
         value = res.outputs[oid]
@@ -505,9 +537,12 @@ def _register_card(
         return _error_tag(value) or _RENDERERS[kind](value)
 
 
-def _register_download(output: Outputs, oid: str, result: Callable[[], Result]) -> None:
+def _register_download(output: Outputs, oid: str, result: Callable[[], Result | None]) -> None:
     def _value() -> dict[str, str]:
-        value = result().outputs.get(oid)
+        res = result()
+        req(res is not None)
+        assert res is not None  # noqa: S101 - narrowed by req()
+        value = res.outputs.get(oid)
         req(isinstance(value, dict) and "data" in value)
         assert isinstance(value, dict)  # noqa: S101 - narrowed by req()
         return value

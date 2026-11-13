@@ -21,9 +21,44 @@
   backreference = "\\\\[1-9]",
   unicode_prop = "\\\\[pPkK]",
   lazy_quantifier = "[*+?}]\\?",
-  possessive_quantifier = "[*+?}]\\+",
-  anchor = "(?<!\\\\)[\\^$]"
+  possessive_quantifier = "[*+?}]\\+"
 )
+
+#' Detect an unescaped `^`/`$` outside a character class (spec section 3.3).
+#'
+#' A `^` or `$` inside `[...]` is not an anchor: `[^x]` is a negated class and
+#' `[$]` is a literal dollar sign.
+#' @noRd
+.sashiny_has_anchor <- function(pattern) {
+  chars <- strsplit(pattern, "", fixed = TRUE)[[1]]
+  in_class <- FALSE
+  i <- 1L
+  n <- length(chars)
+  while (i <= n) {
+    ch <- chars[[i]]
+    if (identical(ch, "\\")) {
+      i <- i + 2L
+      next
+    }
+    if (identical(ch, "[")) {
+      in_class <- TRUE
+      i <- i + 1L
+      if (i <= n && identical(chars[[i]], "^")) i <- i + 1L
+      if (i <= n && identical(chars[[i]], "]")) i <- i + 1L
+      next
+    }
+    if (identical(ch, "]") && in_class) {
+      in_class <- FALSE
+      i <- i + 1L
+      next
+    }
+    if (ch %in% c("^", "$") && !in_class) {
+      return(TRUE)
+    }
+    i <- i + 1L
+  }
+  FALSE
+}
 
 #' A single validation issue
 #'
@@ -170,6 +205,15 @@ sas_validate <- function(contract, today = Sys.Date()) {
   if (identical(value, "today")) today else as.Date(value)
 }
 
+#' Resolve a date bound, returning NULL when it is not a real calendar date.
+#' @noRd
+.sashiny_resolve_bound <- function(value, today) {
+  if (is.null(value)) {
+    return(NULL)
+  }
+  tryCatch(.sashiny_resolve_date(value, today), error = function(e) NULL)
+}
+
 #' Test whether a value is an integer (numeric with no fractional part).
 #' @noRd
 .sashiny_is_int <- function(x) {
@@ -184,6 +228,9 @@ sas_validate <- function(contract, today = Sys.Date()) {
     if (grepl(.sashiny_forbidden_regex[[what]], pattern, perl = TRUE)) {
       return(what)
     }
+  }
+  if (.sashiny_has_anchor(pattern)) {
+    return("anchor")
   }
   ok <- tryCatch(
     {
@@ -242,9 +289,14 @@ sas_validate <- function(contract, today = Sys.Date()) {
       spec$min > spec$max) {
       add("S003", p, "min > max")
     }
-    if (kind %in% c("date", "daterange") && !is.null(spec$min) && !is.null(spec$max) &&
-      .sashiny_resolve_date(spec$min, today) > .sashiny_resolve_date(spec$max, today)) {
-      add("S003", p, "min > max")
+    if (kind %in% c("date", "daterange") && (!is.null(spec$min) || !is.null(spec$max))) {
+      lo <- .sashiny_resolve_bound(spec$min, today)
+      hi <- .sashiny_resolve_bound(spec$max, today)
+      if (is.null(lo) || is.null(hi)) {
+        add("S003", p, "invalid date bound")
+      } else if (lo > hi) {
+        add("S003", p, "min > max")
+      }
     }
     # S005
     vals <- .sashiny_choice_values(spec)

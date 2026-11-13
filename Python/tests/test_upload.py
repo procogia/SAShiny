@@ -135,3 +135,44 @@ def test_read_unreadable_file(tmp_path: Path) -> None:
     path.write_bytes(b"not a workbook")
     with pytest.raises(UploadError, match="could not read"):
         read_upload(UploadFile(path=path, name="bad.xlsx"), SPEC)
+
+
+def test_read_xlsx_preserves_literal_na_and_leading_zeros(tmp_path: Path) -> None:
+    # Spec §7 step 3: only empty/whitespace is missing; the literal text "NA"
+    # is data for a character column, and leading zeros are preserved.
+    pytest.importorskip("openpyxl")
+    spec = {
+        "type": "dataset",
+        "target": "work.adsl",
+        "columns": [{"name": "code", "type": "character"}],
+    }
+    path = tmp_path / "adsl.xlsx"
+    pd.DataFrame({"code": ["001", "NA"]}).to_excel(path, index=False)
+    df, _ = read_upload(UploadFile(path=path, name="adsl.xlsx"), spec)
+    assert df["code"].tolist() == ["001", "NA"]
+
+
+def test_read_xlsx_rejects_literal_na_in_numeric(tmp_path: Path) -> None:
+    # Spec §7 step 3: the literal text "NA" in a numeric column is unparseable
+    # (V014), not missing.
+    pytest.importorskip("openpyxl")
+    path = tmp_path / "adsl.xlsx"
+    pd.DataFrame({"USUBJID": ["S1"], "AGE": ["NA"], "TRTSDT": ["2024-01-01"]}).to_excel(
+        path, index=False
+    )
+    with pytest.raises(UploadError, match="not numbers"):
+        read_upload(UploadFile(path=path, name="adsl.xlsx"), SPEC)
+
+
+def test_read_csv_preserves_duplicate_headers(tmp_path: Path) -> None:
+    # Spec §7 step 2: duplicate headers resolve to x, x_2 (not pandas' x, x.1).
+    upload = _csv(tmp_path, "x,x\n1,2\n")
+    df, _ = read_upload(upload, {"type": "dataset", "target": "work.test"})
+    assert list(df.columns) == ["x", "x_2"]
+
+
+def test_read_csv_rejects_unpadded_date(tmp_path: Path) -> None:
+    # Spec §7 step 3: dates must be exactly YYYY-MM-DD; "2026-1-2" is unparseable.
+    upload = _csv(tmp_path, "USUBJID,AGE,TRTSDT\nS1,45,2026-1-2\n")
+    with pytest.raises(UploadError, match="YYYY-MM-DD"):
+        read_upload(upload, SPEC)

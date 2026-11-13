@@ -1,0 +1,52 @@
+{
+  "contract": "contracts/valid/regex_ascii",
+  "today": "2026-11-11",
+  "cases": [
+    {
+      "name": "ascii_digits_match",
+      "values": {
+        "digits": "123",
+        "word": "abc"
+      },
+      "expected": {
+        "status": "ok",
+        "macros": {
+          "DIGITS": "123",
+          "WORD": "abc"
+        }
+      }
+    },
+    {
+      "name": "arabic_indic_digit_rejected",
+      "values": {
+        "digits": "\u0661",
+        "word": "abc"
+      },
+      "expected": {
+        "status": "invalid",
+        "errors": [
+          {
+            "code": "V005",
+            "input": "digits"
+          }
+        ]
+      }
+    },
+    {
+      "name": "accented_letter_rejected",
+      "values": {
+        "digits": "123",
+        "word": "\u00e9"
+      },
+      "expected": {
+        "status": "invalid",
+        "errors": [
+          {
+            "code": "V005",
+            "input": "word"
+          }
+        ]
+      }
+    }
+  ]
+}

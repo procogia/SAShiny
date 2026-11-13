@@ -187,6 +187,20 @@ sas_engine_close.sashiny_engine_saspy <- function(engine) {
   invisible(NULL)
 }
 
+#' Close the current session (if any) and forget it.
+#'
+#' Used when a run fails or times out: the session must be ended before the
+#' reference is lost, otherwise it leaks (spec section 6.5).
+#' @noRd
+.sashiny_discard_session <- function(engine) {
+  sas <- engine$sas
+  engine$sas <- NULL
+  if (!is.null(sas)) {
+    try(sas$endsas(), silent = TRUE)
+  }
+  invisible(NULL)
+}
+
 #' @export
 sas_engine_choices.sashiny_engine_saspy <- function(engine, contract) {
   inputs <- contract$data$inputs %||% list()
@@ -277,7 +291,7 @@ sas_engine_run.sashiny_engine_saspy <- function(engine, contract, values, today 
   flags <- lapply(uploads %||% list(), function(v) !is.null(v) && !isFALSE(v))
   choices <- tryCatch(sas_engine_choices(engine, contract), error = function(e) e)
   if (inherits(choices, "error")) {
-    engine$sas <- NULL
+      .sashiny_discard_session(engine)
     return(.sashiny_engine_error(run_id, list(engine = "saspy"), choices))
   }
   res <- sas_render_values(data, values, today,
@@ -311,7 +325,7 @@ sas_engine_run.sashiny_engine_saspy <- function(engine, contract, values, today 
     ))))
   }
   if (inherits(submitted, "error")) {
-    engine$sas <- NULL # the next run starts a fresh session
+      .sashiny_discard_session(engine) # the next run starts a fresh session
     return(.sashiny_engine_error(run_id, base, submitted))
   }
 

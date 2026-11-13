@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import datetime as dt
 import json
+import time
 from datetime import date
 from pathlib import Path
 
@@ -232,6 +233,50 @@ def test_broken_session_is_reported_and_replaced(contract: sashiny.Contract) -> 
     assert "lost connection" in result.metadata["engine_error"]
     engine.run(contract, {"min_age": 1}, today=TODAY)
     assert len(calls) == 2
+
+
+def test_failed_session_is_closed_before_replacement(contract: sashiny.Contract) -> None:
+    # A session that fails during a submission must be ended, not just dropped.
+    ended: list[bool] = []
+
+    class Dead(FakeSAS):
+        def submit(self, code: str, results: str = "HTML") -> dict[str, str]:
+            if "SASHINY-BEGIN" in code:
+                raise ConnectionError("lost connection")
+            return super().submit(code, results)
+
+        def endsas(self) -> None:
+            ended.append(True)
+            super().endsas()
+
+    fake = Dead(_fake().datasets)
+    engine = SaspyEngine({}, session_factory=lambda: fake)
+    result = engine.run(contract, {"min_age": 1}, today=TODAY)
+    assert result.status == "error"
+    assert ended == [True]
+
+
+def test_run_enforces_timeout_seconds(contract: sashiny.Contract) -> None:
+    class Slow(FakeSAS):
+        def submit(self, code: str, results: str = "HTML") -> dict[str, str]:
+            if "SASHINY-BEGIN" in code:
+                time.sleep(1.2)
+            return super().submit(code, results)
+
+    fake = Slow(_fake().datasets)
+    engine = SaspyEngine({}, session_factory=lambda: fake)
+    contract.data["run"] = {"timeout_seconds": 1}
+    result = engine.run(contract, {"min_age": 1}, today=TODAY)
+    assert result.status == "error"
+    assert "timeout" in result.metadata["engine_error"]
+    assert fake.ended
+
+
+def test_run_within_timeout_succeeds(contract: sashiny.Contract) -> None:
+    engine = _engine(_fake())
+    contract.data["run"] = {"timeout_seconds": 30}
+    result = engine.run(contract, {"min_age": 1}, today=TODAY)
+    assert result.status == "success"
 
 
 def test_record_and_replay_round_trip(contract: sashiny.Contract, tmp_path: Path) -> None:

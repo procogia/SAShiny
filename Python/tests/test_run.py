@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from datetime import date
-from pathlib import Path
 
 import sashiny
+from _repo import repo_root
 
-SPEC = Path(__file__).resolve().parents[2] / "spec"
+SPEC = repo_root() / "spec"
 FIX = SPEC / "fixtures"
 TODAY = date(2026, 11, 11)
 

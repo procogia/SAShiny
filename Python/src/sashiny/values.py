@@ -127,7 +127,7 @@ def render_values(  # noqa: PLR0912, PLR0913, PLR0917
             for n in names:
                 macros[n] = spec["target"].upper() if present else ""
             continue
-        if isinstance(raw, str) and kind in ("text", "choice"):
+        if isinstance(raw, str) and kind == "text":
             raw = _ws_strip(raw)
         optional = spec.get("optional", False)
         if kind == "multichoice" and raw == []:
@@ -183,7 +183,7 @@ def _render_one(  # noqa: PLR0911, PLR0912
             return Issue("V007", iid), []
         if len(raw) > spec.get("max_length", 256):
             return Issue("V006", iid), []
-        if "pattern" in spec and not re.fullmatch(spec["pattern"], raw):
+        if "pattern" in spec and not re.fullmatch(spec["pattern"], raw, flags=re.ASCII):
             return Issue("V005", iid), []
         return None, [render_text(raw, spec.get("render", "raw"))]
     if kind == "choice":

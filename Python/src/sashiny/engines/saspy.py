@@ -13,8 +13,10 @@ from __future__ import annotations
 import os
 import re
 import tempfile
+import threading
 import uuid
 from collections.abc import Callable
+from contextlib import suppress
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -414,6 +416,18 @@ class SaspyEngine(Engine):
             self._tmp.cleanup()
             self._tmp = None
 
+    def _discard_session(self) -> None:
+        """Close the current session (if any) and forget it.
+
+        Used when a run fails or times out: the session must be ended before the
+        reference is lost, otherwise it leaks (spec §6.5).
+        """
+        sas = self._sas
+        self._sas = None
+        if sas is not None:
+            with suppress(Exception):
+                sas.endsas()
+
     def choices(self, contract: Contract) -> dict[str, list[dict[str, str]]]:
         """Read ``choices_from`` choices once per session and contract (spec §6.4)."""
         out: dict[str, list[dict[str, str]]] = {}
@@ -458,6 +472,35 @@ class SaspyEngine(Engine):
         today = today or date.today()
         run_id = run_id or str(uuid.uuid4())
         started = datetime.now(timezone.utc)
+        timeout = float((contract.data.get("run") or {}).get("timeout_seconds", 300))
+
+        # The SAS work blocks (saspy submit), so run it in a worker thread and
+        # enforce the whole-run deadline (spec §2.3, §6.5). On timeout the session
+        # is aborted and the pool discards it.
+        box: dict[str, Result] = {}
+
+        def work() -> None:
+            box["result"] = self._run(contract, values, today, uploads, run_id, started)
+
+        thread = threading.Thread(target=work, name=f"sashiny-run-{run_id}", daemon=True)
+        thread.start()
+        thread.join(timeout)
+        if thread.is_alive():
+            self._discard_session()
+            result = Result.new(run_id, "error", engine=self.name, engine_version=self.version)
+            result.metadata["engine_error"] = f"run exceeded timeout_seconds={timeout:g}"
+            return result
+        return box["result"]
+
+    def _run(  # noqa: PLR0913, PLR0917 - the run protocol is inherently long
+        self,
+        contract: Contract,
+        values: dict[str, Any],
+        today: date,
+        uploads: dict[str, Any] | None,
+        run_id: str,
+        started: datetime,
+    ) -> Result:
         data = contract.data
         flags = {k: bool(v) for k, v in (uploads or {}).items()}
         try:
@@ -465,7 +508,7 @@ class SaspyEngine(Engine):
         except Exception as exc:  # reported on the result, never raised
             failed = Result.new(run_id, "error", engine=self.name, engine_version=self.version)
             failed.metadata["engine_error"] = f"{type(exc).__name__}: {exc}"
-            self._sas = None
+            self._discard_session()
             return failed
         macros, issues = render_values(
             data, values, today, choices_override=override or None, uploads=flags
@@ -495,7 +538,7 @@ class SaspyEngine(Engine):
         except Exception as exc:
             result = Result.new(run_id, "error", **base)
             result.metadata["engine_error"] = f"{type(exc).__name__}: {exc}"
-            self._sas = None  # the next run starts a fresh session
+            self._discard_session()  # the next run starts a fresh session
             return result
 
         log = res.get("LOG", "")

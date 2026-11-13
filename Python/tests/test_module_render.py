@@ -6,11 +6,12 @@ from datetime import date
 from pathlib import Path
 
 import sashiny
+from _repo import repo_root
 from sashiny import modules
 from sashiny.result import Result
 from sashiny.upload import UploadFile
 
-FIX = Path(__file__).resolve().parents[2] / "spec" / "fixtures"
+FIX = repo_root() / "spec" / "fixtures"
 
 
 def _result() -> Result:
@@ -98,9 +99,7 @@ def test_input_ui_each_kind_uses_defaults() -> None:
 
 
 def test_ordered_inputs() -> None:
-    contract = sashiny.load(
-        Path(__file__).resolve().parents[2] / "examples" / "general" / "cars_explorer.sashiny.yml"
-    )
+    contract = sashiny.load(repo_root() / "examples" / "general" / "cars_explorer.sashiny.yml")
     assert [i for i, _ in modules._ordered_inputs(contract)] == ["origins", "types", "min_msrp"]
 
 

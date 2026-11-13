@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from datetime import date
-from pathlib import Path
+
+import pytest
 
 import sashiny
+from _repo import repo_root
 
-SPEC = Path(__file__).resolve().parents[2] / "spec"
+SPEC = repo_root() / "spec"
 FIX = SPEC / "fixtures"
 TODAY = date(2026, 11, 11)
 
@@ -74,3 +76,46 @@ def test_pool_factory_gives_each_session_its_own_engine() -> None:
     pool._release(b, discard=False)
     pool.close()
     assert pool._sessions == []
+
+
+class _RaisingEngine(sashiny.Engine):
+    closed = 0
+
+    def run(self, contract, values, *, today=None, uploads=None, run_id=None):  # type: ignore[no-untyped-def]
+        raise RuntimeError("synthetic transport error")
+
+    def close(self) -> None:
+        _RaisingEngine.closed += 1
+
+
+def test_pool_discards_session_when_engine_raises() -> None:
+    _RaisingEngine.closed = 0
+    pool = sashiny.Pool(_RaisingEngine, max_size=1)
+    contract = _minimal_contract()
+    result = pool.run(contract, {}, today=TODAY)
+    assert result.status == "error"
+    assert "synthetic transport error" in result.metadata["engine_error"]
+    assert len(pool._sessions) == 0
+    assert _RaisingEngine.closed == 1
+    pool.close()
+
+
+def test_pool_warms_min_size_sessions() -> None:
+    made: list[sashiny.Engine] = []
+
+    def factory() -> sashiny.Engine:
+        engine = sashiny.MockEngine()
+        made.append(engine)
+        return engine
+
+    pool = sashiny.Pool(factory, min_size=2, max_size=3)
+    assert len(made) == 2
+    assert len(pool._sessions) == 2
+    pool.close()
+
+
+def test_pool_rejects_invalid_bounds() -> None:
+    with pytest.raises(ValueError, match="min_size"):
+        sashiny.Pool(sashiny.MockEngine(), min_size=3, max_size=2)
+    with pytest.raises(ValueError, match="non-negative"):
+        sashiny.Pool(sashiny.MockEngine(), min_size=-1)
