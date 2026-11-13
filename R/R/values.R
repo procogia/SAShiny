@@ -164,7 +164,7 @@ sas_render_values <- function(data, values, today = Sys.Date(), only = NULL,
       next
     }
 
-    if (is.character(raw) && kind %in% c("text", "choice")) {
+    if (is.character(raw) && identical(kind, "text")) {
       raw <- .sashiny_ws_strip(raw)
     }
     optional <- isTRUE(spec$optional)

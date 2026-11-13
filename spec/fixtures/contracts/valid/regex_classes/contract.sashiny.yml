@@ -1,0 +1,15 @@
+sashiny: 1
+program: program.sas
+title: Valid
+inputs:
+  negated:
+    type: text
+    label: Negated class
+    pattern: "[^x]+"
+  dollar:
+    type: text
+    label: Literal dollar
+    pattern: "[$]+"
+outputs:
+  log:
+    type: log

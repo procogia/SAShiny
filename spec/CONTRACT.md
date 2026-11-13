@@ -116,7 +116,7 @@ The contract MUST validate against `sashiny.schema.json`. All schema failures sh
 |---|---|
 | `S001` | Macro variable names (including defaults, both daterange names, `count_macro` and dataset `macro`) MUST be unique, case-insensitively. |
 | `S002` | Default macro names derived from input ids MUST NOT be reserved (start with `SYS`, `SASHINY` or `_SX_`, any case). |
-| `S003` | `min` MUST be ≤ `max` (numeric, date, daterange). |
+| `S003` | `min` MUST be ≤ `max` (numeric, date, daterange). A date/daterange `min` or `max` that is not a real calendar date (e.g. `2026-02-30`) is also `S003`. |
 | `S004` | `default` MUST pass value validation (section 4) for its input. |
 | `S005` | `choices` values MUST be unique within an input. |
 | `S006` | For `multichoice`: `min_selected` ≤ `max_selected` ≤ number of static choices (when `choices` is used). |
@@ -137,7 +137,13 @@ mean the same thing in ECMAScript, Python `re` and R's PCRE (`perl = TRUE`). All
 `.`, character classes `[...]` and `[^...]`, `\d \w \s \D \W \S`, quantifiers `* + ? {m} {m,} {m,n}`
 (greedy only), groups `( )` and `(?: )`, alternation `|`, escapes of metacharacters.
 Not allowed: look-around, back-references, named groups, inline flags, possessive or lazy quantifiers,
-Unicode property classes, `^`/`$` inside the pattern.
+Unicode property classes, `^`/`$` anchors (outside a character class).
+
+The shorthand classes `\d \w \s` (and their negations `\D \W \S`) use **ASCII** semantics: `\d` is
+`[0-9]`, `\w` is `[A-Za-z0-9_]`, `\s` is `[ \t\n\r\f\v]`. This matches ECMAScript and R's PCRE
+(`perl = TRUE`) defaults; Python implementations MUST compile the pattern with the `re.ASCII` flag so
+all three agree. A `^` or `$` inside a character class is not an anchor: `[^x]` is a negated class and
+`[$]` is a literal dollar sign, and both are allowed.
 
 ---
 
@@ -164,7 +170,9 @@ MUST reject the whole run if any value is invalid, reporting all invalid inputs.
 | `V014` | Upload: extension not in `accept`, file larger than `max_size_mb`, unreadable, or missing a declared column. |
 
 Normalisation happens **before** validation and is part of the contract:
-- Text values are trimmed of leading and trailing whitespace (Unicode `White_Space`).
+- `text` values are trimmed of leading and trailing whitespace (Unicode `White_Space`). `choice` and
+  `multichoice` values are **not** trimmed: a choice value is an opaque identifier and is matched
+  against the declared choices exactly as submitted.
 - `"today"` in `default`, `min` or `max` is resolved once, when the session starts, to the client's
   local date in the app's configured time zone (default: the server's time zone).
 - An `optional` input with no value is **absent**. It is not an error and it renders as section 5.6.

@@ -38,8 +38,39 @@ _FORBIDDEN_REGEX = [
     (re.compile(r"\\[pPkK]"), "unicode property / named back-reference"),
     (re.compile(r"[*+?}]\?"), "lazy quantifier"),
     (re.compile(r"[*+?}]\+"), "possessive quantifier"),
-    (re.compile(r"(?<!\\)[\^$]"), "anchor"),
 ]
+
+
+def _has_anchor(pattern: str) -> bool:
+    """Return True when the pattern has an unescaped ``^``/``$`` outside a class.
+
+    A ``^`` or ``$`` inside ``[...]`` is not an anchor (spec §3.3): ``[^x]`` is
+    a negated class and ``[$]`` is a literal dollar sign.
+    """
+    in_class = False
+    i = 0
+    n = len(pattern)
+    while i < n:
+        ch = pattern[i]
+        if ch == "\\":
+            i += 2
+            continue
+        if ch == "[":
+            in_class = True
+            i += 1
+            if i < n and pattern[i] == "^":
+                i += 1
+            if i < n and pattern[i] == "]":
+                i += 1
+            continue
+        if ch == "]" and in_class:
+            in_class = False
+            i += 1
+            continue
+        if ch in "^$" and not in_class:
+            return True
+        i += 1
+    return False
 
 
 class SafeLoaderNoDates(yaml.SafeLoader):  # type: ignore[misc]
@@ -158,6 +189,16 @@ def resolve_date(value: str, today: date) -> date:
     return today if value == "today" else date.fromisoformat(value)
 
 
+def _resolve_bound(value: Any, today: date) -> date | None:
+    """Resolve a date bound, returning ``None`` when it is not a real calendar date."""
+    if value is None:
+        return None
+    try:
+        return resolve_date(value, today)
+    except ValueError:
+        return None
+
+
 def _is_int(x: Any) -> bool:
     return (isinstance(x, int) and not isinstance(x, bool)) or (
         isinstance(x, float) and x.is_integer()
@@ -168,6 +209,8 @@ def _check_regex(pattern: str) -> str | None:
     for rx, what in _FORBIDDEN_REGEX:
         if rx.search(pattern):
             return what
+    if _has_anchor(pattern):
+        return "anchor"
     try:
         re.compile(pattern)
     except re.error as exc:
@@ -206,13 +249,13 @@ def _semantic(contract: Contract, today: date) -> list[Issue]:  # noqa: PLR0912,
         # S003
         if kind == "numeric" and "min" in spec and "max" in spec and spec["min"] > spec["max"]:
             issues.append(Issue("S003", p, "min > max"))
-        if (
-            kind in ("date", "daterange")
-            and "min" in spec
-            and "max" in spec
-            and resolve_date(spec["min"], today) > resolve_date(spec["max"], today)
-        ):
-            issues.append(Issue("S003", p, "min > max"))
+        if kind in ("date", "daterange") and ("min" in spec or "max" in spec):
+            lo = _resolve_bound(spec.get("min"), today)
+            hi = _resolve_bound(spec.get("max"), today)
+            if lo is None or hi is None:
+                issues.append(Issue("S003", p, "invalid date bound"))
+            elif lo > hi:
+                issues.append(Issue("S003", p, "min > max"))
         # S005
         vals = choice_values(spec)
         if vals is not None and len(set(vals)) != len(vals):
