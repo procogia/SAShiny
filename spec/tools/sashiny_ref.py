@@ -182,8 +182,12 @@ def _is_int(x: Any) -> bool:
 
 
 def _check_regex(pattern: str) -> str | None:
+    # Forbidden constructs are only meaningful outside character classes: a
+    # literal `+?` or `(?=` inside `[...]` is not a quantifier or look-around
+    # (spec §3.3). Mask class contents before scanning, mirroring _has_anchor.
+    outside = _outside_class(pattern)
     for rx, what in _FORBIDDEN_REGEX:
-        if rx.search(pattern):
+        if rx.search(outside):
             return what
     if _has_anchor(pattern):
         return "anchor"
@@ -192,6 +196,34 @@ def _check_regex(pattern: str) -> str | None:
     except re.error as exc:
         return f"does not compile: {exc}"
     return None
+
+
+def _outside_class(pattern: str) -> str:
+    """Return ``pattern`` with the contents of every ``[...]`` replaced by spaces."""
+    out: list[str] = []
+    in_class = False
+    i = 0
+    n = len(pattern)
+    while i < n:
+        ch = pattern[i]
+        if ch == "\\" and i + 1 < n:
+            out.append(ch)
+            out.append(pattern[i + 1])
+            i += 2
+            continue
+        if ch == "[":
+            in_class = True
+            out.append(" ")
+            i += 1
+            continue
+        if ch == "]" and in_class:
+            in_class = False
+            out.append(" ")
+            i += 1
+            continue
+        out.append(" " if in_class else ch)
+        i += 1
+    return "".join(out)
 
 
 # --------------------------------------------------------------------------- semantic layer (3.2)
@@ -224,11 +256,12 @@ def _semantic(contract: Contract, today: date) -> list[Issue]:
         if kind == "numeric" and "min" in spec and "max" in spec and spec["min"] > spec["max"]:
             issues.append(Issue("S003", p, "min > max"))
         if kind in ("date", "daterange") and ("min" in spec or "max" in spec):
-            lo = _resolve_bound(spec.get("min"), today)
-            hi = _resolve_bound(spec.get("max"), today)
-            if lo is None or hi is None:
+            lo = _resolve_bound(spec.get("min"), today) if "min" in spec else None
+            hi = _resolve_bound(spec.get("max"), today) if "max" in spec else None
+            # A one-sided bound is valid; only a present-but-invalid bound is S003.
+            if ("min" in spec and lo is None) or ("max" in spec and hi is None):
                 issues.append(Issue("S003", p, "invalid date bound"))
-            elif lo > hi:
+            elif lo is not None and hi is not None and lo > hi:
                 issues.append(Issue("S003", p, "min > max"))
         # S005
         vals = choice_values(spec)
@@ -261,6 +294,14 @@ def _semantic(contract: Contract, today: date) -> list[Issue]:
             names = [c["name"].upper() for c in spec["columns"]]
             if len(set(names)) != len(names):
                 issues.append(Issue("S016", f"{p}/columns", "duplicate column names"))
+        # S017 (generated component ids)
+        if (
+            iid in ("run", "status", "log")
+            or iid.startswith("out_")
+            or iid.startswith("dl_")
+            or iid.endswith("__sample")
+        ):
+            issues.append(Issue("S017", p, "id collides with a generated module component id"))
         # S013 (sample)
         if kind == "dataset" and "sample" in spec and not (contract.base_dir / spec["sample"]).is_file():
             issues.append(Issue("S013", f"{p}/sample", "sample file not found"))
@@ -471,10 +512,13 @@ def _render_one(
         items = [raw] if kind == "date" else raw
         if kind == "daterange" and (not isinstance(raw, list) or len(raw) != 2):
             return Issue("V002", iid), []
+        # Type-check every element before any date validation (spec §4): a
+        # non-string element is V002, never V009, even if another element is a
+        # malformed date.
+        if any(not isinstance(it, str) for it in items):
+            return Issue("V002", iid), []
         dates: list[date] = []
         for it in items:
-            if not isinstance(it, str):
-                return Issue("V002", iid), []
             try:
                 if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", it):
                     raise ValueError

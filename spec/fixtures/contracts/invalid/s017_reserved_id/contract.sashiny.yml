@@ -1,0 +1,10 @@
+sashiny: 1
+program: program.sas
+title: Invalid
+inputs:
+  run:
+    type: numeric
+    label: x
+outputs:
+  report:
+    type: log

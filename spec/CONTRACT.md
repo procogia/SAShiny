@@ -51,6 +51,11 @@ the `.sas` extension, lower-case it, replace each character outside `[a-z0-9_]` 
 if it does not start with a letter, and truncate to 32 characters. Two programs that resolve to the
 same module `id` (whether explicit or derived) MUST be rejected when the app is built.
 
+The module reserves the internal ids `run`, `status`, `log`, `out_<output_id>` and `dl_<output_id>`
+for its own controls and outputs, and `<dataset_id>__sample` for the sample toggle of a dataset input.
+An input id that collides with any of these MUST be rejected when the app is built (or the module MUST
+namespace its internal controls so no collision occurs).
+
 ### 2.1 Input types
 
 | `type` | Value (JSON form) | Key fields |
@@ -131,6 +136,7 @@ The contract MUST validate against `sashiny.schema.json`. All schema failures sh
 | `S014` | `pattern` MUST compile and use only the portable regex subset (3.3). |
 | `S015` | `numeric` with `integer: true`: `min`, `max` and `default` MUST be integers. |
 | `S016` | Dataset `columns` names MUST be unique, case-insensitively. |
+| `S017` | An input id MUST NOT collide with a generated module component id: `run`, `status`, `log`, any id starting with `out_` or `dl_`, or any id ending with `__sample`. (Output ids are always namespaced as `out_<id>`/`dl_<id>`, so they cannot collide.) |
 
 ### 3.3 Portable regex subset
 `pattern` is matched against the **whole** value (implementations anchor it). It MUST be valid and
@@ -177,6 +183,12 @@ Normalisation happens **before** validation and is part of the contract:
 - `"today"` in `default`, `min` or `max` is resolved once, when the session starts, to the client's
   local date in the app's configured time zone (default: the server's time zone).
 - An `optional` input with no value is **absent**. It is not an error and it renders as section 5.6.
+
+For list-valued inputs (`multichoice`, `daterange`) the **shape check precedes the element check**:
+a value that is not an array, or a `daterange` whose length is not exactly two, is `V002` regardless of
+its elements. Only after the shape is correct are the elements type-checked (each must be a string,
+else `V002`) and then validated (dates, choices, bounds). A `daterange` element that is not a string is
+therefore `V002`, never `V009`, even when the other element is a malformed date.
 
 ---
 
@@ -362,6 +374,10 @@ within the timeout, the run returns an error `Result` with `metadata.engine_erro
 6. A supplied dataset input is either a user file or, if the UI offers it, the contract's `sample` file.
    Both go through steps 1–5.
 
+The `max_size_mb` limit is enforced when the file is received, not only when it is converted: an
+upload larger than the declared limit MUST be rejected (or its storage aborted) before the whole file
+is written, so a client cannot fill server storage with a file the contract would refuse.
+
 ---
 
 ## 8. Result collection
@@ -517,7 +533,9 @@ the contract) or `render` (a per-language callback, supplied in code) is given.
 
 Column names are matched case-insensitively against the collected columns. An unknown column is a
 collection error. The exact visual output is backend-specific; the data and the mapping are the
-portable contract.
+portable contract. A backend MUST honour every declared mapping (`x`, `y`, `color`, `fill`, `facet`)
+that its kind supports; if a backend cannot honour a mapping it MUST report a collection error rather
+than silently render a chart that ignores it.
 
 **`render` (callback)** — a per-language extension, not part of the cross-language fixtures and not a
 YAML field. In R it is a function `function(value, spec, ...)` returning a plot object; in Python it
@@ -550,7 +568,7 @@ Python), following the same "render callback" pattern as `shiny::renderPlot` and
 
 | Code | Finding |
 |---|---|
-| `L001` | Program assigns an injected macro variable outside a `%symexist` guard (section 9). |
+| `L001` | Program assigns an injected macro variable outside a `%symexist` guard (section 9). The guard exemption applies only to assignments inside the guard; a later assignment to the same macro outside any guard is still `L001`. |
 | `L002` | Injected macro variable never referenced in the program (`&NAME` not found, case-insensitive). |
 | `L003` | `table`/`download` `from` dataset never created in the program and not a dataset input target or a permanent library. |
 | `L004` | More than one `rtf`/`pdf` download: each receives the same output; usually unintended. |
