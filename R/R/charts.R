@@ -181,10 +181,6 @@ sas_chart_backends <- function() {
 #' @noRd
 .sashiny_chart_base <- function(value, spec) {
   data <- .sashiny_chart_frame(value)
-  xs <- data[[spec$x]]
-  ys <- if (is.null(spec$y)) NULL else data[[spec$y]]
-  xlab <- spec$xlab %||% spec$x
-  ylab <- spec$ylab %||% spec$y %||% ""
   previous <- grDevices::dev.cur()
   grDevices::pdf(NULL)
   device <- grDevices::dev.cur()
@@ -196,18 +192,75 @@ sas_chart_backends <- function() {
     add = TRUE
   )
   grDevices::dev.control("enable")
-  switch(spec$kind,
-    scatter = graphics::plot(xs, ys, xlab = xlab, ylab = ylab),
-    line = graphics::plot(xs, ys, type = "l", xlab = xlab, ylab = ylab),
-    bar = graphics::barplot(as.numeric(ys), names.arg = xs, xlab = xlab, ylab = ylab),
-    histogram = graphics::hist(as.numeric(xs), main = "", xlab = xlab),
-    box = if (is.null(ys)) {
-      graphics::boxplot(as.numeric(xs), xlab = xlab)
-    } else {
-      graphics::boxplot(as.numeric(ys) ~ xs, xlab = xlab, ylab = ylab)
+  draw <- function(frame) {
+    xs <- frame[[spec$x]]
+    ys <- if (is.null(spec$y)) NULL else frame[[spec$y]]
+    xlab <- spec$xlab %||% spec$x
+    ylab <- spec$ylab %||% spec$y %||% ""
+      color <- spec$color
+      fill <- spec$fill
+    switch(spec$kind,
+        scatter = if (!is.null(color)) {
+          groups <- unique(as.character(frame[[color]]))
+          graphics::plot(xs, ys, type = "n", xlab = xlab, ylab = ylab)
+          for (g in groups) {
+            keep <- as.character(frame[[color]]) == g
+            graphics::points(xs[keep], ys[keep], col = match(g, groups), pch = 19L)
+          }
+          graphics::legend("topright", legend = groups, col = seq_along(groups), pch = 19L)
+        } else {
+          graphics::plot(xs, ys, xlab = xlab, ylab = ylab)
+        },
+        line = if (!is.null(color)) {
+          groups <- unique(as.character(frame[[color]]))
+          graphics::plot(xs, ys, type = "n", xlab = xlab, ylab = ylab)
+          for (g in groups) {
+            keep <- as.character(frame[[color]]) == g
+            graphics::lines(xs[keep], ys[keep], col = match(g, groups))
+          }
+          graphics::legend("topright", legend = groups, col = seq_along(groups), lty = 1L)
+        } else {
+          graphics::plot(xs, ys, type = "l", xlab = xlab, ylab = ylab)
+        },
+        bar = if (!is.null(fill)) {
+          groups <- unique(as.character(frame[[fill]]))
+          graphics::barplot(
+            as.numeric(ys), names.arg = xs,
+            col = match(as.character(frame[[fill]]), groups),
+            xlab = xlab, ylab = ylab
+          )
+          graphics::legend("topright", legend = groups, fill = seq_along(groups))
+        } else {
+          graphics::barplot(as.numeric(ys), names.arg = xs, xlab = xlab, ylab = ylab)
+        },
+      histogram = graphics::hist(as.numeric(xs), main = "", xlab = xlab),
+      box = if (is.null(ys)) {
+        graphics::boxplot(as.numeric(xs), xlab = xlab)
+        } else if (!is.null(color)) {
+          graphics::boxplot(as.numeric(ys) ~ as.character(frame[[color]]), xlab = xlab, ylab = ylab)
+      } else {
+        graphics::boxplot(as.numeric(ys) ~ xs, xlab = xlab, ylab = ylab)
+      }
+    )
+  }
+  if (!is.null(spec$facet)) {
+    # One panel per facet level (spec §8.5): split the frame and draw each in a
+    # grid, so groups are not silently collapsed into a single plot.
+    levels <- unique(data[[spec$facet]])
+    n <- length(levels)
+    rows <- ceiling(sqrt(n))
+    cols <- ceiling(n / rows)
+    grDevices::dev.control("enable")
+    graphics::par(mfrow = c(rows, cols))
+    for (level in levels) {
+      draw(data[data[[spec$facet]] == level, , drop = FALSE])
+      graphics::title(main = as.character(level), sub = "")
     }
-  )
-  graphics::title(main = spec$title %||% "", sub = spec$subtitle %||% "")
+    graphics::title(main = spec$title %||% "", sub = spec$subtitle %||% "", outer = TRUE)
+  } else {
+    draw(data)
+    graphics::title(main = spec$title %||% "", sub = spec$subtitle %||% "")
+  }
   grDevices::recordPlot()
 }
 
@@ -220,6 +273,11 @@ sas_chart_backends <- function() {
   args <- list(data, x = col(spec$x))
   if (!is.null(spec$y) && spec$kind != "histogram") args$y <- col(spec$y)
   if (!is.null(spec$color)) args$color <- col(spec$color)
+    # plotly bar honours `color` as a fill/grouping; map the declarative `fill`
+    # field to `color` so a bar chart is grouped and filled by it.
+    if (!is.null(spec$fill)) args$color <- col(spec$fill)
+  # Facet maps to a subplot column (spec §8.5), so groups are not collapsed.
+  if (!is.null(spec$facet)) args$facet_col <- col(spec$facet)
   args <- c(args, switch(spec$kind,
     scatter = list(type = "scatter", mode = "markers"),
     line = list(type = "scatter", mode = "lines"),

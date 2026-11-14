@@ -12,7 +12,7 @@ ods rtf(id=rtf_b) file="%sysfunc(pathname(work))/sashiny_rtf_b.rtf";
 %macro ae_table(adsl_ds=, arm=);
   %put NOTE: &adsl_ds &arm;
 %mend ae_table;
-%ae_table(ADSL_DS=&ADSL_DS, ARM=&ARM);
+%ae_table(ADSL_DS=%bquote(&ADSL_DS), ARM=%bquote(&ARM));
 %put NOTE: SASHINY-END-PROGRAM;
 ods rtf(id=rtf_a) close;
 ods pdf(id=pdf_a) close;

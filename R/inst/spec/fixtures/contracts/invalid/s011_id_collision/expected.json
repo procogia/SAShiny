@@ -2,7 +2,7 @@
   "errors": [
     {
       "code": "S011",
-      "path": "/outputs/log"
+      "path": "/outputs/foo"
     }
   ]
 }

@@ -212,3 +212,29 @@ test_that("each chart output gets its own render callback", {
     }
   )
 })
+
+  test_that("upload limit is raised to the largest max_size_mb and restored", {
+    skip_on_cran()
+    skip_if_not_installed("shiny")
+    prev <- getOption("shiny.maxRequestSize")
+    on.exit(options(shiny.maxRequestSize = prev), add = TRUE)
+    inputs <- list(
+      a = list(type = "dataset", max_size_mb = 10),
+      b = list(type = "dataset", max_size_mb = 50),
+      c = list(type = "numeric")
+    )
+    .sashiny_set_upload_limit(inputs)
+    expect_identical(getOption("shiny.maxRequestSize"), 50 * 1024 * 1024)
+    .sashiny_restore_upload_limit()
+    expect_identical(getOption("shiny.maxRequestSize"), prev)
+  })
+
+  test_that("upload limit defaults to 50 MB when undeclared", {
+    skip_on_cran()
+    skip_if_not_installed("shiny")
+    prev <- getOption("shiny.maxRequestSize")
+    on.exit(options(shiny.maxRequestSize = prev), add = TRUE)
+    .sashiny_set_upload_limit(list(a = list(type = "dataset")))
+    expect_identical(getOption("shiny.maxRequestSize"), 50 * 1024 * 1024)
+    .sashiny_restore_upload_limit()
+  })

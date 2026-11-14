@@ -113,8 +113,12 @@
   }
   if (identical(ext, "xlsx")) {
     .sashiny_need("openxlsx", "to read xlsx uploads")
+      # na.strings = character(0) preserves literal "NA"/"nan"/"None" text and
+      # leading-zero strings (spec §7 step 3: only empty/whitespace is missing).
+      # Without it openxlsx coerces literal "NA" to a missing value before the
+      # declared-column conversion can distinguish it from a blank cell.
     df <- openxlsx::read.xlsx(upload$path, sheet = 1L, detectDates = TRUE, check.names = FALSE,
-      sep.names = " "
+        sep.names = " ", na.strings = character(0)
     )
     return(list(df = df, all_text = FALSE))
   }

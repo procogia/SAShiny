@@ -31,6 +31,14 @@ sas_pool <- function(engine, min_size = 0L, max_size = 4L,
   if (min_size > max_size) {
     stop("min_size must not exceed max_size", call. = FALSE)
   }
+  # Session counts are discrete: a fractional maximum would admit one more
+  # session than configured (spec §6.5 bounds the pool).
+  if (!.sashiny_is_int(min_size) || !.sashiny_is_int(max_size)) {
+    stop("min_size and max_size must be whole numbers", call. = FALSE)
+  }
+  if (!is.finite(acquire_timeout) || acquire_timeout < 0) {
+    stop("acquire_timeout must be a non-negative finite number", call. = FALSE)
+  }
   pool <- new.env(parent = emptyenv())
   if (is.function(engine)) {
     pool$engine <- NULL
@@ -45,6 +53,7 @@ sas_pool <- function(engine, min_size = 0L, max_size = 4L,
   pool$max_runs_per_session <- max_runs_per_session
   pool$acquire_timeout <- acquire_timeout
   pool$sessions <- list()
+    pool$closed <- FALSE
   class(pool) <- c("sashiny_pool", "sashiny_engine")
   .sashiny_top_up(pool)
   pool
@@ -53,6 +62,9 @@ sas_pool <- function(engine, min_size = 0L, max_size = 4L,
 #' Create sessions until the warm minimum `min_size` is met.
 #' @noRd
 .sashiny_top_up <- function(pool) {
+  if (isTRUE(pool$closed)) {
+    return(invisible(NULL))
+  }
   while (length(pool$sessions) < pool$min_size) {
     s <- .sashiny_new_session(pool)
     pool$sessions[[length(pool$sessions) + 1L]] <- s
@@ -88,6 +100,9 @@ sas_pool <- function(engine, min_size = 0L, max_size = 4L,
 .sashiny_acquire <- function(pool) {
   deadline <- as.numeric(Sys.time()) + pool$acquire_timeout
   repeat {
+    if (isTRUE(pool$closed)) {
+      return(NULL)
+    }
     now <- as.numeric(Sys.time())
     expired <- vapply(pool$sessions, function(s) {
       !s$in_use && (now - s$last_used) >= pool$idle_timeout
@@ -163,12 +178,16 @@ sas_engine_run.sashiny_pool <- function(engine, contract, values, today = Sys.Da
 #' @export
 sas_engine_choices.sashiny_pool <- function(engine, contract) {
   session <- .sashiny_acquire(engine)
+  if (is.null(session)) {
+    stop(sprintf("pool exhausted: all %d sessions busy", engine$max_size), call. = FALSE)
+  }
   on.exit(.sashiny_release(engine, session), add = TRUE)
   sas_engine_choices(session$engine, contract)
 }
 
 #' @export
 sas_engine_close.sashiny_pool <- function(engine) {
+  engine$closed <- TRUE
   sessions <- engine$sessions
   engine$sessions <- list()
   for (s in sessions) .sashiny_close_session(engine, s)

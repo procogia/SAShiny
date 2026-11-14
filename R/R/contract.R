@@ -133,7 +133,10 @@ sas_contract <- function(path) {
 sas_validate <- function(contract, today = Sys.Date()) {
   issues <- list()
   validator <- jsonvalidate::json_validator(.sashiny_schema(), engine = "ajv")
-  json <- jsonlite::toJSON(contract$data, auto_unbox = TRUE, null = "null")
+    # digits = NA preserves the original numeric values (jsonlite's default
+    # rounds to ~15 significant digits, which can turn 1.000001 into 1 and hide
+    # a schema type error).
+    json <- jsonlite::toJSON(contract$data, auto_unbox = TRUE, null = "null", digits = NA)
   result <- validator(json, verbose = TRUE, error = FALSE)
   if (isTRUE(result)) {
     schema_errors <- NULL
@@ -251,8 +254,9 @@ sas_validate <- function(contract, today = Sys.Date()) {
 #' Returns NULL when acceptable, otherwise a description of the problem.
 #' @noRd
 .sashiny_check_regex <- function(pattern) {
+  outside <- .sashiny_outside_class(pattern)
   for (what in names(.sashiny_forbidden_regex)) {
-    if (grepl(.sashiny_forbidden_regex[[what]], pattern, perl = TRUE)) {
+    if (grepl(.sashiny_forbidden_regex[[what]], outside, perl = TRUE)) {
       return(what)
     }
   }
@@ -270,6 +274,44 @@ sas_validate <- function(contract, today = Sys.Date()) {
     return("does not compile")
   }
   NULL
+}
+
+#' The pattern with every `[...]` class's contents replaced by spaces.
+#'
+#' Forbidden constructs are only meaningful outside character classes: a literal
+#' `+?` or `(?=` inside `[...]` is not a quantifier or look-around (spec section
+#' 3.3). Escaped characters are kept so `\\[` is not mistaken for a class opener.
+#' @noRd
+.sashiny_outside_class <- function(pattern) {
+  chars <- strsplit(pattern, "", fixed = TRUE)[[1]]
+  out <- character(length(chars))
+  in_class <- FALSE
+  i <- 1L
+  n <- length(chars)
+  while (i <= n) {
+    ch <- chars[[i]]
+    if (identical(ch, "\\") && i < n) {
+      out[[i]] <- ch
+      out[[i + 1L]] <- chars[[i + 1L]]
+      i <- i + 2L
+      next
+    }
+    if (identical(ch, "[")) {
+      in_class <- TRUE
+      out[[i]] <- " "
+      i <- i + 1L
+      next
+    }
+    if (identical(ch, "]") && in_class) {
+      in_class <- FALSE
+      out[[i]] <- " "
+      i <- i + 1L
+      next
+    }
+    out[[i]] <- if (in_class) " " else ch
+    i <- i + 1L
+  }
+  paste0(out, collapse = "")
 }
 
 # ---------------------------------------------------------------------------
@@ -317,11 +359,12 @@ sas_validate <- function(contract, today = Sys.Date()) {
       add("S003", p, "min > max")
     }
     if (kind %in% c("date", "daterange") && (!is.null(spec$min) || !is.null(spec$max))) {
-      lo <- .sashiny_resolve_bound(spec$min, today)
-      hi <- .sashiny_resolve_bound(spec$max, today)
-      if (is.null(lo) || is.null(hi)) {
+          lo <- if (!is.null(spec$min)) .sashiny_resolve_bound(spec$min, today) else NULL
+          hi <- if (!is.null(spec$max)) .sashiny_resolve_bound(spec$max, today) else NULL
+          # A one-sided bound is valid; only a present-but-invalid bound is S003.
+          if ((!is.null(spec$min) && is.null(lo)) || (!is.null(spec$max) && is.null(hi))) {
         add("S003", p, "invalid date bound")
-      } else if (lo > hi) {
+          } else if (!is.null(lo) && !is.null(hi) && lo > hi) {
         add("S003", p, "min > max")
       }
     }
@@ -369,6 +412,12 @@ sas_validate <- function(contract, today = Sys.Date()) {
         add("S016", paste0(p, "/columns"), "duplicate column names")
       }
     }
+        # S017 (generated component ids)
+        if (iid %in% c("run", "status", "log") ||
+          startsWith(iid, "out_") || startsWith(iid, "dl_") ||
+          endsWith(iid, "__sample")) {
+          add("S017", p, "id collides with a generated module component id")
+        }
     # S013 (sample)
     if (identical(kind, "dataset") && !is.null(spec$sample) &&
       !file.exists(file.path(contract$base_dir, spec$sample))) {

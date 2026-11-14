@@ -77,7 +77,14 @@
     ))
   }
   if (identical(mode, "iso")) {
-    return(format(dt, "%Y-%m-%d"))
+      # format(dt, "%Y-%m-%d") drops zero-padding for years below 1000 on some
+      # platforms (e.g. "1-01-01"); render the four-digit year explicitly.
+      return(sprintf(
+        "%04d-%02d-%02d",
+        as.integer(format(dt, "%Y")),
+        as.integer(format(dt, "%m")),
+        as.integer(format(dt, "%d"))
+      ))
   }
   if (identical(mode, "sasdate")) {
     return(as.character(as.integer(difftime(dt, .sashiny_sas_epoch, units = "days"))))
@@ -149,6 +156,16 @@ sas_render_values <- function(data, values, today = Sys.Date(), only = NULL,
       next
     }
     if (kind %in% c("multichoice", "daterange") && is.list(raw)) {
+          # A JSON object (named list) is not an array (spec §2.1): V002.
+          if (!is.null(names(raw))) {
+            add("V002", iid)
+            next
+          }
+          # A daterange must be exactly two elements (spec §2.1): V002 otherwise.
+          if (identical(kind, "daterange") && length(raw) != 2L) {
+            add("V002", iid)
+            next
+          }
           # Every element must be a string (spec §2.1). A nested list, NULL or
           # non-string element is a type error (V002), not silently flattened.
           if (length(raw) > 0L && !all(vapply(raw, is.character, logical(1)))) {
@@ -176,13 +193,22 @@ sas_render_values <- function(data, values, today = Sys.Date(), only = NULL,
     optional <- isTRUE(spec$optional)
 
     if (identical(kind, "multichoice")) {
-          # Only an empty selection is "absent" for multichoice (spec §4 V001).
-          # A single empty string `[""]` is a non-empty selection and is validated
-          # as a value (V004), not treated as absent.
-          absent <- is.null(raw) || identical(raw, character())
-          if (absent && !optional && (spec$min_selected %||% 1L) >= 1L) {
-        add("V001", iid)
-        next
+          if (is.null(raw)) {
+            # Missing/null: a required input is always V001 (spec §4 V001).
+            if (!optional) {
+              add("V001", iid)
+              next
+            }
+            absent <- TRUE
+          } else if (identical(raw, character())) {
+            # Empty selection: V001 only when min_selected >= 1.
+            absent <- optional
+            if (!optional && (spec$min_selected %||% 1L) >= 1L) {
+              add("V001", iid)
+              next
+            }
+          } else {
+            absent <- FALSE
       }
     } else {
       absent <- is.null(raw) || identical(raw, "")

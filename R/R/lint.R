@@ -11,8 +11,11 @@
 # A `call symput('NAME', ...)` or `call symputx('NAME', ...)` assignment.
 .sashiny_symput_re <- "call\\s+symputx?\\s*\\(\\s*['\"]([A-Za-z_][A-Za-z0-9_]*)['\"]"
 
-# A `%symexist(NAME)` guard reference.
-.sashiny_symexist_re <- "%symexist\\s*\\(\\s*([A-Za-z_][A-Za-z0-9_]*)\\s*\\)"
+# A `%if not %symexist(NAME) %then %do;` guard opening (NAME captured).
+.sashiny_guard_open_re <- "%if\\s+not\\s+%symexist\\s*\\(\\s*([A-Za-z_][A-Za-z0-9_]*)\\s*\\)\\s*%then\\s*%do\\s*;"
+
+# A `%end;` closing a guard block.
+.sashiny_guard_close_re <- "%end\\s*;"
 
 # Upper-cased macro names assigned via `%let` or `call symput[x]`.
 .sashiny_assigned_names <- function(program_text) {
@@ -36,17 +39,52 @@
   unique(names)
 }
 
-# Upper-cased macro names referenced by a `%symexist` guard.
-.sashiny_guarded_names <- function(program_text) {
-  m <- gregexpr(.sashiny_symexist_re, program_text, perl = TRUE, ignore.case = TRUE)[[1]]
-  if (m[1] == -1L) {
-    return(character())
+# `(upper_name, start_offset)` for every macro assignment (`%let`/`symput[x]`).
+.sashiny_assignment_positions <- function(program_text) {
+  out <- list()
+  m <- gregexpr(.sashiny_let_re, program_text, perl = TRUE, ignore.case = TRUE)[[1]]
+  if (m[1] != -1L) {
+    starts <- attr(m, "capture.start")
+    lens <- attr(m, "capture.length")
+    for (i in seq_along(m)) {
+      name <- toupper(substr(program_text, starts[i, 1], starts[i, 1] + lens[i, 1] - 1L))
+      out[[length(out) + 1L]] <- list(name = name, pos = m[i])
+    }
   }
-  starts <- attr(m, "capture.start")
-  lens <- attr(m, "capture.length")
-  vapply(seq_along(m), function(i) {
-    toupper(substr(program_text, starts[i, 1], starts[i, 1] + lens[i, 1] - 1L))
-  }, character(1))
+  m <- gregexpr(.sashiny_symput_re, program_text, perl = TRUE, ignore.case = TRUE)[[1]]
+  if (m[1] != -1L) {
+    starts <- attr(m, "capture.start")
+    lens <- attr(m, "capture.length")
+    for (i in seq_along(m)) {
+      name <- toupper(substr(program_text, starts[i, 1], starts[i, 1] + lens[i, 1] - 1L))
+      out[[length(out) + 1L]] <- list(name = name, pos = m[i])
+    }
+  }
+  out
+}
+
+# `(upper_name, start, end)` for each `%if not %symexist(NAME) %then %do; ... %end;`
+# guard. An unmatched opening is ignored (a conservative miss is preferred).
+.sashiny_guard_ranges <- function(program_text) {
+  out <- list()
+  opens <- gregexpr(.sashiny_guard_open_re, program_text, perl = TRUE, ignore.case = TRUE)[[1]]
+  if (opens[1] == -1L) {
+    return(out)
+  }
+  starts <- attr(opens, "capture.start")
+  lens <- attr(opens, "capture.length")
+  closes <- gregexpr(.sashiny_guard_close_re, program_text, perl = TRUE, ignore.case = TRUE)[[1]]
+  for (i in seq_along(opens)) {
+    name <- toupper(substr(program_text, starts[i, 1], starts[i, 1] + lens[i, 1] - 1L))
+    open_end <- opens[i] + attr(opens, "match.length")[i]
+    after <- closes[closes >= open_end]
+    if (length(after) == 0L) {
+      next
+    }
+    close_end <- after[[1]] + attr(closes, "match.length")[which(closes == after[[1]])[1]]
+    out[[length(out) + 1L]] <- list(name = name, start = opens[i], end = close_end)
+  }
+  out
 }
 
 # Upper-cased WORK member names that dataset inputs target.
@@ -86,11 +124,34 @@ sashiny_lint <- function(data, program_text) {
 
   injected <- .sashiny_all_macro_names(data)
   assigned <- .sashiny_assigned_names(text)
-  guarded <- .sashiny_guarded_names(text)
 
-  # L001: program assigns an injected macro outside a %symexist guard.
+    # L001: program assigns an injected macro outside a %symexist guard. The
+    # guard exemption applies only to assignments inside the guard (spec §10);
+    # a later assignment to the same macro outside any guard is still L001.
+    positions <- .sashiny_assignment_positions(text)
+    guards <- .sashiny_guard_ranges(text)
   for (name in injected) {
-    if (name %in% assigned && !(name %in% guarded)) {
+      if (!(name %in% assigned)) {
+        next
+      }
+      flagged <- FALSE
+      for (a in positions) {
+        if (!identical(a$name, name)) {
+          next
+        }
+        inside <- FALSE
+        for (g in guards) {
+          if (identical(g$name, name) && a$pos >= g$start && a$pos < g$end) {
+            inside <- TRUE
+            break
+          }
+        }
+        if (!inside) {
+          flagged <- TRUE
+          break
+        }
+      }
+      if (flagged) {
       issues[[length(issues) + 1L]] <- sashiny_issue(
         "L001",
         paste0("/inputs/", .sashiny_input_id_for_macro(data, name)),

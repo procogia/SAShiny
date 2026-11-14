@@ -48,3 +48,80 @@ test_that("invalid contracts produce the expected issues", {
     }
   }
 })
+
+test_that("one-sided date bounds are valid (issue #70)", {
+  dir <- tempfile("sashiny-")
+  dir.create(dir)
+  writeLines("data work.out; run;", file.path(dir, "program.sas"))
+  for (kind in c("date", "daterange")) {
+    for (bound in c("min", "max")) {
+      data <- list(
+        sashiny = 1L, program = "program.sas", title = "t",
+        inputs = list(x = list(type = kind, label = "X")),
+        outputs = list(log = list(type = "log"))
+      )
+      data$inputs$x[[bound]] <- "2026-01-01"
+      contract <- structure(list(data = data, base_dir = dir), class = "sashiny_contract")
+      expect_true(length(sas_validate(contract, .sashiny_today)) == 0L)
+    }
+  }
+})
+
+test_that("a present-but-invalid one-sided date bound is S003", {
+  dir <- tempfile("sashiny-")
+  dir.create(dir)
+  writeLines("data work.out; run;", file.path(dir, "program.sas"))
+  data <- list(
+    sashiny = 1L, program = "program.sas", title = "t",
+    inputs = list(x = list(type = "date", label = "X", min = "2026-02-30")),
+    outputs = list(log = list(type = "log"))
+  )
+  contract <- structure(list(data = data, base_dir = dir), class = "sashiny_contract")
+  issues <- sas_validate(contract, .sashiny_today)
+  expect_true(any(vapply(issues, function(i) i$code == "S003" && i$path == "/inputs/x",
+                         logical(1))))
+})
+
+test_that("literal character classes are portable (issue #82)", {
+  dir <- tempfile("sashiny-")
+  dir.create(dir)
+  writeLines("data work.out; run;", file.path(dir, "program.sas"))
+  for (pattern in c("[+?]", "[(?=]", "[*+]", "[a-z+?]")) {
+    data <- list(
+      sashiny = 1L, program = "program.sas", title = "t",
+      inputs = list(x = list(type = "text", label = "X", pattern = pattern)),
+      outputs = list(log = list(type = "log"))
+    )
+    contract <- structure(list(data = data, base_dir = dir), class = "sashiny_contract")
+    expect_true(length(sas_validate(contract, .sashiny_today)) == 0L, info = pattern)
+  }
+})
+
+test_that("a forbidden construct outside a class is S014", {
+  dir <- tempfile("sashiny-")
+  dir.create(dir)
+  writeLines("data work.out; run;", file.path(dir, "program.sas"))
+  data <- list(
+    sashiny = 1L, program = "program.sas", title = "t",
+    inputs = list(x = list(type = "text", label = "X", pattern = "a+?")),
+    outputs = list(log = list(type = "log"))
+  )
+  contract <- structure(list(data = data, base_dir = dir), class = "sashiny_contract")
+  issues <- sas_validate(contract, .sashiny_today)
+  expect_true(any(vapply(issues, function(i) i$code == "S014" && i$path == "/inputs/x/pattern",
+                         logical(1))))
+})
+
+test_that("schema validation preserves fractional numeric properties (issue #83)", {
+  dir <- tempfile("sashiny-")
+  dir.create(dir)
+  writeLines("data work.out; run;", file.path(dir, "program.sas"))
+  data <- list(
+    sashiny = 1L, program = "program.sas", title = "t",
+    inputs = list(x = list(type = "text", label = "X", max_length = 1.000001)),
+    outputs = list(log = list(type = "log"))
+  )
+  contract <- structure(list(data = data, base_dir = dir), class = "sashiny_contract")
+  issues <- sas_validate(contract, .sashiny_today)
+  expect_true(any(vapply(issues, function(i) i$code == "E000", logical(1))))
+})

@@ -15,7 +15,9 @@
 #' Static choices as a named vector (`names` are labels); empty for `choices_from`.
 #' @noRd
 .sashiny_ui_choices <- function(spec) {
-  items <- spec$choices %||% list()
+  # Exact indexing: `spec$choices` would partially match `choices_from` and
+  # expose its dataset/column configuration as selectable values.
+  items <- spec[["choices"]] %||% list()
   if (length(items) == 0L) {
     return(character(0))
   }
@@ -304,6 +306,45 @@
   }
 }
 
+# The previous `shiny.maxRequestSize` option, saved so it can be restored when
+# the module session ends (CRAN policy: restore options you change). Stored in
+# an environment (not a locked binding) so it can be reassigned at runtime.
+.sashiny_upload_state <- new.env(parent = emptyenv())
+.sashiny_upload_state$prev_max_request_size <- NULL
+
+#' Raise Shiny's upload cap to the largest declared `max_size_mb` (spec §7).
+#'
+#' Shiny's default `shiny.maxRequestSize` is 5 MiB, which would reject valid
+#' datasets up to the contract's (larger) limit with an HTTP 413 before the
+#' module ever sees them (issue #54). Raise it to the largest declared limit so
+#' the transport accepts files the contract allows; per-input limits are still
+#' enforced by `read_upload` (V014).
+#' @noRd
+.sashiny_set_upload_limit <- function(inputs) {
+  limits <- vapply(inputs, function(s) {
+    if (identical(s$type, "dataset")) as.numeric(s$max_size_mb %||% 50) else NA_real_
+  }, numeric(1))
+  limits <- limits[!is.na(limits)]
+  if (length(limits) == 0L) {
+    return(invisible(NULL))
+  }
+  max_mb <- max(limits)
+  .sashiny_upload_state$prev_max_request_size <- getOption("shiny.maxRequestSize")
+  options(shiny.maxRequestSize = max_mb * 1024 * 1024)
+  invisible(NULL)
+}
+
+#' Restore `shiny.maxRequestSize` to its previous value.
+#' @noRd
+.sashiny_restore_upload_limit <- function() {
+  prev <- .sashiny_upload_state$prev_max_request_size
+  if (!is.null(prev)) {
+    options(shiny.maxRequestSize = prev)
+    .sashiny_upload_state$prev_max_request_size <- NULL
+  }
+  invisible(NULL)
+}
+
 # ---------------------------------------------------------------- module
 
 #' Generate the UI for a SAS program module
@@ -387,6 +428,12 @@ sas_program_server <- function(id, contract, engine, server_override = NULL, ren
     settings <- contract$data$ui %||% list()
     choice_error <- shiny::reactiveVal("")
 
+    # Raise Shiny's upload cap to the largest declared max_size_mb so valid
+    # files up to the contract limit are accepted (spec section 7; issue #54).
+    # Restore the option when the session ends (CRAN policy).
+    .sashiny_set_upload_limit(inputs)
+    shiny::onSessionEnded(function() .sashiny_restore_upload_limit(), session)
+
     if (any(vapply(inputs, function(s) !is.null(s$choices_from), logical(1)))) {
       found <- tryCatch(sas_engine_choices(engine, contract), error = function(e) e)
       if (inherits(found, "error")) {
@@ -396,10 +443,14 @@ sas_program_server <- function(id, contract, engine, server_override = NULL, ren
       }
     }
 
-    result <- shiny::eventReactive(input$run,
+    # A reactiveVal starts as NULL, so the status card can render the choice
+    # error before the first run without forcing an uninitialised eventReactive
+    # (which raises a shiny.silent.error under ignoreNULL=TRUE).
+    result <- shiny::reactiveVal(NULL)
+    shiny::observeEvent(input$run,
       {
         converted <- .sashiny_shiny_values(contract, function(iid) input[[iid]])
-        sas_engine_run(engine, contract, converted$values, uploads = converted$uploads)
+        result(sas_engine_run(engine, contract, converted$values, uploads = converted$uploads))
       },
       ignoreNULL = !isTRUE(settings$auto_run)
     )
@@ -415,18 +466,25 @@ sas_program_server <- function(id, contract, engine, server_override = NULL, ren
       if (nzchar(choice_error())) paste(text, choice_error(), sep = "\n") else text
     })
     output$log <- shiny::renderText({
-      log <- result()$log
+      res <- result()
+      log <- if (is.null(res)) "" else res$log
       if (nzchar(log %||% "")) log else "(no log)"
     })
 
     for (oid in names(contract$data$outputs)) {
-          .sashiny_register_output(output, oid, contract$data$outputs[[oid]], result, render[[oid]])
+      .sashiny_register_output(output, oid, contract$data$outputs[[oid]], result, render[[oid]])
     }
 
     list(
       result = result,
-      status = shiny::reactive(result()$status),
-      log = shiny::reactive(result()$log)
+      status = shiny::reactive({
+        res <- result()
+        if (is.null(res)) "idle" else res$status
+      }),
+      log = shiny::reactive({
+        res <- result()
+        if (is.null(res)) "" else res$log
+      })
     )
   })
 }

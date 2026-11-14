@@ -284,6 +284,23 @@ sas_engine_run.sashiny_engine_mock <- function(engine, contract, values, today =
       code = "V014", message = conditionMessage(files)
     ))))
   }
+    # Run the full §7 conversion for every supplied dataset input, exactly like the
+    # live engine, so a missing declared column, an unparseable cell or an
+    # unreadable file is reported as V014 offline (spec §6.1 step 2 / §7).
+    converted <- tryCatch(
+      {
+        for (iid in names(files)) {
+          .sashiny_read_upload(files[[iid]], contract$data$inputs[[iid]])
+        }
+        NULL
+      },
+      sashiny_upload_error = function(e) e
+    )
+    if (inherits(converted, "sashiny_upload_error")) {
+      return(.sashiny_invalid_result(run_id, base, list(list(
+        code = "V014", message = conditionMessage(converted)
+      ))))
+    }
 
   key <- .sashiny_recording_key(contract, res$macros, files)
   recording <- .sashiny_load_recording(engine$recordings_dir, key)

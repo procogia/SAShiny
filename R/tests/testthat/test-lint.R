@@ -39,6 +39,39 @@ test_that("L001 ignores a %symexist guard", {
   expect_false("L001" %in% lint_codes(sashiny_lint(data, program)))
 })
 
+test_that("L001 guard does not exempt a different macro (issue #78)", {
+  data <- lint_data(inputs = list(
+    min_msrp = list(type = "numeric", label = "Min MSRP"),
+    ratio = list(type = "numeric", label = "Ratio")
+  ))
+  program <- paste(
+    "%if not %symexist(MIN_MSRP) %then %do;",
+    "  %let MIN_MSRP = 5;",
+    "%end;",
+    "%let RATIO = 0.5;",
+    "proc print data=sashelp.class; run;",
+    sep = "\n"
+  )
+  issues <- sashiny_lint(data, program)
+  expect_true("L001" %in% lint_codes(issues))
+  l001 <- issues[lint_codes(issues) == "L001"]
+  expect_length(l001, 1L)
+  expect_match(l001[[1]]$message, "RATIO")
+})
+
+test_that("L001 flags a later assignment outside the guard (issue #78)", {
+  data <- lint_data()
+  program <- paste(
+    "%if not %symexist(MIN_MSRP) %then %do;",
+    "  %let MIN_MSRP = 5;",
+    "%end;",
+    "%let MIN_MSRP = 10;",
+    "proc print data=sashelp.class; run;",
+    sep = "\n"
+  )
+  expect_true("L001" %in% lint_codes(sashiny_lint(data, program)))
+})
+
 test_that("L001 flags a call symputx assignment", {
   data <- lint_data()
   program <- "data _null_; call symputx('MIN_MSRP', '5'); run;"

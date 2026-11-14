@@ -78,8 +78,16 @@ print.sashiny_engine_saspy <- function(x, ...) {
   }
   sas <- .sashiny_saspy_open(engine)
   # Session setup (spec 6.1): ODA starts with NONOTES, which hides the sentinels.
-  sas$submit(.sashiny_session_setup_code, results = "TEXT")
+  # Retain the session before setup so a setup failure can still close it; a
+  # session lost here would otherwise leak (spec §6.5).
   engine$sas <- sas
+  tryCatch(
+    sas$submit(.sashiny_session_setup_code, results = "TEXT"),
+    error = function(e) {
+      .sashiny_discard_session(engine)
+      stop(e)
+    }
+  )
   engine$sas
 }
 
@@ -196,6 +204,10 @@ sas_engine_close.sashiny_engine_saspy <- function(engine) {
 .sashiny_discard_session <- function(engine) {
   sas <- engine$sas
   engine$sas <- NULL
+  # Session-scoped caches are invalid once the session is gone (spec §6.4 reads
+  # choices once per session); a replacement session must re-query them.
+  engine$choices <- list()
+  engine$sas_version <- NULL
   if (!is.null(sas)) {
     try(sas$endsas(), silent = TRUE)
   }

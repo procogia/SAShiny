@@ -90,3 +90,26 @@ test_that("pool returns an error result when exhausted (spec section 6.5)", {
   .sashiny_release(pool, a)
   sas_pool_close(pool)
 })
+
+test_that("pool close stops creating sessions (issue #80)", {
+  made <- 0L
+  pool <- sas_pool(function() {
+    made <<- made + 1L
+    sas_engine_mock()
+  }, min_size = 2L, max_size = 4L)
+  expect_identical(made, 2L)
+  sas_pool_close(pool)
+  # After close, no new sessions may be created.
+  expect_identical(made, 2L)
+  expect_length(pool$sessions, 0L)
+})
+
+test_that("pool run after close returns an error result (issue #80)", {
+  pool <- sas_pool(sas_engine_mock(), max_size = 2L)
+  contract <- sas_contract(file.path(.sashiny_fixtures(), "contracts", "valid",
+                                     "minimal", "contract.sashiny.yml"))
+  sas_pool_close(pool)
+  result <- sas_pool_run(pool, contract, list(), today = .sashiny_today)
+  expect_identical(result$status, "error")
+  expect_match(result$metadata$engine_error, "pool exhausted")
+})

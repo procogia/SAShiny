@@ -93,6 +93,25 @@
         ]
       }
     },
+        {
+          "name": "year_zero",
+          "values": {
+            "cutoff": "0000-01-01",
+            "period": [
+              "2026-01-01",
+              "2026-01-02"
+            ]
+          },
+          "expected": {
+            "status": "invalid",
+            "errors": [
+              {
+                "code": "V009",
+                "input": "cutoff"
+              }
+            ]
+          }
+        },
     {
       "name": "range_reversed",
       "values": {
@@ -127,6 +146,44 @@
           }
         ]
       }
+        },
+        {
+          "name": "daterange_null_element",
+          "values": {
+            "cutoff": "2026-01-01",
+            "period": [
+              null,
+              "2026-01-02"
+            ]
+          },
+          "expected": {
+            "status": "invalid",
+            "errors": [
+              {
+                "code": "V002",
+                "input": "period"
+              }
+            ]
+          }
+        },
+        {
+          "name": "daterange_malformed_element",
+          "values": {
+            "cutoff": "2026-01-01",
+            "period": [
+              "2026-13-01",
+              "2026-01-02"
+            ]
+          },
+          "expected": {
+            "status": "invalid",
+            "errors": [
+              {
+                "code": "V009",
+                "input": "period"
+              }
+            ]
+          }
     }
   ]
 }
