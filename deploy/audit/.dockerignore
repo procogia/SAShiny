@@ -1,0 +1,10 @@
+# Keep the audit images lean: exclude results, evidence, and VCS noise.
+deploy/audit/results
+deploy/audit/evidence
+deploy/audit/issues
+**/__pycache__
+**/*.pyc
+.git
+.gitignore
+*.tar.gz
+SAShiny.Rcheck

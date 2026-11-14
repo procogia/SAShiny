@@ -1,0 +1,42 @@
+# Two-container audit (Igor's two-VM workflow, containerized).
+#
+#   docker compose -f deploy/audit/docker-compose.yml up --build
+#
+# The server builds the SAShiny package and serves the API + Shiny apps; the
+# client runs the 382-script suite against it over the shared network. Results
+# land in ./deploy/audit/results/ (mounted from the client).
+
+services:
+  server:
+    build:
+      context: ../..
+      dockerfile: deploy/audit/Dockerfile.server
+    image: sashiny-audit-server
+    ports:
+      - "8000:8000"
+      - "8001:8001"
+      - "8002:8002"
+      - "8003:8003"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+  client:
+    build:
+      context: ../..
+      dockerfile: deploy/audit/Dockerfile.client
+    image: sashiny-audit-client
+    depends_on:
+      server:
+        condition: service_healthy
+    environment:
+      AUDIT_API: http://server:8000
+      AUDIT_PYTHON_SHINY: http://server:8001
+      AUDIT_R_SHINY: http://server:8002
+      AUDIT_PYTHON_DEMO: http://server:8003
+      PLAYWRIGHT_BROWSERS_PATH: /tmp/browsers
+    volumes:
+      - ./results:/tmp/audit/results

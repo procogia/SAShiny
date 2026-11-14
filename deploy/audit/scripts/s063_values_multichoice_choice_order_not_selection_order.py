@@ -1,0 +1,14 @@
+"""Audit 63: values_multichoice_choice_order_not_selection_order. Category: value-fixtures."""
+from client import *
+
+body = {'fixture': 'contracts/valid/multichoice', 'today': '2026-11-11', 'values': {'origins': ['USA', 'Asia'], 'types': ['Wagon', 'SUV'], 'arms': ['Drug A']}}
+failures = []
+for language in ('python', 'r'):
+    try:
+        got = value(language, 'values', body)
+        assert got['macros'] == {'ORIGINS': "'Asia' 'USA'", 'N_ORIGINS': '2', 'TYPES': 'SUV, Wagon', 'ARMS': '"Drug A"', 'N_ARMS': '1'}, (language, got)
+        assert got['macro_order'] == ['ORIGINS', 'N_ORIGINS', 'TYPES', 'ARMS', 'N_ARMS'], (language, got)
+        assert not got['issues'], (language, got)
+    except AssertionError as exc:
+        failures.append((language, str(exc)))
+assert not failures, failures

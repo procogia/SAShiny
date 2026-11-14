@@ -1,0 +1,4551 @@
+[
+  {
+    "id": "s001",
+    "script": "s001_contract_e_absolute_program.py",
+    "name": "contract_e_absolute_program",
+    "category": "contract-fixtures",
+    "covers": [
+      "load",
+      "validate",
+      "schema",
+      "S001-S016"
+    ],
+    "sha256": "17be3367da0b3eeae8fd269c0acee5904bf3b0fb28abdd7ecc0ece620542b2a2"
+  },
+  {
+    "id": "s002",
+    "script": "s002_contract_e_bad_identifier.py",
+    "name": "contract_e_bad_identifier",
+    "category": "contract-fixtures",
+    "covers": [
+      "load",
+      "validate",
+      "schema",
+      "S001-S016"
+    ],
+    "sha256": "407fef063c5d1e7cb3c28cce779c31d6f4b4ff853f8ad9bdc3055cb4f7b048c0"
+  },
+  {
+    "id": "s003",
+    "script": "s003_contract_e_choices_and_from.py",
+    "name": "contract_e_choices_and_from",
+    "category": "contract-fixtures",
+    "covers": [
+      "load",
+      "validate",
+      "schema",
+      "S001-S016"
+    ],
+    "sha256": "64603eadaa83d4665c0f6a08c86970209daa20f12e65bc51138296116bffcfc0"
+  },
+  {
+    "id": "s004",
+    "script": "s004_contract_e_daterange_one_macro.py",
+    "name": "contract_e_daterange_one_macro",
+    "category": "contract-fixtures",
+    "covers": [
+      "load",
+      "validate",
+      "schema",
+      "S001-S016"
+    ],
+    "sha256": "317561515d194fab244a0e8bbecefbe28ce0b11ee92c85beaba6f7f6e0551bdb"
+  },
+  {
+    "id": "s005",
+    "script": "s005_contract_e_missing_label.py",
+    "name": "contract_e_missing_label",
+    "category": "contract-fixtures",
+    "covers": [
+      "load",
+      "validate",
+      "schema",
+      "S001-S016"
+    ],
+    "sha256": "d3d00f42ba2fb62c3c3a544d67f269a3a29766b1d52497064aae4b4922c716f0"
+  },
+  {
+    "id": "s006",
+    "script": "s006_contract_e_missing_outputs.py",
+    "name": "contract_e_missing_outputs",
+    "category": "contract-fixtures",
+    "covers": [
+      "load",
+      "validate",
+      "schema",
+      "S001-S016"
+    ],
+    "sha256": "a150b07191355697f90db5d40e58339d4513ed992aab602d9870e08b1bade4de"
+  },
+  {
+    "id": "s007",
+    "script": "s007_contract_e_parent_program.py",
+    "name": "contract_e_parent_program",
+    "category": "contract-fixtures",
+    "covers": [
+      "load",
+      "validate",
+      "schema",
+      "S001-S016"
+    ],
+    "sha256": "87305f82df465a665004761788fe84f6f50ba3b7691976073f5a57470ab3c0cb"
+  },
+  {
+    "id": "s008",
+    "script": "s008_contract_e_reserved_macro.py",
+    "name": "contract_e_reserved_macro",
+    "category": "contract-fixtures",
+    "covers": [
+      "load",
+      "validate",
+      "schema",
+      "S001-S016"
+    ],
+    "sha256": "1c4755b7cde5f5a1d4379599f59e7c9a4275c14d637e5a1ee7e395d962917421"
+  },
+  {
+    "id": "s009",
+    "script": "s009_contract_e_target_not_work.py",
+    "name": "contract_e_target_not_work",
+    "category": "contract-fixtures",
+    "covers": [
+      "load",
+      "validate",
+      "schema",
+      "S001-S016"
+    ],
+    "sha256": "b4a85d5ed03a084d834e4eb13aca7dff2cbc0a4014a2fd98ac2688b1d83de456"
+  },
+  {
+    "id": "s010",
+    "script": "s010_contract_e_unknown_field.py",
+    "name": "contract_e_unknown_field",
+    "category": "contract-fixtures",
+    "covers": [
+      "load",
+      "validate",
+      "schema",
+      "S001-S016"
+    ],
+    "sha256": "7647992d97762d6157b6a367175d8c198d9895192d33e6232e18b1ec5169865d"
+  },
+  {
+    "id": "s011",
+    "script": "s011_contract_e_wrong_version.py",
+    "name": "contract_e_wrong_version",
+    "category": "contract-fixtures",
+    "covers": [
+      "load",
+      "validate",
+      "schema",
+      "S001-S016"
+    ],
+    "sha256": "563a4db4449a0c76f2af7294bf70bfb794d3383cffd94142927d6e81529b8737"
+  },
+  {
+    "id": "s012",
+    "script": "s012_contract_s001_duplicate_macro.py",
+    "name": "contract_s001_duplicate_macro",
+    "category": "contract-fixtures",
+    "covers": [
+      "load",
+      "validate",
+      "schema",
+      "S001-S016"
+    ],
+    "sha256": "c5db4f5d155c81fbc3357046eff23b898ab33fec6fd332935f8e64db7eb3e4f6"
+  },
+  {
+    "id": "s013",
+    "script": "s013_contract_s002_reserved_default.py",
+    "name": "contract_s002_reserved_default",
+    "category": "contract-fixtures",
+    "covers": [
+      "load",
+      "validate",
+      "schema",
+      "S001-S016"
+    ],
+    "sha256": "30c176fc0cc8a713f25f27ef38e3b723362763bb481a0eb8cb8c67f33b2458d8"
+  },
+  {
+    "id": "s014",
+    "script": "s014_contract_s003_invalid_date_bound.py",
+    "name": "contract_s003_invalid_date_bound",
+    "category": "contract-fixtures",
+    "covers": [
+      "load",
+      "validate",
+      "schema",
+      "S001-S016"
+    ],
+    "sha256": "beb9c5690de3eef18961e1ba950d8f4a9ac7c97a6a38fa58ea05ec801d1bc00a"
+  },
+  {
+    "id": "s015",
+    "script": "s015_contract_s003_min_gt_max.py",
+    "name": "contract_s003_min_gt_max",
+    "category": "contract-fixtures",
+    "covers": [
+      "load",
+      "validate",
+      "schema",
+      "S001-S016"
+    ],
+    "sha256": "6c99aa73411c6aacd78500eee043ee1b8596e87d15399c9e6f8cb2f7ffcfe176"
+  },
+  {
+    "id": "s016",
+    "script": "s016_contract_s004_default_not_choice.py",
+    "name": "contract_s004_default_not_choice",
+    "category": "contract-fixtures",
+    "covers": [
+      "load",
+      "validate",
+      "schema",
+      "S001-S016"
+    ],
+    "sha256": "fc7e6eff052bb89bd462f451decc9012d3a33e7f168d7ff809a98bc99e31a30f"
+  },
+  {
+    "id": "s017",
+    "script": "s017_contract_s004_default_out_of_range.py",
+    "name": "contract_s004_default_out_of_range",
+    "category": "contract-fixtures",
+    "covers": [
+      "load",
+      "validate",
+      "schema",
+      "S001-S016"
+    ],
+    "sha256": "37244f010d77e36e8d3e8306a1800f2209fb0f309ee04f2eea7089c0b7329a4b"
+  },
+  {
+    "id": "s018",
+    "script": "s018_contract_s005_duplicate_choices.py",
+    "name": "contract_s005_duplicate_choices",
+    "category": "contract-fixtures",
+    "covers": [
+      "load",
+      "validate",
+      "schema",
+      "S001-S016"
+    ],
+    "sha256": "0d94f241dd9f1552969b7ee66aeba6ec980708265101a56fb9cff05397e192ec"
+  },
+  {
+    "id": "s019",
+    "script": "s019_contract_s006_selection_bounds.py",
+    "name": "contract_s006_selection_bounds",
+    "category": "contract-fixtures",
+    "covers": [
+      "load",
+      "validate",
+      "schema",
+      "S001-S016"
+    ],
+    "sha256": "4ef4c73bb3cd3806c6a3aa732cd6f0fad250b9c5162424de3b68613c5f86ada9"
+  },
+  {
+    "id": "s020",
+    "script": "s020_contract_s007_bare_not_name.py",
+    "name": "contract_s007_bare_not_name",
+    "category": "contract-fixtures",
+    "covers": [
+      "load",
+      "validate",
+      "schema",
+      "S001-S016"
+    ],
+    "sha256": "254aeec06c0aa6d46c8d637a2965ae41e21674afaf112fbb584761064ef79e77"
+  },
+  {
+    "id": "s021",
+    "script": "s021_contract_s008_csv_without_from.py",
+    "name": "contract_s008_csv_without_from",
+    "category": "contract-fixtures",
+    "covers": [
+      "load",
+      "validate",
+      "schema",
+      "S001-S016"
+    ],
+    "sha256": "ac06674a946ccc1acbada6629a2029676433e8ace765ffc27bb85c3038214f54"
+  },
+  {
+    "id": "s022",
+    "script": "s022_contract_s008_rtf_with_from.py",
+    "name": "contract_s008_rtf_with_from",
+    "category": "contract-fixtures",
+    "covers": [
+      "load",
+      "validate",
+      "schema",
+      "S001-S016"
+    ],
+    "sha256": "681c1c104f42cee8155dfcad85ee429c6d43aafd872461155b5250005b8fe637"
+  },
+  {
+    "id": "s023",
+    "script": "s023_contract_s009_macro_entry_without_macro.py",
+    "name": "contract_s009_macro_entry_without_macro",
+    "category": "contract-fixtures",
+    "covers": [
+      "load",
+      "validate",
+      "schema",
+      "S001-S016"
+    ],
+    "sha256": "1cfa49e9341776044e43040e5e18272abf3834691fc48ffd04b6e9fe69cf1644"
+  },
+  {
+    "id": "s024",
+    "script": "s024_contract_s010_duplicate_target.py",
+    "name": "contract_s010_duplicate_target",
+    "category": "contract-fixtures",
+    "covers": [
+      "load",
+      "validate",
+      "schema",
+      "S001-S016"
+    ],
+    "sha256": "a345601e1e76b9f41228d8edf5ba2efb80f8528a24d233e2ff79e8f11b8b71ae"
+  },
+  {
+    "id": "s025",
+    "script": "s025_contract_s011_id_collision.py",
+    "name": "contract_s011_id_collision",
+    "category": "contract-fixtures",
+    "covers": [
+      "load",
+      "validate",
+      "schema",
+      "S001-S016"
+    ],
+    "sha256": "2fcc015087abb4483edbc767bbc17067fad3059a27f0058a23392ce9a1fae1dd"
+  },
+  {
+    "id": "s026",
+    "script": "s026_contract_s012_unknown_order.py",
+    "name": "contract_s012_unknown_order",
+    "category": "contract-fixtures",
+    "covers": [
+      "load",
+      "validate",
+      "schema",
+      "S001-S016"
+    ],
+    "sha256": "d4e4062f6b5a9682c590731bbaa31b9bf32d138e35b0e84802d71165b3382ab0"
+  },
+  {
+    "id": "s027",
+    "script": "s027_contract_s013_program_missing.py",
+    "name": "contract_s013_program_missing",
+    "category": "contract-fixtures",
+    "covers": [
+      "load",
+      "validate",
+      "schema",
+      "S001-S016"
+    ],
+    "sha256": "e73ad59aef0a6665be8b172a9e9ec3dca4f1bc56af80fa83b707bf9757d5675f"
+  },
+  {
+    "id": "s028",
+    "script": "s028_contract_s014_lookahead_pattern.py",
+    "name": "contract_s014_lookahead_pattern",
+    "category": "contract-fixtures",
+    "covers": [
+      "load",
+      "validate",
+      "schema",
+      "S001-S016"
+    ],
+    "sha256": "4158b799f7ca359fcbfa0f228fdd4fcf0a86170197941dd0f084477450467569"
+  },
+  {
+    "id": "s029",
+    "script": "s029_contract_s015_integer_default.py",
+    "name": "contract_s015_integer_default",
+    "category": "contract-fixtures",
+    "covers": [
+      "load",
+      "validate",
+      "schema",
+      "S001-S016"
+    ],
+    "sha256": "2d224f87d7dd640647df963bb342706a943f313dccd452ce0ba4e1e70a050520"
+  },
+  {
+    "id": "s030",
+    "script": "s030_contract_s016_duplicate_columns.py",
+    "name": "contract_s016_duplicate_columns",
+    "category": "contract-fixtures",
+    "covers": [
+      "load",
+      "validate",
+      "schema",
+      "S001-S016"
+    ],
+    "sha256": "6708b3cec7a3dbc84fb10c52984f2a38cf5259b6fbf78b073fc5ff4c5101be66"
+  },
+  {
+    "id": "s031",
+    "script": "s031_contract_choice.py",
+    "name": "contract_choice",
+    "category": "contract-fixtures",
+    "covers": [
+      "load",
+      "validate",
+      "schema",
+      "S001-S016"
+    ],
+    "sha256": "a3b652a8dbd111de3d3b1921f99f97b41f494543c7b74852edca45b5b5157889"
+  },
+  {
+    "id": "s032",
+    "script": "s032_contract_choice_whitespace.py",
+    "name": "contract_choice_whitespace",
+    "category": "contract-fixtures",
+    "covers": [
+      "load",
+      "validate",
+      "schema",
+      "S001-S016"
+    ],
+    "sha256": "aaf4c66b43f8aca0c1e654f539b4559ca33fae9c6f71340e5ade91421fbdb7eb"
+  },
+  {
+    "id": "s033",
+    "script": "s033_contract_dataset.py",
+    "name": "contract_dataset",
+    "category": "contract-fixtures",
+    "covers": [
+      "load",
+      "validate",
+      "schema",
+      "S001-S016"
+    ],
+    "sha256": "df03771e268260f1331ec53bc8f7fa9e29793b8e0b99b58a9144b143e0c0297b"
+  },
+  {
+    "id": "s034",
+    "script": "s034_contract_dates.py",
+    "name": "contract_dates",
+    "category": "contract-fixtures",
+    "covers": [
+      "load",
+      "validate",
+      "schema",
+      "S001-S016"
+    ],
+    "sha256": "9c8bddad45a369efe2344b9c62571d54d7c5fe1d32414562e805a0d29935e2e0"
+  },
+  {
+    "id": "s035",
+    "script": "s035_contract_macro_entry.py",
+    "name": "contract_macro_entry",
+    "category": "contract-fixtures",
+    "covers": [
+      "load",
+      "validate",
+      "schema",
+      "S001-S016"
+    ],
+    "sha256": "67d528dd340d0384a1cf4873ce302f8498dec8b24d6158ff06ec27142ee66455"
+  },
+  {
+    "id": "s036",
+    "script": "s036_contract_minimal.py",
+    "name": "contract_minimal",
+    "category": "contract-fixtures",
+    "covers": [
+      "load",
+      "validate",
+      "schema",
+      "S001-S016"
+    ],
+    "sha256": "fc56fcaae40d0bc510ba88d50b711071aff7978187b0f47c21e33c1cca2c524f"
+  },
+  {
+    "id": "s037",
+    "script": "s037_contract_multichoice.py",
+    "name": "contract_multichoice",
+    "category": "contract-fixtures",
+    "covers": [
+      "load",
+      "validate",
+      "schema",
+      "S001-S016"
+    ],
+    "sha256": "dcee630f498d081d9151dc2f52d20a9ad3e4a104a280938e250e287bfe8834f3"
+  },
+  {
+    "id": "s038",
+    "script": "s038_contract_numeric.py",
+    "name": "contract_numeric",
+    "category": "contract-fixtures",
+    "covers": [
+      "load",
+      "validate",
+      "schema",
+      "S001-S016"
+    ],
+    "sha256": "3584fbfdd98772c9c6757c4a278b7e45488480fce70ef497e2f51d892b61f59c"
+  },
+  {
+    "id": "s039",
+    "script": "s039_contract_outputs.py",
+    "name": "contract_outputs",
+    "category": "contract-fixtures",
+    "covers": [
+      "load",
+      "validate",
+      "schema",
+      "S001-S016"
+    ],
+    "sha256": "695d1d8d0014aa30c9fd36309a939332cd62ea8945145ee63b1fd67eb5cd26aa"
+  },
+  {
+    "id": "s040",
+    "script": "s040_contract_regex_ascii.py",
+    "name": "contract_regex_ascii",
+    "category": "contract-fixtures",
+    "covers": [
+      "load",
+      "validate",
+      "schema",
+      "S001-S016"
+    ],
+    "sha256": "438adac1d359e0d5ded2310706653aa7a38a235d9ea3e754ebea5c2963fa3695"
+  },
+  {
+    "id": "s041",
+    "script": "s041_contract_regex_classes.py",
+    "name": "contract_regex_classes",
+    "category": "contract-fixtures",
+    "covers": [
+      "load",
+      "validate",
+      "schema",
+      "S001-S016"
+    ],
+    "sha256": "9857d5dbf096810bf2853f49b7973c5e63dd4395858e0cb6a883f82383466e6d"
+  },
+  {
+    "id": "s042",
+    "script": "s042_contract_text.py",
+    "name": "contract_text",
+    "category": "contract-fixtures",
+    "covers": [
+      "load",
+      "validate",
+      "schema",
+      "S001-S016"
+    ],
+    "sha256": "b2b7ee51bd326707d9a2d9e701e87a43a0e856ac6d309020f7c1648fb5c8a990"
+  },
+  {
+    "id": "s043",
+    "script": "s043_values_choice_static_and_labelled.py",
+    "name": "values_choice_static_and_labelled",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "3868ecbded47d3ff18b2ebe130354dd22a955c308ac85c7272e57d43679f830c"
+  },
+  {
+    "id": "s044",
+    "script": "s044_values_choice_not_in_static.py",
+    "name": "values_choice_not_in_static",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "09b8926be94ca729ec7409318cc8b23cc6e97ba52259e2050e3969bda293e496"
+  },
+  {
+    "id": "s045",
+    "script": "s045_values_choice_not_in_choices_from.py",
+    "name": "values_choice_not_in_choices_from",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "d320edbf0f3f8d026fb362cc3198469444110a5ce6d036da3bad421ed90c2665"
+  },
+  {
+    "id": "s046",
+    "script": "s046_values_choice_whitespace_padded_value_preserved.py",
+    "name": "values_choice_whitespace_padded_value_preserved",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "2b7cd2bc3f0bec9192d37a6b43a53e51d8f4b59b44bb6c1dd15588b199d447b9"
+  },
+  {
+    "id": "s047",
+    "script": "s047_values_choice_whitespace_plain_value_preserved.py",
+    "name": "values_choice_whitespace_plain_value_preserved",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "9166c32f75705f35d341605c1106e0cb66beefdb060f602086617b2c88487b5d"
+  },
+  {
+    "id": "s048",
+    "script": "s048_values_choice_whitespace_unknown_value_rejected.py",
+    "name": "values_choice_whitespace_unknown_value_rejected",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "a1c06c2925b2554f7b0677f19d04490f640877d226a3ccdc20fb5bbb2f639f57"
+  },
+  {
+    "id": "s049",
+    "script": "s049_values_dataset_both_supplied.py",
+    "name": "values_dataset_both_supplied",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "56e208354c511ecb63528c29d123fbe4894588c73b096efa744ee4ed22fe1d60"
+  },
+  {
+    "id": "s050",
+    "script": "s050_values_dataset_optional_absent.py",
+    "name": "values_dataset_optional_absent",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "b31df3209323752e42d53f095246880260cede3ee26fc763650f4b0aaa9ada3b"
+  },
+  {
+    "id": "s051",
+    "script": "s051_values_dataset_required_missing.py",
+    "name": "values_dataset_required_missing",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "24294aaadf6edc4f48c8f16c2bd7041137d63523a917bfddc47ac6781484c711"
+  },
+  {
+    "id": "s052",
+    "script": "s052_values_dates_all_renders.py",
+    "name": "values_dates_all_renders",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "d83db8040f4be77782fd84be952962438d8ef74798367e9de351ffde307716d1"
+  },
+  {
+    "id": "s053",
+    "script": "s053_values_dates_optional_absent.py",
+    "name": "values_dates_optional_absent",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "20bc50b0b45c60b33ae5a7488bce0889525b8af106b6e25f41361cccb3930dc5"
+  },
+  {
+    "id": "s054",
+    "script": "s054_values_dates_after_max_today.py",
+    "name": "values_dates_after_max_today",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "52cadccfbc1e7e859bfb2995ccfe5d1cab27171309ba9be35b605229eac4761f"
+  },
+  {
+    "id": "s055",
+    "script": "s055_values_dates_not_a_calendar_date.py",
+    "name": "values_dates_not_a_calendar_date",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "cc7b39e86a36b9d4c32b3aba15ac1adb885099bde6bdfeee1efcf636b8da788b"
+  },
+  {
+    "id": "s056",
+    "script": "s056_values_dates_year_zero.py",
+    "name": "values_dates_year_zero",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "a283ffded2b2bd39028d3f1a337f314ed9829de7cc4ae47001d16594b377d440"
+  },
+  {
+    "id": "s057",
+    "script": "s057_values_dates_range_reversed.py",
+    "name": "values_dates_range_reversed",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "8ce26e883405b98e2c19a9965ff8d17446019bdb4feab1034e156e2ac8090c02"
+  },
+  {
+    "id": "s058",
+    "script": "s058_values_dates_wrong_shape.py",
+    "name": "values_dates_wrong_shape",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "da8da8eeb47ed7c3ce2ebf23efff1ebf2d0f05945dc093d361b75871908fa756"
+  },
+  {
+    "id": "s059",
+    "script": "s059_values_dates_daterange_null_element.py",
+    "name": "values_dates_daterange_null_element",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "4f9352682bdac3ab98e94257e2f7da789bff2fb05c905b43af223baf8d0930f5"
+  },
+  {
+    "id": "s060",
+    "script": "s060_values_dates_daterange_malformed_element.py",
+    "name": "values_dates_daterange_malformed_element",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "af1b7c5c2df13be62f6f016216b7da75402bd369358eea750343a8ab6206f305"
+  },
+  {
+    "id": "s061",
+    "script": "s061_values_macro_entry_defaults.py",
+    "name": "values_macro_entry_defaults",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "974663a75ac5088a18f6cac17ffb96cca89e191c2fc342c86fa63ff403860ac3"
+  },
+  {
+    "id": "s062",
+    "script": "s062_values_minimal_no_inputs.py",
+    "name": "values_minimal_no_inputs",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "29ac13263f0bf54c23222584c80c9ef0ca819bc323c37162c1167dd9cb6b2387"
+  },
+  {
+    "id": "s063",
+    "script": "s063_values_multichoice_choice_order_not_selection_order.py",
+    "name": "values_multichoice_choice_order_not_selection_order",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "ccb797d8c017c9c618ba5e8da48df0e7ecd516d8508fcca0f7cdf83a47f68bf3"
+  },
+  {
+    "id": "s064",
+    "script": "s064_values_multichoice_empty_allowed_and_optional_absent.py",
+    "name": "values_multichoice_empty_allowed_and_optional_absent",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "d62075300ea95ec71d61d24cc79d96dfae693313102745ce32a10536d01af45a"
+  },
+  {
+    "id": "s065",
+    "script": "s065_values_multichoice_empty_when_required.py",
+    "name": "values_multichoice_empty_when_required",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "44c72b4f9d4ba2f0c6caa03ab324d35644f2e7d181d663ed2aca9888eca98c5c"
+  },
+  {
+    "id": "s066",
+    "script": "s066_values_multichoice_too_many.py",
+    "name": "values_multichoice_too_many",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "d91fa7bee9dac47d3aa1cdb7001cf72482df1cd0da3684be02c1d71e2dacb562"
+  },
+  {
+    "id": "s067",
+    "script": "s067_values_multichoice_duplicates.py",
+    "name": "values_multichoice_duplicates",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "62996dc67dff62916c6c96442bd7eaa90e5847a713d5d858e845ee1b431363af"
+  },
+  {
+    "id": "s068",
+    "script": "s068_values_multichoice_not_a_list.py",
+    "name": "values_multichoice_not_a_list",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "ab93a19157a20ccabed125b3311efa2504ee2c436ea868121220d9133df9ad4d"
+  },
+  {
+    "id": "s069",
+    "script": "s069_values_multichoice_empty_string_element.py",
+    "name": "values_multichoice_empty_string_element",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "f6f2ca477254e8c79e466598c3efd8f848505aa2fd467e777192d49683ee7390"
+  },
+  {
+    "id": "s070",
+    "script": "s070_values_multichoice_null_element.py",
+    "name": "values_multichoice_null_element",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "a741ad8fed1b2e4a8e303daa2d915cb50d11dcebd8a9c74ff77df7887418dc96"
+  },
+  {
+    "id": "s071",
+    "script": "s071_values_multichoice_nested_array_element.py",
+    "name": "values_multichoice_nested_array_element",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "e6577a06369159d803cd89fdb2a358cd1b006b82c719a86b2b428b2a44b55071"
+  },
+  {
+    "id": "s072",
+    "script": "s072_values_numeric_defaults.py",
+    "name": "values_numeric_defaults",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "119e9c36b46d40185b62b6e405169f721a2cc8521f16352567187cf712fa61b7"
+  },
+  {
+    "id": "s073",
+    "script": "s073_values_numeric_float_integer_accepted.py",
+    "name": "values_numeric_float_integer_accepted",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "3b15571bd7486c8a95d42dbd1031a2a1f579e833d5ceca8a1f7fe42b3c7a455b"
+  },
+  {
+    "id": "s074",
+    "script": "s074_values_numeric_small_and_negative_zero.py",
+    "name": "values_numeric_small_and_negative_zero",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "1373219e70e15e7fe7f212da4f35716c848bb5c38e917d0752b016947e27aff1"
+  },
+  {
+    "id": "s075",
+    "script": "s075_values_numeric_fifteen_digits.py",
+    "name": "values_numeric_fifteen_digits",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "380904dba11742ea3457cd1916307d668b3f147cc9c540bdfd9434381d193ddf"
+  },
+  {
+    "id": "s076",
+    "script": "s076_values_numeric_out_of_range.py",
+    "name": "values_numeric_out_of_range",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "d451f3f8c0297614772a15153ecbd4b1b6d5c3366b7fae7070a2f7647a116f9d"
+  },
+  {
+    "id": "s077",
+    "script": "s077_values_numeric_not_integer.py",
+    "name": "values_numeric_not_integer",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "ed9352b24c71585339903c101f6a6661f33d1c10dcf40a11036f654759c7b6e5"
+  },
+  {
+    "id": "s078",
+    "script": "s078_values_numeric_wrong_type.py",
+    "name": "values_numeric_wrong_type",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "4818fd79cdc546a062301d6e4d0665d9a312b99d70672f45c5b5a6389b5fc6d3"
+  },
+  {
+    "id": "s079",
+    "script": "s079_values_numeric_missing_required.py",
+    "name": "values_numeric_missing_required",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "7074cf84149ef3796cc20501760c81edc4e3d3acce5c85ae8d6d3f3d4d99a716"
+  },
+  {
+    "id": "s080",
+    "script": "s080_values_numeric_unknown_input.py",
+    "name": "values_numeric_unknown_input",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "6657fa9dc20a2b67220f8815b244862fdcca24114213ec9f18f377d757e1a80b"
+  },
+  {
+    "id": "s081",
+    "script": "s081_values_regex_ascii_ascii_digits_match.py",
+    "name": "values_regex_ascii_ascii_digits_match",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "e92a6767c72d09e8be82e8ffd05754f44264cf5175aa795ae94551cd03a2ab56"
+  },
+  {
+    "id": "s082",
+    "script": "s082_values_regex_ascii_arabic_indic_digit_rejected.py",
+    "name": "values_regex_ascii_arabic_indic_digit_rejected",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "01a953df4a593e5dbf09753f32b1875745595aa7266fd8408609f9efde137592"
+  },
+  {
+    "id": "s083",
+    "script": "s083_values_regex_ascii_accented_letter_rejected.py",
+    "name": "values_regex_ascii_accented_letter_rejected",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "ad708ac77f53099042abfd56012675c31c796b83a38fe6747c0033b719e90016"
+  },
+  {
+    "id": "s084",
+    "script": "s084_values_text_rendering_modes.py",
+    "name": "values_text_rendering_modes",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "2645ddfa37c2177bde10ac6ffcfeb11bef5fe5b965d8f4f1ec20114d21a3849b"
+  },
+  {
+    "id": "s085",
+    "script": "s085_values_text_injection_is_data.py",
+    "name": "values_text_injection_is_data",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "b0e15c64fab0b80b8398b8187bd1d9c45afc6662505f7708de6f37f255811380"
+  },
+  {
+    "id": "s086",
+    "script": "s086_values_text_unicode.py",
+    "name": "values_text_unicode",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "a3f871e740470a5b1902f085562ecb5e85a52f8c7d7364adda9cc0bc76293a81"
+  },
+  {
+    "id": "s087",
+    "script": "s087_values_text_pattern_mismatch.py",
+    "name": "values_text_pattern_mismatch",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "fcfdfd67fdef27f6fe922070615b51fe69acfef72a04adab897812977a57f6b1"
+  },
+  {
+    "id": "s088",
+    "script": "s088_values_text_too_long.py",
+    "name": "values_text_too_long",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "c3c2931755e223e4b831a11108fafa8cd8f39a331f16f08433548c02de88d7e7"
+  },
+  {
+    "id": "s089",
+    "script": "s089_values_text_control_character.py",
+    "name": "values_text_control_character",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "048d780e713d17d4af625add4451bc29c7c97e3ae21471889b08bf0fe1fe23ed"
+  },
+  {
+    "id": "s090",
+    "script": "s090_values_text_whitespace_only_is_missing.py",
+    "name": "values_text_whitespace_only_is_missing",
+    "category": "value-fixtures",
+    "covers": [
+      "render_values",
+      "V001-V014",
+      "macro ordering"
+    ],
+    "sha256": "52380b4d4f1e9d90a3034d88cf99b1581759022ec794bc650975430d4322b559"
+  },
+  {
+    "id": "s091",
+    "script": "s091_wrapper_macro_entry_comma.py",
+    "name": "wrapper_macro_entry_comma",
+    "category": "wrapper-fixtures",
+    "covers": [
+      "wrapper_code",
+      "reset_code",
+      "verbatim SAS",
+      "macro entry"
+    ],
+    "sha256": "b6a514b538679ea1b30008a1bbd653b15029969f298f6a5ba4b9ada2396d4d78"
+  },
+  {
+    "id": "s092",
+    "script": "s092_wrapper_macro_entry_ods.py",
+    "name": "wrapper_macro_entry_ods",
+    "category": "wrapper-fixtures",
+    "covers": [
+      "wrapper_code",
+      "reset_code",
+      "verbatim SAS",
+      "macro entry"
+    ],
+    "sha256": "5a0889b21450a0169ad2284e051d3a5156afa2fc3c0d0fbb6afa5e78e7ef6d71"
+  },
+  {
+    "id": "s093",
+    "script": "s093_wrapper_no_inputs.py",
+    "name": "wrapper_no_inputs",
+    "category": "wrapper-fixtures",
+    "covers": [
+      "wrapper_code",
+      "reset_code",
+      "verbatim SAS",
+      "macro entry"
+    ],
+    "sha256": "d6910a2b230ab0dc46351cf6503dd1496f566d7590106de7e6d6653b09fdc978"
+  },
+  {
+    "id": "s094",
+    "script": "s094_wrapper_program_entry.py",
+    "name": "wrapper_program_entry",
+    "category": "wrapper-fixtures",
+    "covers": [
+      "wrapper_code",
+      "reset_code",
+      "verbatim SAS",
+      "macro entry"
+    ],
+    "sha256": "226b96528e6a68936f8b9af38b739e5e2099f01fd0d9f01303d6b6daac008cc9"
+  },
+  {
+    "id": "s095",
+    "script": "s095_wrapper_raw_text.py",
+    "name": "wrapper_raw_text",
+    "category": "wrapper-fixtures",
+    "covers": [
+      "wrapper_code",
+      "reset_code",
+      "verbatim SAS",
+      "macro entry"
+    ],
+    "sha256": "005fb37033fa82775fb20297ebb7125625de0c6a5dafcfb7a9b47a6b37c03d06"
+  },
+  {
+    "id": "s096",
+    "script": "s096_wrapper_where_multichoice.py",
+    "name": "wrapper_where_multichoice",
+    "category": "wrapper-fixtures",
+    "covers": [
+      "wrapper_code",
+      "reset_code",
+      "verbatim SAS",
+      "macro entry"
+    ],
+    "sha256": "9d68d3468199beaa91c498c5b3b90b6ed5c0bc4b2185e60a1d6a6b74e6037a10"
+  },
+  {
+    "id": "s097",
+    "script": "s097_date_single_min_bound.py",
+    "name": "date_single_min_bound",
+    "category": "contract-boundaries",
+    "covers": [
+      "S003"
+    ],
+    "sha256": "cde77438400e1e47d4bc3df0ba5eb85d8a9ec0ec8a704ccb03eca05eefc27a17"
+  },
+  {
+    "id": "s098",
+    "script": "s098_date_single_max_bound.py",
+    "name": "date_single_max_bound",
+    "category": "contract-boundaries",
+    "covers": [
+      "S003"
+    ],
+    "sha256": "a7a5386f79b3efeade2937e656d6bdf4c500ee428b262fca548649264677650f"
+  },
+  {
+    "id": "s099",
+    "script": "s099_daterange_single_min_bound.py",
+    "name": "daterange_single_min_bound",
+    "category": "contract-boundaries",
+    "covers": [
+      "S003"
+    ],
+    "sha256": "e8e318589ea6a6e83032205ce0516c47969577da4c441c045ace8e8e4c6d6007"
+  },
+  {
+    "id": "s100",
+    "script": "s100_daterange_single_max_bound.py",
+    "name": "daterange_single_max_bound",
+    "category": "contract-boundaries",
+    "covers": [
+      "S003"
+    ],
+    "sha256": "534dd7d00dc7cde361ad0a9d3e7b6ad435b5edb8ae6f9cfadc1ec7c6002c67fe"
+  },
+  {
+    "id": "s101",
+    "script": "s101_multichoice_shape_none.py",
+    "name": "multichoice_shape_None",
+    "category": "value-boundaries",
+    "covers": [
+      "render_values",
+      "V001",
+      "V002",
+      "V004"
+    ],
+    "sha256": "be8408521dd0c14e1d5bcb0ba9d479582b915016fb07157b7c4fc5c5779ee071"
+  },
+  {
+    "id": "s102",
+    "script": "s102_multichoice_shape_.py",
+    "name": "multichoice_shape_",
+    "category": "value-boundaries",
+    "covers": [
+      "render_values",
+      "V001",
+      "V002",
+      "V004"
+    ],
+    "sha256": "12ed7a1001ced7223cd8fb8597fb362c551c950ba90e7f161d99c9b08544a6c4"
+  },
+  {
+    "id": "s103",
+    "script": "s103_multichoice_shape___.py",
+    "name": "multichoice_shape_{}",
+    "category": "value-boundaries",
+    "covers": [
+      "render_values",
+      "V001",
+      "V002",
+      "V004"
+    ],
+    "sha256": "a58816a9a22d924ef53e5098139df22d0fa1ba60e50768eb9b60668b105be23a"
+  },
+  {
+    "id": "s104",
+    "script": "s104_multichoice_shape___chosen____a__.py",
+    "name": "multichoice_shape_{'chosen': 'a'}",
+    "category": "value-boundaries",
+    "covers": [
+      "render_values",
+      "V001",
+      "V002",
+      "V004"
+    ],
+    "sha256": "4ffadb2b1936dfffea62d5f132f86eaaccf96eda4b580efa51e31e622bdc4261"
+  },
+  {
+    "id": "s105",
+    "script": "s105_multichoice_shape_____.py",
+    "name": "multichoice_shape_['']",
+    "category": "value-boundaries",
+    "covers": [
+      "render_values",
+      "V001",
+      "V002",
+      "V004"
+    ],
+    "sha256": "f625da55cb138d0aa7acf7ef33ea76c945e8d7694b10bda43c1b4e558b8a9774"
+  },
+  {
+    "id": "s106",
+    "script": "s106_multichoice_shape__none_.py",
+    "name": "multichoice_shape_[None]",
+    "category": "value-boundaries",
+    "covers": [
+      "render_values",
+      "V001",
+      "V002",
+      "V004"
+    ],
+    "sha256": "f7315d5dcfc1690f0bce2c126aca74eac79738db3aba8e3754c3da70a9fb6c94"
+  },
+  {
+    "id": "s107",
+    "script": "s107_multichoice_shape____a___.py",
+    "name": "multichoice_shape_[['a']]",
+    "category": "value-boundaries",
+    "covers": [
+      "render_values",
+      "V001",
+      "V002",
+      "V004"
+    ],
+    "sha256": "6e29b976853fcb423310b3fdd06901c2920eb663225c4f68d566386f4a0989b0"
+  },
+  {
+    "id": "s108",
+    "script": "s108_multichoice_shape__1___a__.py",
+    "name": "multichoice_shape_[1, 'a']",
+    "category": "value-boundaries",
+    "covers": [
+      "render_values",
+      "V001",
+      "V002",
+      "V004"
+    ],
+    "sha256": "e4bd1f59cb01a834ac29b5cdd25ce838168b96bd255c147b9a28c340a382dc4b"
+  },
+  {
+    "id": "s109",
+    "script": "s109_daterange_shape___bad___none_.py",
+    "name": "daterange_shape_['bad', None]",
+    "category": "value-boundaries",
+    "covers": [
+      "render_values",
+      "V002",
+      "V009"
+    ],
+    "sha256": "b09d920ac1111365e8c78de6539304d74ea7a7e36921777fef88fea4c9eedfad"
+  },
+  {
+    "id": "s110",
+    "script": "s110_daterange_shape___2026_01_01___none_.py",
+    "name": "daterange_shape_['2026-01-01', None]",
+    "category": "value-boundaries",
+    "covers": [
+      "render_values",
+      "V002",
+      "V009"
+    ],
+    "sha256": "2672c70954ed48a7eaea41205734bcdd8cd1cb9d9850e56384c025aa1404c608"
+  },
+  {
+    "id": "s111",
+    "script": "s111_daterange_shape___.py",
+    "name": "daterange_shape_[]",
+    "category": "value-boundaries",
+    "covers": [
+      "render_values",
+      "V002",
+      "V009"
+    ],
+    "sha256": "5d315493bce76fb515852133e930b2fd8218f66063e1038a95ea4ca5efe2685e"
+  },
+  {
+    "id": "s112",
+    "script": "s112_daterange_shape_____.py",
+    "name": "daterange_shape_['']",
+    "category": "value-boundaries",
+    "covers": [
+      "render_values",
+      "V002",
+      "V009"
+    ],
+    "sha256": "e769753b5948a04f158bb3701744495fda6c059f10de285edcaf5c9639820ed3"
+  },
+  {
+    "id": "s113",
+    "script": "s113_daterange_shape___.py",
+    "name": "daterange_shape_{}",
+    "category": "value-boundaries",
+    "covers": [
+      "render_values",
+      "V002",
+      "V009"
+    ],
+    "sha256": "79319479d2bd568f1cefb26606726a221bf907f295437fe0dbf789236ee88fdf"
+  },
+  {
+    "id": "s114",
+    "script": "s114_daterange_shape___2026_01_01__.py",
+    "name": "daterange_shape_['2026-01-01']",
+    "category": "value-boundaries",
+    "covers": [
+      "render_values",
+      "V002",
+      "V009"
+    ],
+    "sha256": "cdec2958aaf9de0b3ceabe88057ac823ede60be20d5084aa8d3df176ee03e121"
+  },
+  {
+    "id": "s115",
+    "script": "s115_daterange_shape__none__none_.py",
+    "name": "daterange_shape_[None, None]",
+    "category": "value-boundaries",
+    "covers": [
+      "render_values",
+      "V002",
+      "V009"
+    ],
+    "sha256": "239f0fd0c473289815dbbc446c5f6c0dc1ffffd4565bf41db732f1864e4b5e41"
+  },
+  {
+    "id": "s116",
+    "script": "s116_date_year_one_iso.py",
+    "name": "date_year_one_iso",
+    "category": "value-boundaries",
+    "covers": [
+      "date rendering"
+    ],
+    "sha256": "a2eb80e107e2cee35e8e8e6805f4c47ad7b47f74cc510aefaf13999994700fb1"
+  },
+  {
+    "id": "s117",
+    "script": "s117_date_year_one_date9.py",
+    "name": "date_year_one_date9",
+    "category": "value-boundaries",
+    "covers": [
+      "date rendering"
+    ],
+    "sha256": "13c71e081ace0166a1671561af1c5da17ed9124e4e8de95dbcc9882da38961b7"
+  },
+  {
+    "id": "s118",
+    "script": "s118_date_year_one_literal.py",
+    "name": "date_year_one_literal",
+    "category": "value-boundaries",
+    "covers": [
+      "date rendering"
+    ],
+    "sha256": "262a3866c220693630d396262017c55a10467f0289df562cb5c663d559328aaf"
+  },
+  {
+    "id": "s119",
+    "script": "s119_date_year_one_sasdate.py",
+    "name": "date_year_one_sasdate",
+    "category": "value-boundaries",
+    "covers": [
+      "date rendering"
+    ],
+    "sha256": "5f3dfaa6bb9dc20146f7551a9ab3b1fe036d465e953fd09cbbdb5eaf602dfb80"
+  },
+  {
+    "id": "s120",
+    "script": "s120_text_length_32000.py",
+    "name": "text_length_32000",
+    "category": "value-boundaries",
+    "covers": [
+      "V006",
+      "V013"
+    ],
+    "sha256": "06b6ae9ef89fbdde83f99f26cf9a67747928c6674f1ce1c3b65cf8b103a3e61b"
+  },
+  {
+    "id": "s121",
+    "script": "s121_text_length_32001.py",
+    "name": "text_length_32001",
+    "category": "value-boundaries",
+    "covers": [
+      "V006",
+      "V013"
+    ],
+    "sha256": "02d0f0cfd697250a32d6aad4b293162696de9d3d14cfb52ac22ccb57718ed8ef"
+  },
+  {
+    "id": "s122",
+    "script": "s122_unicode_macro_byte_limit.py",
+    "name": "unicode_macro_byte_limit",
+    "category": "value-boundaries",
+    "covers": [
+      "V013",
+      "UTF-8"
+    ],
+    "sha256": "a75c124adbe892d2c6a21dd0395f9b09444354f92d9681831656277291ba3c28"
+  },
+  {
+    "id": "s123",
+    "script": "s123_chart_python_plotnine_scatter.py",
+    "name": "chart_python_plotnine_scatter",
+    "category": "charts",
+    "covers": [
+      "render_chart",
+      "plotnine",
+      "scatter"
+    ],
+    "sha256": "8ac9bcdf1ba4c43846d38d76f871d2d92601e6912f3d8ffebd82814a8ebc09bc"
+  },
+  {
+    "id": "s124",
+    "script": "s124_chart_python_plotnine_line.py",
+    "name": "chart_python_plotnine_line",
+    "category": "charts",
+    "covers": [
+      "render_chart",
+      "plotnine",
+      "line"
+    ],
+    "sha256": "13f4e169fddf5de3caec3ee12780f7f153fa61584c64c3bf082bb4eee5ec6811"
+  },
+  {
+    "id": "s125",
+    "script": "s125_chart_python_plotnine_bar.py",
+    "name": "chart_python_plotnine_bar",
+    "category": "charts",
+    "covers": [
+      "render_chart",
+      "plotnine",
+      "bar"
+    ],
+    "sha256": "26922e2b54a52f1bd6003565244c759a564d53ef9344e1d7ce55d903218b30b3"
+  },
+  {
+    "id": "s126",
+    "script": "s126_chart_python_plotnine_histogram.py",
+    "name": "chart_python_plotnine_histogram",
+    "category": "charts",
+    "covers": [
+      "render_chart",
+      "plotnine",
+      "histogram"
+    ],
+    "sha256": "3a9645ddf46685137986198174e7dd958b5c12063641f0fb757b1a1f3f9f6452"
+  },
+  {
+    "id": "s127",
+    "script": "s127_chart_python_plotnine_box.py",
+    "name": "chart_python_plotnine_box",
+    "category": "charts",
+    "covers": [
+      "render_chart",
+      "plotnine",
+      "box"
+    ],
+    "sha256": "1a48573e8fdbc0b2a71472a411fb042ce1b50291139cfab125a43ac60b14d6b9"
+  },
+  {
+    "id": "s128",
+    "script": "s128_chart_python_plotnine_color.py",
+    "name": "chart_python_plotnine_color",
+    "category": "chart-aesthetics",
+    "covers": [
+      "render_chart",
+      "plotnine",
+      "color"
+    ],
+    "sha256": "0adad08251e3451a8547e69e0c379d824cb1fd3850c45fdbdac66afbfc32ba0a"
+  },
+  {
+    "id": "s129",
+    "script": "s129_chart_python_plotnine_fill.py",
+    "name": "chart_python_plotnine_fill",
+    "category": "chart-aesthetics",
+    "covers": [
+      "render_chart",
+      "plotnine",
+      "fill"
+    ],
+    "sha256": "2c38db512dabc1b0b13c27274f1f451effdc8b190d6284c1318ab9a746531990"
+  },
+  {
+    "id": "s130",
+    "script": "s130_chart_python_plotnine_facet.py",
+    "name": "chart_python_plotnine_facet",
+    "category": "chart-aesthetics",
+    "covers": [
+      "render_chart",
+      "plotnine",
+      "facet"
+    ],
+    "sha256": "75df7b910e73388987be3288ddf124e2bc15fd7da57c75e934ec3b383fa88810"
+  },
+  {
+    "id": "s131",
+    "script": "s131_chart_python_matplotlib_scatter.py",
+    "name": "chart_python_matplotlib_scatter",
+    "category": "charts",
+    "covers": [
+      "render_chart",
+      "matplotlib",
+      "scatter"
+    ],
+    "sha256": "f67e4cb41e2a8725842ef0b35f7cc616ddc44a314c28618fd34bce5180c25edf"
+  },
+  {
+    "id": "s132",
+    "script": "s132_chart_python_matplotlib_line.py",
+    "name": "chart_python_matplotlib_line",
+    "category": "charts",
+    "covers": [
+      "render_chart",
+      "matplotlib",
+      "line"
+    ],
+    "sha256": "7c549c3d3a6884d12fba131416f95a9d7524089b04033b9e8f9a2ca3af91c432"
+  },
+  {
+    "id": "s133",
+    "script": "s133_chart_python_matplotlib_bar.py",
+    "name": "chart_python_matplotlib_bar",
+    "category": "charts",
+    "covers": [
+      "render_chart",
+      "matplotlib",
+      "bar"
+    ],
+    "sha256": "e8ee06fa136bb67afa02d66da134b8849c5089094bd215d6372527102daba9f8"
+  },
+  {
+    "id": "s134",
+    "script": "s134_chart_python_matplotlib_histogram.py",
+    "name": "chart_python_matplotlib_histogram",
+    "category": "charts",
+    "covers": [
+      "render_chart",
+      "matplotlib",
+      "histogram"
+    ],
+    "sha256": "154102ac133d2513ee46b0f09f34e38480da280988202130110ad059f3d9a21e"
+  },
+  {
+    "id": "s135",
+    "script": "s135_chart_python_matplotlib_box.py",
+    "name": "chart_python_matplotlib_box",
+    "category": "charts",
+    "covers": [
+      "render_chart",
+      "matplotlib",
+      "box"
+    ],
+    "sha256": "6f9e566de092002a44c73be62dd0acf4d4b2444dc6b23b8ea7270d8467133959"
+  },
+  {
+    "id": "s136",
+    "script": "s136_chart_python_matplotlib_color.py",
+    "name": "chart_python_matplotlib_color",
+    "category": "chart-aesthetics",
+    "covers": [
+      "render_chart",
+      "matplotlib",
+      "color"
+    ],
+    "sha256": "87caf976617b0fe2b5a411a752cd6676409b949c5e6fcb22cafe78139e5b99c7"
+  },
+  {
+    "id": "s137",
+    "script": "s137_chart_python_matplotlib_fill.py",
+    "name": "chart_python_matplotlib_fill",
+    "category": "chart-aesthetics",
+    "covers": [
+      "render_chart",
+      "matplotlib",
+      "fill"
+    ],
+    "sha256": "d2fe43835e2ce1caa9f639df72afd9fb6da3a6806d6af77771a4fd8ac85d981e"
+  },
+  {
+    "id": "s138",
+    "script": "s138_chart_python_matplotlib_facet.py",
+    "name": "chart_python_matplotlib_facet",
+    "category": "chart-aesthetics",
+    "covers": [
+      "render_chart",
+      "matplotlib",
+      "facet"
+    ],
+    "sha256": "c071cbee83243232fca2deae79217bcead2f05d07035a78a2a61545cc07434aa"
+  },
+  {
+    "id": "s139",
+    "script": "s139_chart_python_plotly_scatter.py",
+    "name": "chart_python_plotly_scatter",
+    "category": "charts",
+    "covers": [
+      "render_chart",
+      "plotly",
+      "scatter"
+    ],
+    "sha256": "33941797bba0e782037769676feea9d9c8b4e85af0f58f1c3ce9b040690b61f6"
+  },
+  {
+    "id": "s140",
+    "script": "s140_chart_python_plotly_line.py",
+    "name": "chart_python_plotly_line",
+    "category": "charts",
+    "covers": [
+      "render_chart",
+      "plotly",
+      "line"
+    ],
+    "sha256": "3ce7d24cd0a0ea90ed27b0b6f994a683bbcd3459ce01b3d8955601995e98a188"
+  },
+  {
+    "id": "s141",
+    "script": "s141_chart_python_plotly_bar.py",
+    "name": "chart_python_plotly_bar",
+    "category": "charts",
+    "covers": [
+      "render_chart",
+      "plotly",
+      "bar"
+    ],
+    "sha256": "9252de94c8ee90f20bff0b873c04af2b7eb76772fc8b3a03859751fb0add0245"
+  },
+  {
+    "id": "s142",
+    "script": "s142_chart_python_plotly_histogram.py",
+    "name": "chart_python_plotly_histogram",
+    "category": "charts",
+    "covers": [
+      "render_chart",
+      "plotly",
+      "histogram"
+    ],
+    "sha256": "7f9d53e3b0a547388d106057aa7a5f899b8cec289fe6c7e4cf81da4358cc184a"
+  },
+  {
+    "id": "s143",
+    "script": "s143_chart_python_plotly_box.py",
+    "name": "chart_python_plotly_box",
+    "category": "charts",
+    "covers": [
+      "render_chart",
+      "plotly",
+      "box"
+    ],
+    "sha256": "490286c03356be50119b44f19ec58a8d78ccd833ca1afaca079aca84ac53b442"
+  },
+  {
+    "id": "s144",
+    "script": "s144_chart_python_plotly_color.py",
+    "name": "chart_python_plotly_color",
+    "category": "chart-aesthetics",
+    "covers": [
+      "render_chart",
+      "plotly",
+      "color"
+    ],
+    "sha256": "04afef6a8e97cf033f339fbf99fe8d5c71499a4488ba6c051f600a4f4a3343ff"
+  },
+  {
+    "id": "s145",
+    "script": "s145_chart_python_plotly_fill.py",
+    "name": "chart_python_plotly_fill",
+    "category": "chart-aesthetics",
+    "covers": [
+      "render_chart",
+      "plotly",
+      "fill"
+    ],
+    "sha256": "96e267d1e81ccbf4089f89ac8cdfe0639ae56785bdfc48a77a61f3722e9e2096"
+  },
+  {
+    "id": "s146",
+    "script": "s146_chart_python_plotly_facet.py",
+    "name": "chart_python_plotly_facet",
+    "category": "chart-aesthetics",
+    "covers": [
+      "render_chart",
+      "plotly",
+      "facet"
+    ],
+    "sha256": "5118316aae15e399d8169587f086b3112d9b3e057bd3d0cf8ce26d8669c24caf"
+  },
+  {
+    "id": "s147",
+    "script": "s147_chart_error_python_none.py",
+    "name": "chart_error_python_None",
+    "category": "chart-errors",
+    "covers": [
+      "render_chart",
+      "chart errors"
+    ],
+    "sha256": "1b5b45ae9d0dd6d6fad649d669b26723f271d876ebede1eacf468e8bd994cba3"
+  },
+  {
+    "id": "s148",
+    "script": "s148_chart_error_python___kind____scatter____x____x__.py",
+    "name": "chart_error_python_{'kind': 'scatter', 'x': 'X'}",
+    "category": "chart-errors",
+    "covers": [
+      "render_chart",
+      "chart errors"
+    ],
+    "sha256": "e0f5b62b3ca7b737106391b966c4da88bc6338ada55aa0b7fea1a4732696fa00"
+  },
+  {
+    "id": "s149",
+    "script": "s149_chart_error_python___kind____scatter____x____missing____y____y__.py",
+    "name": "chart_error_python_{'kind': 'scatter', 'x': 'missing', 'y': 'Y'}",
+    "category": "chart-errors",
+    "covers": [
+      "render_chart",
+      "chart errors"
+    ],
+    "sha256": "d18bda0854dcefb8f4d95328d50c0c60c5a866d5967812ea8e391ee78b5ca370"
+  },
+  {
+    "id": "s150",
+    "script": "s150_chart_callback_python.py",
+    "name": "chart_callback_python",
+    "category": "chart-callbacks",
+    "covers": [
+      "render_chart callback"
+    ],
+    "sha256": "ecc1d350d66c4740304a3d2e004979a9e272947758e66893e4ce2d8b4df90975"
+  },
+  {
+    "id": "s151",
+    "script": "s151_chart_r_ggplot2_scatter.py",
+    "name": "chart_r_ggplot2_scatter",
+    "category": "charts",
+    "covers": [
+      "render_chart",
+      "ggplot2",
+      "scatter"
+    ],
+    "sha256": "88ea05bb7469c273ff509d41d39a898523670750e74a3f1532a917eeece2da1e"
+  },
+  {
+    "id": "s152",
+    "script": "s152_chart_r_ggplot2_line.py",
+    "name": "chart_r_ggplot2_line",
+    "category": "charts",
+    "covers": [
+      "render_chart",
+      "ggplot2",
+      "line"
+    ],
+    "sha256": "595909a152e0f300a523a4603913e39da59a4ec769d765764dbc9aab21eda444"
+  },
+  {
+    "id": "s153",
+    "script": "s153_chart_r_ggplot2_bar.py",
+    "name": "chart_r_ggplot2_bar",
+    "category": "charts",
+    "covers": [
+      "render_chart",
+      "ggplot2",
+      "bar"
+    ],
+    "sha256": "0e1512d9bb86b9cc8edd3f7355ef7e93981780436efb919d55c4b940f00bcdf6"
+  },
+  {
+    "id": "s154",
+    "script": "s154_chart_r_ggplot2_histogram.py",
+    "name": "chart_r_ggplot2_histogram",
+    "category": "charts",
+    "covers": [
+      "render_chart",
+      "ggplot2",
+      "histogram"
+    ],
+    "sha256": "9a15bc84382a0f52094ae114e988856ed796fc9595148113de1b9afac61029b6"
+  },
+  {
+    "id": "s155",
+    "script": "s155_chart_r_ggplot2_box.py",
+    "name": "chart_r_ggplot2_box",
+    "category": "charts",
+    "covers": [
+      "render_chart",
+      "ggplot2",
+      "box"
+    ],
+    "sha256": "4bc8b51bff813b7771b33eed2a1e62757a8414aed25a42ec5f87202f9c595c38"
+  },
+  {
+    "id": "s156",
+    "script": "s156_chart_r_ggplot2_color.py",
+    "name": "chart_r_ggplot2_color",
+    "category": "chart-aesthetics",
+    "covers": [
+      "render_chart",
+      "ggplot2",
+      "color"
+    ],
+    "sha256": "3a179b51263b57d246e14d1f7390cc6eb7a31f231cd59c5501600bd1290f87f6"
+  },
+  {
+    "id": "s157",
+    "script": "s157_chart_r_ggplot2_fill.py",
+    "name": "chart_r_ggplot2_fill",
+    "category": "chart-aesthetics",
+    "covers": [
+      "render_chart",
+      "ggplot2",
+      "fill"
+    ],
+    "sha256": "e6ad07ca910bda99f8b108662acce8bcd2db6c614595b23b7fe3dfd5ca3c669c"
+  },
+  {
+    "id": "s158",
+    "script": "s158_chart_r_ggplot2_facet.py",
+    "name": "chart_r_ggplot2_facet",
+    "category": "chart-aesthetics",
+    "covers": [
+      "render_chart",
+      "ggplot2",
+      "facet"
+    ],
+    "sha256": "d421d0d2c8293b170d4a1ab177671d87531e34ac0c56d60d151f3f3ac98525df"
+  },
+  {
+    "id": "s159",
+    "script": "s159_chart_r_base_scatter.py",
+    "name": "chart_r_base_scatter",
+    "category": "charts",
+    "covers": [
+      "render_chart",
+      "base",
+      "scatter"
+    ],
+    "sha256": "f209460a8116d6636d05bdeed43306f5b7b75d26c2e10893f89855568eafce90"
+  },
+  {
+    "id": "s160",
+    "script": "s160_chart_r_base_line.py",
+    "name": "chart_r_base_line",
+    "category": "charts",
+    "covers": [
+      "render_chart",
+      "base",
+      "line"
+    ],
+    "sha256": "055ac60e556cc444dc61de209d6741db76e1792a60600a96a1c42b813575d837"
+  },
+  {
+    "id": "s161",
+    "script": "s161_chart_r_base_bar.py",
+    "name": "chart_r_base_bar",
+    "category": "charts",
+    "covers": [
+      "render_chart",
+      "base",
+      "bar"
+    ],
+    "sha256": "035316f778ca2c11f6f4ab35843079b8403584b04d1ab695490d75d890222291"
+  },
+  {
+    "id": "s162",
+    "script": "s162_chart_r_base_histogram.py",
+    "name": "chart_r_base_histogram",
+    "category": "charts",
+    "covers": [
+      "render_chart",
+      "base",
+      "histogram"
+    ],
+    "sha256": "a1d7f3327304476e72b361e8cdc9c2835aec92c575c7baf1d42cf63fe57800d5"
+  },
+  {
+    "id": "s163",
+    "script": "s163_chart_r_base_box.py",
+    "name": "chart_r_base_box",
+    "category": "charts",
+    "covers": [
+      "render_chart",
+      "base",
+      "box"
+    ],
+    "sha256": "52590cd2cdb6b41d7831618bc7e3452deb0ade472e6828a3ab00f86f01680e5b"
+  },
+  {
+    "id": "s164",
+    "script": "s164_chart_r_base_color.py",
+    "name": "chart_r_base_color",
+    "category": "chart-aesthetics",
+    "covers": [
+      "render_chart",
+      "base",
+      "color"
+    ],
+    "sha256": "980ceed9ab65a1ba430681e935b5a04b05ece4b7564f00bf7d0422dc71f31982"
+  },
+  {
+    "id": "s165",
+    "script": "s165_chart_r_base_fill.py",
+    "name": "chart_r_base_fill",
+    "category": "chart-aesthetics",
+    "covers": [
+      "render_chart",
+      "base",
+      "fill"
+    ],
+    "sha256": "4854dd81dac4e59f292e877ae880ab5f5abd0bfe93972be2839a38535f745f44"
+  },
+  {
+    "id": "s166",
+    "script": "s166_chart_r_base_facet.py",
+    "name": "chart_r_base_facet",
+    "category": "chart-aesthetics",
+    "covers": [
+      "render_chart",
+      "base",
+      "facet"
+    ],
+    "sha256": "4145aaadfabc9d98042d4bee8d48b6c5e977bfd9cc7541588ccbb44903177e8f"
+  },
+  {
+    "id": "s167",
+    "script": "s167_chart_r_plotly_scatter.py",
+    "name": "chart_r_plotly_scatter",
+    "category": "charts",
+    "covers": [
+      "render_chart",
+      "plotly",
+      "scatter"
+    ],
+    "sha256": "58dc846c231cb47d012d543086cd92d62ca7a1e8d2500bf5b2aa0d2d121a3070"
+  },
+  {
+    "id": "s168",
+    "script": "s168_chart_r_plotly_line.py",
+    "name": "chart_r_plotly_line",
+    "category": "charts",
+    "covers": [
+      "render_chart",
+      "plotly",
+      "line"
+    ],
+    "sha256": "9b09c58b2bf77052c3ef722d5ecab4a840d92d412913a05c5c87cbfd36f3be20"
+  },
+  {
+    "id": "s169",
+    "script": "s169_chart_r_plotly_bar.py",
+    "name": "chart_r_plotly_bar",
+    "category": "charts",
+    "covers": [
+      "render_chart",
+      "plotly",
+      "bar"
+    ],
+    "sha256": "39b18b75b679143bedaa4e4c677d39d7547edfccfb0b86b211c4d53184447d7b"
+  },
+  {
+    "id": "s170",
+    "script": "s170_chart_r_plotly_histogram.py",
+    "name": "chart_r_plotly_histogram",
+    "category": "charts",
+    "covers": [
+      "render_chart",
+      "plotly",
+      "histogram"
+    ],
+    "sha256": "da5bdc5157ab48d0d4da7403eb7bea27b3a4f548e508ac18291108e73381a2d1"
+  },
+  {
+    "id": "s171",
+    "script": "s171_chart_r_plotly_box.py",
+    "name": "chart_r_plotly_box",
+    "category": "charts",
+    "covers": [
+      "render_chart",
+      "plotly",
+      "box"
+    ],
+    "sha256": "92eebb8d419ce644c0c8442e99acad4418386cc40dbf3c3298128817627404d4"
+  },
+  {
+    "id": "s172",
+    "script": "s172_chart_r_plotly_color.py",
+    "name": "chart_r_plotly_color",
+    "category": "chart-aesthetics",
+    "covers": [
+      "render_chart",
+      "plotly",
+      "color"
+    ],
+    "sha256": "9bf8834d47fc7928a92655c25519850cd32348a96e447d5055d68cc235e71a6b"
+  },
+  {
+    "id": "s173",
+    "script": "s173_chart_r_plotly_fill.py",
+    "name": "chart_r_plotly_fill",
+    "category": "chart-aesthetics",
+    "covers": [
+      "render_chart",
+      "plotly",
+      "fill"
+    ],
+    "sha256": "38a12da9bfbc8ee54f8782651c5dfa54c12a952a0a9181a2a3a414b6ba1b885f"
+  },
+  {
+    "id": "s174",
+    "script": "s174_chart_r_plotly_facet.py",
+    "name": "chart_r_plotly_facet",
+    "category": "chart-aesthetics",
+    "covers": [
+      "render_chart",
+      "plotly",
+      "facet"
+    ],
+    "sha256": "d285b759ac5ec72628f9604269ef640772ce4f1eb9199aed9dc95c8010bcf8f5"
+  },
+  {
+    "id": "s175",
+    "script": "s175_chart_error_r_none.py",
+    "name": "chart_error_r_None",
+    "category": "chart-errors",
+    "covers": [
+      "render_chart",
+      "chart errors"
+    ],
+    "sha256": "06dcafeda6f634b829c876168d2e093968ec882c3e66269f6f08031a685211e7"
+  },
+  {
+    "id": "s176",
+    "script": "s176_chart_error_r___kind____scatter____x____x__.py",
+    "name": "chart_error_r_{'kind': 'scatter', 'x': 'X'}",
+    "category": "chart-errors",
+    "covers": [
+      "render_chart",
+      "chart errors"
+    ],
+    "sha256": "c8da171b601a662ddcc7e11c9dba63b71e658aefd9994515652f47d2699d7456"
+  },
+  {
+    "id": "s177",
+    "script": "s177_chart_error_r___kind____scatter____x____missing____y____y__.py",
+    "name": "chart_error_r_{'kind': 'scatter', 'x': 'missing', 'y': 'Y'}",
+    "category": "chart-errors",
+    "covers": [
+      "render_chart",
+      "chart errors"
+    ],
+    "sha256": "249e049d018adf0e2274b3a9e3457f25a7057dabc9b1c1af7199f6c9ac207b7a"
+  },
+  {
+    "id": "s178",
+    "script": "s178_chart_callback_r.py",
+    "name": "chart_callback_r",
+    "category": "chart-callbacks",
+    "covers": [
+      "render_chart callback"
+    ],
+    "sha256": "6334dfd562d39256db26f0b2b6c12ce35b593c953a47af58285f059a7a0d7733"
+  },
+  {
+    "id": "s179",
+    "script": "s179_upload_valid_python.py",
+    "name": "upload_valid_python",
+    "category": "upload-conversion",
+    "covers": [
+      "read_upload",
+      "V014",
+      "csv"
+    ],
+    "sha256": "629e22a1c91caa995e6d96a8b331ecae8f9b3ec0e89240a3f28fd06759fe7265"
+  },
+  {
+    "id": "s180",
+    "script": "s180_upload_valid_r.py",
+    "name": "upload_valid_r",
+    "category": "upload-conversion",
+    "covers": [
+      "read_upload",
+      "V014",
+      "csv"
+    ],
+    "sha256": "042a9c22f283fe3990041e50ed367494177317c83fcfb7ba6b20a9f308f04d73"
+  },
+  {
+    "id": "s181",
+    "script": "s181_mock_upload_valid.py",
+    "name": "mock_upload_valid",
+    "category": "mock-content-validation",
+    "covers": [
+      "MockEngine.run",
+      "sas_engine_run",
+      "V014"
+    ],
+    "sha256": "eed2b47ed7d1b0cb09972d53329d0b751ed495eab03c88d21121e472f09d41a1"
+  },
+  {
+    "id": "s182",
+    "script": "s182_upload_missing_column_python.py",
+    "name": "upload_missing_column_python",
+    "category": "upload-conversion",
+    "covers": [
+      "read_upload",
+      "V014",
+      "csv"
+    ],
+    "sha256": "93af79ca9f0c422e10f93df246856fce0cf8182becfd43bc9039c3cfe7dcdee0"
+  },
+  {
+    "id": "s183",
+    "script": "s183_upload_missing_column_r.py",
+    "name": "upload_missing_column_r",
+    "category": "upload-conversion",
+    "covers": [
+      "read_upload",
+      "V014",
+      "csv"
+    ],
+    "sha256": "473516778ba6c64528440f6c7d4e6310b01822e2671bffe4b69c71d6297109a1"
+  },
+  {
+    "id": "s184",
+    "script": "s184_mock_upload_missing_column.py",
+    "name": "mock_upload_missing_column",
+    "category": "mock-content-validation",
+    "covers": [
+      "MockEngine.run",
+      "sas_engine_run",
+      "V014"
+    ],
+    "sha256": "e11f4c16dfc1e87f355fe7b89ca3e3bb42dd2106dee0d0a6b65802887addda17"
+  },
+  {
+    "id": "s185",
+    "script": "s185_upload_bad_number_python.py",
+    "name": "upload_bad_number_python",
+    "category": "upload-conversion",
+    "covers": [
+      "read_upload",
+      "V014",
+      "csv"
+    ],
+    "sha256": "0e4babdaa59adbc60ebf60e32eb8d9bda9b66835e92e131f4c995317df76e247"
+  },
+  {
+    "id": "s186",
+    "script": "s186_upload_bad_number_r.py",
+    "name": "upload_bad_number_r",
+    "category": "upload-conversion",
+    "covers": [
+      "read_upload",
+      "V014",
+      "csv"
+    ],
+    "sha256": "624e036877e8e294a42fe5508426cb5b02afcedf7c13e6cb8f73fdb6186db3bf"
+  },
+  {
+    "id": "s187",
+    "script": "s187_mock_upload_bad_number.py",
+    "name": "mock_upload_bad_number",
+    "category": "mock-content-validation",
+    "covers": [
+      "MockEngine.run",
+      "sas_engine_run",
+      "V014"
+    ],
+    "sha256": "ea2a6b91eb8743a8fae00630c830db7b9172d3de2fb17f6137a8c2826fd0aae1"
+  },
+  {
+    "id": "s188",
+    "script": "s188_upload_bad_date_python.py",
+    "name": "upload_bad_date_python",
+    "category": "upload-conversion",
+    "covers": [
+      "read_upload",
+      "V014",
+      "csv"
+    ],
+    "sha256": "3cd47e7d3e3ff8f0eef22f723341601233576c84df654674f1e02695406c59aa"
+  },
+  {
+    "id": "s189",
+    "script": "s189_upload_bad_date_r.py",
+    "name": "upload_bad_date_r",
+    "category": "upload-conversion",
+    "covers": [
+      "read_upload",
+      "V014",
+      "csv"
+    ],
+    "sha256": "7f9de02041ba95bf8ddbe6a01454d6fcab3cb70236959c84081e2c2515754488"
+  },
+  {
+    "id": "s190",
+    "script": "s190_mock_upload_bad_date.py",
+    "name": "mock_upload_bad_date",
+    "category": "mock-content-validation",
+    "covers": [
+      "MockEngine.run",
+      "sas_engine_run",
+      "V014"
+    ],
+    "sha256": "5f3ca794a52dbdf2701aa042a6f44d08875eeb9ba10bc699be94fc265dee75e3"
+  },
+  {
+    "id": "s191",
+    "script": "s191_upload_literal_na_python.py",
+    "name": "upload_literal_na_python",
+    "category": "upload-conversion",
+    "covers": [
+      "read_upload",
+      "V014",
+      "csv"
+    ],
+    "sha256": "1cacc947928c44d6cd16f9384cdf704d1aed89ddb78a8a6144abe7b7a2d4909d"
+  },
+  {
+    "id": "s192",
+    "script": "s192_upload_literal_na_r.py",
+    "name": "upload_literal_na_r",
+    "category": "upload-conversion",
+    "covers": [
+      "read_upload",
+      "V014",
+      "csv"
+    ],
+    "sha256": "7c520084a7ae6dc5d9b98ae4398d1eae35cad60e4e767513d5ac01f0f0488085"
+  },
+  {
+    "id": "s193",
+    "script": "s193_mock_upload_literal_na.py",
+    "name": "mock_upload_literal_na",
+    "category": "mock-content-validation",
+    "covers": [
+      "MockEngine.run",
+      "sas_engine_run",
+      "V014"
+    ],
+    "sha256": "214e8a48ef6725e5f0103896052eee3d0be4dca37b32e774c3adb0cc593670a3"
+  },
+  {
+    "id": "s194",
+    "script": "s194_upload_unpadded_python.py",
+    "name": "upload_unpadded_python",
+    "category": "upload-conversion",
+    "covers": [
+      "read_upload",
+      "V014",
+      "csv"
+    ],
+    "sha256": "2352c785868ed9798effc1d94ed60fbe6bd69e49aa03a4f298f77c52a07f9e31"
+  },
+  {
+    "id": "s195",
+    "script": "s195_upload_unpadded_r.py",
+    "name": "upload_unpadded_r",
+    "category": "upload-conversion",
+    "covers": [
+      "read_upload",
+      "V014",
+      "csv"
+    ],
+    "sha256": "4ba7b97dcc11e7698b525ac4f4e7c157f5d42d6cf14aabfd900404016ef6d405"
+  },
+  {
+    "id": "s196",
+    "script": "s196_mock_upload_unpadded.py",
+    "name": "mock_upload_unpadded",
+    "category": "mock-content-validation",
+    "covers": [
+      "MockEngine.run",
+      "sas_engine_run",
+      "V014"
+    ],
+    "sha256": "f81bde65a9ff928e0190515c7dde28fdfe8eed06f26f4e850c5ea6eb2a974163"
+  },
+  {
+    "id": "s197",
+    "script": "s197_upload_empty_file_python.py",
+    "name": "upload_empty_file_python",
+    "category": "upload-conversion",
+    "covers": [
+      "read_upload",
+      "V014",
+      "csv"
+    ],
+    "sha256": "dce5ff4f6abf7588b051e2192aa8e3b325522134c55088d83ad3ba5f559ec058"
+  },
+  {
+    "id": "s198",
+    "script": "s198_upload_empty_file_r.py",
+    "name": "upload_empty_file_r",
+    "category": "upload-conversion",
+    "covers": [
+      "read_upload",
+      "V014",
+      "csv"
+    ],
+    "sha256": "5d56ea50c81aff3c1454c181210e571c701d8945a1ec0135df7ffa1f78290c58"
+  },
+  {
+    "id": "s199",
+    "script": "s199_mock_upload_empty_file.py",
+    "name": "mock_upload_empty_file",
+    "category": "mock-content-validation",
+    "covers": [
+      "MockEngine.run",
+      "sas_engine_run",
+      "V014"
+    ],
+    "sha256": "bcff421bdda0cd58123fb10870aecf4210094c53342b35e5584e57161cfe8ff0"
+  },
+  {
+    "id": "s200",
+    "script": "s200_upload_header_only_python.py",
+    "name": "upload_header_only_python",
+    "category": "upload-conversion",
+    "covers": [
+      "read_upload",
+      "V014",
+      "csv"
+    ],
+    "sha256": "207e1d2985524c9771634d035fd95c3bba5e0b74611c4a605210b1a9075681d1"
+  },
+  {
+    "id": "s201",
+    "script": "s201_upload_header_only_r.py",
+    "name": "upload_header_only_r",
+    "category": "upload-conversion",
+    "covers": [
+      "read_upload",
+      "V014",
+      "csv"
+    ],
+    "sha256": "4f57040f5f527d5958f2bda994d5535afff6c2412aa95e46fd6c88d446eaa881"
+  },
+  {
+    "id": "s202",
+    "script": "s202_mock_upload_header_only.py",
+    "name": "mock_upload_header_only",
+    "category": "mock-content-validation",
+    "covers": [
+      "MockEngine.run",
+      "sas_engine_run",
+      "V014"
+    ],
+    "sha256": "09ff12f4d7a05f0403a7306da7e5012e3d559a1fc3ace4bdcc16e532d42fe9f1"
+  },
+  {
+    "id": "s203",
+    "script": "s203_upload_blank_missing_python.py",
+    "name": "upload_blank_missing_python",
+    "category": "upload-conversion",
+    "covers": [
+      "read_upload",
+      "V014",
+      "csv"
+    ],
+    "sha256": "bc37f0dfbb9d51688f67d7a7c9875ac647078dcdc260bb1ad0ac722e8619311b"
+  },
+  {
+    "id": "s204",
+    "script": "s204_upload_blank_missing_r.py",
+    "name": "upload_blank_missing_r",
+    "category": "upload-conversion",
+    "covers": [
+      "read_upload",
+      "V014",
+      "csv"
+    ],
+    "sha256": "ee83902ef1c84cc930497a09ca6f7a21c75d6836fbc3bb51c41a172bf6192899"
+  },
+  {
+    "id": "s205",
+    "script": "s205_mock_upload_blank_missing.py",
+    "name": "mock_upload_blank_missing",
+    "category": "mock-content-validation",
+    "covers": [
+      "MockEngine.run",
+      "sas_engine_run",
+      "V014"
+    ],
+    "sha256": "41300cf9a8fb60f6d192ce25ff34f3cebaf0196e901be4fa9c425d3ed93ec29f"
+  },
+  {
+    "id": "s206",
+    "script": "s206_upload_quoted_cells_python.py",
+    "name": "upload_quoted_cells_python",
+    "category": "upload-conversion",
+    "covers": [
+      "read_upload",
+      "V014",
+      "csv"
+    ],
+    "sha256": "5102ad9c5af2a48f2f0eda199dcb8287341774176990e14a770e3869e105ec83"
+  },
+  {
+    "id": "s207",
+    "script": "s207_upload_quoted_cells_r.py",
+    "name": "upload_quoted_cells_r",
+    "category": "upload-conversion",
+    "covers": [
+      "read_upload",
+      "V014",
+      "csv"
+    ],
+    "sha256": "72023db03156aa7b8f003e5fa027516c760073ff0f25a3e547aa5767cbe15f84"
+  },
+  {
+    "id": "s208",
+    "script": "s208_mock_upload_quoted_cells.py",
+    "name": "mock_upload_quoted_cells",
+    "category": "mock-content-validation",
+    "covers": [
+      "MockEngine.run",
+      "sas_engine_run",
+      "V014"
+    ],
+    "sha256": "0e7ec3279d1d79b82f30d621cfd2bb37b40b29561f722600d1668646eeabf321"
+  },
+  {
+    "id": "s209",
+    "script": "s209_sanitize_duplicate_names.py",
+    "name": "sanitize_duplicate_names",
+    "category": "upload-conversion",
+    "covers": [
+      "sanitize_names"
+    ],
+    "sha256": "362dab0fe4bafef0c7a6307461fabf0f35f78f854f24d84904bc5b6bdf6b9d05"
+  },
+  {
+    "id": "s210",
+    "script": "s210_download_csv.py",
+    "name": "download_csv",
+    "category": "download-formats",
+    "covers": [
+      "csv_bytes",
+      "csv"
+    ],
+    "sha256": "6d566ee777dac281d020eeab6877292ed143a17ecf38a1492987ff242c279916"
+  },
+  {
+    "id": "s211",
+    "script": "s211_download_xlsx.py",
+    "name": "download_xlsx",
+    "category": "download-formats",
+    "covers": [
+      "xlsx_bytes",
+      "xlsx"
+    ],
+    "sha256": "27c605442a1b1043a7a2a2a0fbc914e6686c2ba1ce8483f27227fa99490f5ca5"
+  },
+  {
+    "id": "s212",
+    "script": "s212_download_xpt.py",
+    "name": "download_xpt",
+    "category": "download-formats",
+    "covers": [
+      "xpt_bytes",
+      "xpt"
+    ],
+    "sha256": "dc7e315dda2d8dd4391880f1ce8dec10aa86f88eccbbebe5c87d3f01fda65a84"
+  },
+  {
+    "id": "s213",
+    "script": "s213_xpt_member_length_8.py",
+    "name": "xpt_member_length_8",
+    "category": "download-formats",
+    "covers": [
+      "xpt_bytes",
+      "XPT v5/v8"
+    ],
+    "sha256": "28eacf5348c10653fa5feaff4d09f100934b73a724a11e4027f3d59165f259ee"
+  },
+  {
+    "id": "s214",
+    "script": "s214_xpt_member_length_9.py",
+    "name": "xpt_member_length_9",
+    "category": "download-formats",
+    "covers": [
+      "xpt_bytes",
+      "XPT v5/v8"
+    ],
+    "sha256": "a7806901173764ee52ddd27b20a14b14532d61366d52c16798c936f02bbb0946"
+  },
+  {
+    "id": "s215",
+    "script": "s215_log_program_scope.py",
+    "name": "log_program_scope",
+    "category": "collect-fixtures",
+    "covers": [
+      "scope_log",
+      "split_log",
+      "log_level"
+    ],
+    "sha256": "cb828f67b120fe2b73d7c0671fa7cb9bd034001808e41f4cf911a3580577fb96"
+  },
+  {
+    "id": "s216",
+    "script": "s216_log_program_scope_crlf_and_missing_end.py",
+    "name": "log_program_scope_crlf_and_missing_end",
+    "category": "collect-fixtures",
+    "covers": [
+      "scope_log",
+      "split_log",
+      "log_level"
+    ],
+    "sha256": "3cad462e5fb2e8877fd02c3ea62d4cc65b37b0e47100c0e50882eacd486b8d93"
+  },
+  {
+    "id": "s217",
+    "script": "s217_log_no_begin_sentinel.py",
+    "name": "log_no_begin_sentinel",
+    "category": "collect-fixtures",
+    "covers": [
+      "scope_log",
+      "split_log",
+      "log_level"
+    ],
+    "sha256": "fea40359b7888bd2378624807621ae4ad4fe3139db6fc89842271ae029a4018a"
+  },
+  {
+    "id": "s218",
+    "script": "s218_log_full_scope.py",
+    "name": "log_full_scope",
+    "category": "collect-fixtures",
+    "covers": [
+      "scope_log",
+      "split_log",
+      "log_level"
+    ],
+    "sha256": "abb038c3edd1587d2cca95e2ada9dcecb55fbd644163b39ed33d3a5e61d91ae9"
+  },
+  {
+    "id": "s219",
+    "script": "s219_plots_all_in_document_order.py",
+    "name": "plots_all_in_document_order",
+    "category": "collect-fixtures",
+    "covers": [
+      "extract_plots"
+    ],
+    "sha256": "74a03d3bdf67e401e6abeb14585f3209454169d123e6dd6328d8cad36bc7ce96"
+  },
+  {
+    "id": "s220",
+    "script": "s220_plots_select_second.py",
+    "name": "plots_select_second",
+    "category": "collect-fixtures",
+    "covers": [
+      "extract_plots"
+    ],
+    "sha256": "e11c9f4ae97270414a8f41a959d184b4c6021b170dae6ec375bbdc8a27ae8232"
+  },
+  {
+    "id": "s221",
+    "script": "s221_plots_select_out_of_range.py",
+    "name": "plots_select_out_of_range",
+    "category": "collect-fixtures",
+    "covers": [
+      "extract_plots"
+    ],
+    "sha256": "450aaee2ca0b6a17642598ece3e621f86bf3519a82740cb7ae605d0d34203154"
+  },
+  {
+    "id": "s222",
+    "script": "s222_plots_select_zero.py",
+    "name": "plots_select_zero",
+    "category": "collect-fixtures",
+    "covers": [
+      "extract_plots"
+    ],
+    "sha256": "0a2bbd9d1c66395626f6d58a6a279a90d054943b9bd2c87f42063ee9e6198249"
+  },
+  {
+    "id": "s223",
+    "script": "s223_plots_select_negative.py",
+    "name": "plots_select_negative",
+    "category": "collect-fixtures",
+    "covers": [
+      "extract_plots"
+    ],
+    "sha256": "8b6bfaaf79d8f70c1e9c70e29be1b11b1645f55bf4e297bcb6764994aba14494"
+  },
+  {
+    "id": "s224",
+    "script": "s224_recording_key_text.py",
+    "name": "recording_key_text",
+    "category": "recording-keys",
+    "covers": [
+      "recording_key_text"
+    ],
+    "sha256": "e93ae262c00c0b4d6cffe0e874f5ce3a3355e33cf2e067f8499f43e0e08e8174"
+  },
+  {
+    "id": "s225",
+    "script": "s225_recording_key.py",
+    "name": "recording_key",
+    "category": "recording-keys",
+    "covers": [
+      "recording_key"
+    ],
+    "sha256": "34abb75a61a4d928fb20ef15cc5d8a732fff85b005f3b6e212e481ea3c060823"
+  },
+  {
+    "id": "s226",
+    "script": "s226_status_line_end___n_.py",
+    "name": "status_line_end_'\\n'",
+    "category": "run-status",
+    "covers": [
+      "run_status",
+      "classify_log"
+    ],
+    "sha256": "d6cf79b033bb47791db676ade6102b5abd443f02914bcba57ed7b0ca3ce6af3e"
+  },
+  {
+    "id": "s227",
+    "script": "s227_status_line_end___r_n_.py",
+    "name": "status_line_end_'\\r\\n'",
+    "category": "run-status",
+    "covers": [
+      "run_status",
+      "classify_log"
+    ],
+    "sha256": "6158318819d6c1a370a2755b2d6c376111a199bbe441f779453b04bc68a9dd67"
+  },
+  {
+    "id": "s228",
+    "script": "s228_status_line_end___r_.py",
+    "name": "status_line_end_'\\r'",
+    "category": "run-status",
+    "covers": [
+      "run_status",
+      "classify_log"
+    ],
+    "sha256": "a3b35e7fa30227cf582a02dd72e76a81cb65f4b625648c6500b84a42e3982e42"
+  },
+  {
+    "id": "s229",
+    "script": "s229_status_syscc_0.py",
+    "name": "status_syscc_0",
+    "category": "run-status",
+    "covers": [
+      "run_status"
+    ],
+    "sha256": "397490c7818e3c6700d58b713dbf3731d228085b054a9afc01397230327b1993"
+  },
+  {
+    "id": "s230",
+    "script": "s230_status_syscc_4.py",
+    "name": "status_syscc_4",
+    "category": "run-status",
+    "covers": [
+      "run_status"
+    ],
+    "sha256": "93e3b68006667f44dc65cd4d91f40daff8029b23bdb7701369ebccdc581451c3"
+  },
+  {
+    "id": "s231",
+    "script": "s231_status_syscc_8.py",
+    "name": "status_syscc_8",
+    "category": "run-status",
+    "covers": [
+      "run_status"
+    ],
+    "sha256": "36db2e82b4bfe373e6a9de5493dadba89bfaf933f1a7f825c8c91dde0ed92b76"
+  },
+  {
+    "id": "s232",
+    "script": "s232_status_source_echo_not_sentinel.py",
+    "name": "status_source_echo_not_sentinel",
+    "category": "run-status",
+    "covers": [
+      "run_status"
+    ],
+    "sha256": "e2fa92d102398b31db3a8dc8d491b432469fd2298517f4ba5a784d483c7b86d6"
+  },
+  {
+    "id": "s233",
+    "script": "s233_pool_reuse.py",
+    "name": "pool_reuse",
+    "category": "pool-lifecycle",
+    "covers": [
+      "Pool",
+      "sas_pool",
+      "reuse"
+    ],
+    "sha256": "7e3fad22c693d458e68b0318fed51ca5a205453e42adc188f5a419747e6dd60f"
+  },
+  {
+    "id": "s234",
+    "script": "s234_pool_error.py",
+    "name": "pool_error",
+    "category": "pool-lifecycle",
+    "covers": [
+      "Pool",
+      "sas_pool",
+      "error"
+    ],
+    "sha256": "5ff7def38cdf022e8368300e6984c1475c5cf5cc1e69743a32217595510233a8"
+  },
+  {
+    "id": "s235",
+    "script": "s235_pool_raised_engine.py",
+    "name": "pool_raised_engine",
+    "category": "pool-lifecycle",
+    "covers": [
+      "Pool",
+      "sas_pool",
+      "raised_engine"
+    ],
+    "sha256": "546d851d3f7e3a7cf85cd00a0c2f01ad54fd6175e58e6d51fea3e45a1938e65d"
+  },
+  {
+    "id": "s236",
+    "script": "s236_pool_validation.py",
+    "name": "pool_validation",
+    "category": "pool-lifecycle",
+    "covers": [
+      "Pool",
+      "sas_pool",
+      "validation"
+    ],
+    "sha256": "aa01a7f55ffecbfe352d4ac4d71d8d73d680a7210374d3f176a4721aa80c60f3"
+  },
+  {
+    "id": "s237",
+    "script": "s237_pool_idle.py",
+    "name": "pool_idle",
+    "category": "pool-lifecycle",
+    "covers": [
+      "Pool",
+      "sas_pool",
+      "idle"
+    ],
+    "sha256": "a852fcadf79d859d3a019bf367d57d800d659c6b5d9bff10b1915242fd405cb6"
+  },
+  {
+    "id": "s238",
+    "script": "s238_pool_factory_error.py",
+    "name": "pool_factory_error",
+    "category": "pool-lifecycle",
+    "covers": [
+      "Pool",
+      "sas_pool",
+      "factory_error"
+    ],
+    "sha256": "82b74930fdc85f9b26283530d855a18c0e135ca6f3882a5b55d141fd688a4884"
+  },
+  {
+    "id": "s239",
+    "script": "s239_pool_busy_choices.py",
+    "name": "pool_busy_choices",
+    "category": "pool-lifecycle",
+    "covers": [
+      "Pool",
+      "sas_pool",
+      "busy_choices"
+    ],
+    "sha256": "24105664b33b706b0c5457c295c79ad0ea868b7e2cc151610e437cd8974bdf14"
+  },
+  {
+    "id": "s240",
+    "script": "s240_pool_choices_error.py",
+    "name": "pool_choices_error",
+    "category": "pool-lifecycle",
+    "covers": [
+      "Pool",
+      "sas_pool",
+      "choices_error"
+    ],
+    "sha256": "ea85de835e2baf927d35db7e4773f659eb01f4a0a622c61e98bf6fc41b8570c7"
+  },
+  {
+    "id": "s241",
+    "script": "s241_pool_close_reopen.py",
+    "name": "pool_close_reopen",
+    "category": "pool-lifecycle",
+    "covers": [
+      "Pool",
+      "sas_pool",
+      "close_reopen"
+    ],
+    "sha256": "bc025900d1cc0d30985744384e909c979e29f645a1d697dbeda76e53860e2bf3"
+  },
+  {
+    "id": "s242",
+    "script": "s242_pool_parallel.py",
+    "name": "pool_parallel",
+    "category": "pool-concurrency",
+    "covers": [
+      "Pool.run",
+      "parallel"
+    ],
+    "sha256": "dd8aadf9b391443d1fc1f4d01d73f10be7088125bdbc38c749409ceb9a98d9a6"
+  },
+  {
+    "id": "s243",
+    "script": "s243_pool_timeout.py",
+    "name": "pool_timeout",
+    "category": "pool-concurrency",
+    "covers": [
+      "Pool.run",
+      "timeout"
+    ],
+    "sha256": "b581d8ef54e54491b94d9316f9b4fc35fca09abceb80a63b567d7d58b63ed4b2"
+  },
+  {
+    "id": "s244",
+    "script": "s244_pool_shared_engine.py",
+    "name": "pool_shared_engine",
+    "category": "pool-concurrency",
+    "covers": [
+      "Pool.run",
+      "shared_engine"
+    ],
+    "sha256": "cb4a7181270b5cb7de66d59a465d9736f600c4f9d1e19572ec5dd9ad6fe79a55"
+  },
+  {
+    "id": "s245",
+    "script": "s245_fake_sas_full_pipeline.py",
+    "name": "fake_sas_full_pipeline",
+    "category": "engine-orchestration",
+    "covers": [
+      "SaspyEngine.run",
+      "collect all",
+      "df2sd",
+      "sd2df",
+      "record"
+    ],
+    "sha256": "580c2c9051a2983e4e45fe386cfa52e88884da63a3ec3667bfb453ce606134ba"
+  },
+  {
+    "id": "s246",
+    "script": "s246_fake_sas_slow_factory.py",
+    "name": "fake_sas_slow_factory",
+    "category": "engine-lifecycle",
+    "covers": [
+      "SaspyEngine.run",
+      "timeout",
+      "discard",
+      "sas_engine_saspy_run"
+    ],
+    "sha256": "6fead1e698a843abd94c549bdfed558da57817903f68d328d5d39c3a3d921485"
+  },
+  {
+    "id": "s247",
+    "script": "s247_fake_sas_slow_submit.py",
+    "name": "fake_sas_slow_submit",
+    "category": "engine-lifecycle",
+    "covers": [
+      "SaspyEngine.run",
+      "timeout",
+      "discard",
+      "sas_engine_saspy_run"
+    ],
+    "sha256": "2b2d8c16be59783005da984a3b43e685377f1968df143764c421c3c8c486088a"
+  },
+  {
+    "id": "s248",
+    "script": "s248_fake_sas_raise_submit.py",
+    "name": "fake_sas_raise_submit",
+    "category": "engine-lifecycle",
+    "covers": [
+      "SaspyEngine.run",
+      "timeout",
+      "discard",
+      "sas_engine_saspy_run"
+    ],
+    "sha256": "ae15fa20cad8f1d9cc0eff83e3f5957d1799dfd3b9843c315ae78ec7db6cd360"
+  },
+  {
+    "id": "s249",
+    "script": "s249_mock_missing_recording.py",
+    "name": "mock_missing_recording",
+    "category": "engine-runner",
+    "covers": [
+      "MockEngine",
+      "run",
+      "sas_run"
+    ],
+    "sha256": "f36f7b91baebab8f653cd27659efa512e9a274d2015caed37a89a384a8a6dab2"
+  },
+  {
+    "id": "s250",
+    "script": "s250_runner_missing_recording.py",
+    "name": "runner_missing_recording",
+    "category": "engine-runner",
+    "covers": [
+      "MockEngine",
+      "run",
+      "sas_run"
+    ],
+    "sha256": "0cf2e9e8e5023246ab10ea84ff35d02d5db018034a18f62dc9a7ab04525f20a3"
+  },
+  {
+    "id": "s251",
+    "script": "s251_mock_recording_replay.py",
+    "name": "mock_recording_replay",
+    "category": "recording",
+    "covers": [
+      "MockEngine.save_recording",
+      "MockEngine.run",
+      "sas_engine_record"
+    ],
+    "sha256": "f774610f913649860bd0535e4bc138e30af64eb5d9f51e3ae8afb2cd96a78521"
+  },
+  {
+    "id": "s252",
+    "script": "s252_recording_precision.py",
+    "name": "recording_precision",
+    "category": "recording",
+    "covers": [
+      "save_recording",
+      "load_recording",
+      "sas_engine_record"
+    ],
+    "sha256": "446a33e58ccb53d8dd7eea2a618f488e10fb3cce76fcf5821fa47adc943dabc7"
+  },
+  {
+    "id": "s253",
+    "script": "s253_ui_internal_id_collision_run.py",
+    "name": "ui_internal_id_collision_run",
+    "category": "ui-identifiers",
+    "covers": [
+      "program_ui",
+      "input/output namespaces"
+    ],
+    "sha256": "7c059801479473364449696afa45355e3adbf95fd0e8d9de9a7dfd6ef5aaaa0f"
+  },
+  {
+    "id": "s254",
+    "script": "s254_ui_internal_id_collision_status.py",
+    "name": "ui_internal_id_collision_status",
+    "category": "ui-identifiers",
+    "covers": [
+      "program_ui",
+      "input/output namespaces"
+    ],
+    "sha256": "00e15bd90ae60f48f4947f1f90e09d80b24ef4fd15e91a76f605185558113658"
+  },
+  {
+    "id": "s255",
+    "script": "s255_ui_internal_id_collision_log.py",
+    "name": "ui_internal_id_collision_log",
+    "category": "ui-identifiers",
+    "covers": [
+      "program_ui",
+      "input/output namespaces"
+    ],
+    "sha256": "e7b48ab5b7934643305a0011236e55b7b158ba4361abd7ad4865ed21c748c2dd"
+  },
+  {
+    "id": "s256",
+    "script": "s256_ui_internal_id_collision_out_report.py",
+    "name": "ui_internal_id_collision_out_report",
+    "category": "ui-identifiers",
+    "covers": [
+      "program_ui",
+      "input/output namespaces"
+    ],
+    "sha256": "17e0192d8dc34007ec49ac11866215064b4bf30e7cd6d915657e6a5a40b850d0"
+  },
+  {
+    "id": "s257",
+    "script": "s257_ui_internal_id_collision_dl_csv.py",
+    "name": "ui_internal_id_collision_dl_csv",
+    "category": "ui-identifiers",
+    "covers": [
+      "program_ui",
+      "input/output namespaces"
+    ],
+    "sha256": "8e97fabc1fc6f1dba8e53d24531c74b4fb5a6e185799635ba0c16f366bd78ea1"
+  },
+  {
+    "id": "s258",
+    "script": "s258_ui_layout_top.py",
+    "name": "ui_layout_top",
+    "category": "ui-options",
+    "covers": [
+      "program_ui",
+      "top"
+    ],
+    "sha256": "32b389f18d2e1ca093f935741d7dc35af863209b7f9f03117bd0d8feb0979adf"
+  },
+  {
+    "id": "s259",
+    "script": "s259_ui_layout_sidebar.py",
+    "name": "ui_layout_sidebar",
+    "category": "ui-options",
+    "covers": [
+      "program_ui",
+      "sidebar"
+    ],
+    "sha256": "51c895f240e0e3a2ec3e10961e937881a38dabeaad676e2454c03867efe47f78"
+  },
+  {
+    "id": "s260",
+    "script": "s260_ui_override.py",
+    "name": "ui_override",
+    "category": "ui-options",
+    "covers": [
+      "ui_override"
+    ],
+    "sha256": "4dba1891f2adaa1b563a05033cad42b16aae3f0341dec203eded82ed46143664"
+  },
+  {
+    "id": "s261",
+    "script": "s261_app_single_contract.py",
+    "name": "app_single_contract",
+    "category": "app",
+    "covers": [
+      "app",
+      "sas_app"
+    ],
+    "sha256": "321607837cd1211f76bbf0c0e1eb76d521704f7a2766a07a45f0b5cd26dd9daf"
+  },
+  {
+    "id": "s262",
+    "script": "s262_app_duplicate_python.py",
+    "name": "app_duplicate_python",
+    "category": "app",
+    "covers": [
+      "app",
+      "sas_app",
+      "duplicate ids"
+    ],
+    "sha256": "d0b302d8de71c60350471c226a59d882a6aef9b719be79eb8947fc29cf01a27a"
+  },
+  {
+    "id": "s263",
+    "script": "s263_app_duplicate_r.py",
+    "name": "app_duplicate_r",
+    "category": "app",
+    "covers": [
+      "app",
+      "sas_app",
+      "duplicate ids"
+    ],
+    "sha256": "8ceeb0cc1694631db32f56eaa8f4bf2974d8d7055845b319cbbba4905b6d0329"
+  },
+  {
+    "id": "s264",
+    "script": "s264_module_id_rules.py",
+    "name": "module_id_rules",
+    "category": "app",
+    "covers": [
+      "default_module_id"
+    ],
+    "sha256": "641b8ebaea0c79039e1f5a10f350b8fbd78cd870c9d6ea7a1aaab6eea5e690e4"
+  },
+  {
+    "id": "s265",
+    "script": "s265_connect_oda_us1.py",
+    "name": "connect_oda_us1",
+    "category": "connection-configuration",
+    "covers": [
+      "connect",
+      "sas_connect",
+      "ODA"
+    ],
+    "sha256": "8a4bf73957a4a694863b0540b27b4af0f68530ecebce8d4573376162e11b69b1"
+  },
+  {
+    "id": "s266",
+    "script": "s266_connect_oda_us2.py",
+    "name": "connect_oda_us2",
+    "category": "connection-configuration",
+    "covers": [
+      "connect",
+      "sas_connect",
+      "ODA"
+    ],
+    "sha256": "7bfcce8ebddc14ea80c1e49a9755800ba3386cf231639ae0d6072b4ed4d6ab67"
+  },
+  {
+    "id": "s267",
+    "script": "s267_connect_oda_eu1.py",
+    "name": "connect_oda_eu1",
+    "category": "connection-configuration",
+    "covers": [
+      "connect",
+      "sas_connect",
+      "ODA"
+    ],
+    "sha256": "85278020a4b730d2a958e48c6b08828f7816f2042bff6db6d59e74ad2968aced"
+  },
+  {
+    "id": "s268",
+    "script": "s268_connect_oda_ap1.py",
+    "name": "connect_oda_ap1",
+    "category": "connection-configuration",
+    "covers": [
+      "connect",
+      "sas_connect",
+      "ODA"
+    ],
+    "sha256": "fee69b114de95f050103e78a5ca19b9a4e0301d8d40d9a0be0d1e070b1125d2b"
+  },
+  {
+    "id": "s269",
+    "script": "s269_connect_oda_ap2.py",
+    "name": "connect_oda_ap2",
+    "category": "connection-configuration",
+    "covers": [
+      "connect",
+      "sas_connect",
+      "ODA"
+    ],
+    "sha256": "89bf1905806251ea4ca85bd00db3174e73994deb52fe6dead3ee73ab8d34e42b"
+  },
+  {
+    "id": "s270",
+    "script": "s270_connect___profile____viya____url____https___synthetic_invalid____context____audit__.py",
+    "name": "connect_{'profile': 'viya', 'url': 'https://synthetic.invalid', 'context': 'audit'}",
+    "category": "connection-configuration",
+    "covers": [
+      "connect",
+      "sas_connect",
+      "Viya",
+      "IOM",
+      "SSH"
+    ],
+    "sha256": "1dc8ce4e37ded6cd4fe7737f5a672455204500cf071021b2d00e9552e9230ac9"
+  },
+  {
+    "id": "s271",
+    "script": "s271_connect___profile____sas94____host____synthetic_invalid____port___8592___java_____usr_bin_java__.py",
+    "name": "connect_{'profile': 'sas94', 'host': 'synthetic.invalid', 'port': 8592, 'java': '/usr/bin/java'}",
+    "category": "connection-configuration",
+    "covers": [
+      "connect",
+      "sas_connect",
+      "Viya",
+      "IOM",
+      "SSH"
+    ],
+    "sha256": "7aadc447068450d8f503d404d353677905ef6313f97796b240ec2ed9a4e033c7"
+  },
+  {
+    "id": "s272",
+    "script": "s272_connect___profile____sas94____host____synthetic_invalid____saspath_____synthetic_sas____ssh_user____audit__.py",
+    "name": "connect_{'profile': 'sas94', 'host': 'synthetic.invalid', 'saspath': '/synthetic/sas', 'ssh_user': 'audit'}",
+    "category": "connection-configuration",
+    "covers": [
+      "connect",
+      "sas_connect",
+      "Viya",
+      "IOM",
+      "SSH"
+    ],
+    "sha256": "0f7414fe705bda0119aec15ceb59a411ee5af998c92e0381d1cdb92512354715"
+  },
+  {
+    "id": "s273",
+    "script": "s273_connect_unknown_python.py",
+    "name": "connect_unknown_python",
+    "category": "connection-configuration",
+    "covers": [
+      "connect errors"
+    ],
+    "sha256": "708aeee96811d5acfd3f9b74015aaed3df64c3bab171c5b76099bc899e99eb73"
+  },
+  {
+    "id": "s274",
+    "script": "s274_preflight_no_java_python.py",
+    "name": "preflight_no_java_python",
+    "category": "connection-configuration",
+    "covers": [
+      "preflight",
+      "no live credentials"
+    ],
+    "sha256": "58876e14f67319bfdbba308ff104514ea1faff5130f513fb8b6e941ea915427f"
+  },
+  {
+    "id": "s275",
+    "script": "s275_connect_unknown_r.py",
+    "name": "connect_unknown_r",
+    "category": "connection-configuration",
+    "covers": [
+      "connect errors"
+    ],
+    "sha256": "d3d62e5cb460492dc38971f58dcf87fad769d26b84d85c2d2a5f530f2ec78e65"
+  },
+  {
+    "id": "s276",
+    "script": "s276_preflight_no_java_r.py",
+    "name": "preflight_no_java_r",
+    "category": "connection-configuration",
+    "covers": [
+      "preflight",
+      "no live credentials"
+    ],
+    "sha256": "2659164775d9081ea451a0b595730e0a01974d58ec1a8d05e50e3e473138c47d"
+  },
+  {
+    "id": "s277",
+    "script": "s277_profiles_read_yaml.py",
+    "name": "profiles_read_yaml",
+    "category": "connection-configuration",
+    "covers": [
+      "load_profiles"
+    ],
+    "sha256": "a3b9ddaaed1bf095114b92f6d2cc5ef912c3bb90da676a06faf11940e9a8ba59"
+  },
+  {
+    "id": "s278",
+    "script": "s278_lint_assigned.py",
+    "name": "lint_assigned",
+    "category": "lint",
+    "covers": [
+      "lint",
+      "assigned"
+    ],
+    "sha256": "3eb787a302aa3920693a6727030a92ce640bd8bc11f5ad636740d8bbd9ab3c53"
+  },
+  {
+    "id": "s279",
+    "script": "s279_lint_unreferenced.py",
+    "name": "lint_unreferenced",
+    "category": "lint",
+    "covers": [
+      "lint",
+      "unreferenced"
+    ],
+    "sha256": "eeb63c09fc78b506b6ad5760f0506ea68365924bb1415459cb6663f0df420cb0"
+  },
+  {
+    "id": "s280",
+    "script": "s280_lint_guarded.py",
+    "name": "lint_guarded",
+    "category": "lint",
+    "covers": [
+      "lint",
+      "guarded"
+    ],
+    "sha256": "eb1cf24dbea0bc623cf5b62cb7d1152c7f45a882fa65ded7067dcbfe7e0e597b"
+  },
+  {
+    "id": "s281",
+    "script": "s281_lint_guard_else_override.py",
+    "name": "lint_guard_else_override",
+    "category": "lint",
+    "covers": [
+      "L001"
+    ],
+    "sha256": "7e6d58797651240a8b38981f9c548f9760bbbf7c83980d65d055484e3f4220de"
+  },
+  {
+    "id": "s282",
+    "script": "s282_installed_inventory_python.py",
+    "name": "installed_inventory_python",
+    "category": "dependencies",
+    "covers": [
+      "all declared dependencies",
+      "exports",
+      "installed artifacts"
+    ],
+    "sha256": "040cb1ddf20d8621286b06a118850f1bcb6f1a575ef65be04cff2598e5f95610"
+  },
+  {
+    "id": "s283",
+    "script": "s283_installed_inventory_r.py",
+    "name": "installed_inventory_r",
+    "category": "dependencies",
+    "covers": [
+      "all declared dependencies",
+      "exports",
+      "installed artifacts"
+    ],
+    "sha256": "20b86534e0c4c4d6faaaf2317a3e0b8509e60eca68a1b0703cb0e6eb9b52a770"
+  },
+  {
+    "id": "s284",
+    "script": "s284_shiny_python_initial_card.py",
+    "name": "shiny_python_initial_card",
+    "category": "shiny-wire",
+    "covers": [
+      "program_server",
+      "HTTP",
+      "WebSocket",
+      "initial_card"
+    ],
+    "sha256": "2d37ab4b97935e413e7e22a2c6a44a3c1b7b7d5df6a52e9f2e4a17c1b7213807"
+  },
+  {
+    "id": "s285",
+    "script": "s285_shiny_r_initial_card.py",
+    "name": "shiny_r_initial_card",
+    "category": "shiny-wire",
+    "covers": [
+      "program_server",
+      "HTTP",
+      "WebSocket",
+      "initial_card"
+    ],
+    "sha256": "03399819ce2b8ae4253bea49658e23674e4cb11ba352b98dd98d61cc379478b8"
+  },
+  {
+    "id": "s286",
+    "script": "s286_shiny_python_run_success.py",
+    "name": "shiny_python_run_success",
+    "category": "shiny-wire",
+    "covers": [
+      "program_server",
+      "HTTP",
+      "WebSocket",
+      "run_success"
+    ],
+    "sha256": "3ba1b34fa41c72d0a8544f88b7e64a630bf44ab0dbeaf384a97c19a8f7e6a05f"
+  },
+  {
+    "id": "s287",
+    "script": "s287_shiny_r_run_success.py",
+    "name": "shiny_r_run_success",
+    "category": "shiny-wire",
+    "covers": [
+      "program_server",
+      "HTTP",
+      "WebSocket",
+      "run_success"
+    ],
+    "sha256": "90458147eae4bfd73f9cbe7ef2ef4f869b42c6c56da6c0a85b4968e45d801262"
+  },
+  {
+    "id": "s288",
+    "script": "s288_shiny_python_run_result_error.py",
+    "name": "shiny_python_run_result_error",
+    "category": "shiny-wire",
+    "covers": [
+      "program_server",
+      "HTTP",
+      "WebSocket",
+      "run_result_error"
+    ],
+    "sha256": "4499a5df1d14b4d9a1f59752602ecf449c5857763a99984efa347c45ecb93943"
+  },
+  {
+    "id": "s289",
+    "script": "s289_shiny_r_run_result_error.py",
+    "name": "shiny_r_run_result_error",
+    "category": "shiny-wire",
+    "covers": [
+      "program_server",
+      "HTTP",
+      "WebSocket",
+      "run_result_error"
+    ],
+    "sha256": "1114aa0e957d539b452ec5ea804bb1d93f961c709e09bc17365a765d3d4d44c0"
+  },
+  {
+    "id": "s290",
+    "script": "s290_shiny_python_run_exception.py",
+    "name": "shiny_python_run_exception",
+    "category": "shiny-wire",
+    "covers": [
+      "program_server",
+      "HTTP",
+      "WebSocket",
+      "run_exception"
+    ],
+    "sha256": "dce7b04dc0aab3e29feda56b98cf278fced272a578981c9f03c2ef6afd496806"
+  },
+  {
+    "id": "s291",
+    "script": "s291_shiny_r_run_exception.py",
+    "name": "shiny_r_run_exception",
+    "category": "shiny-wire",
+    "covers": [
+      "program_server",
+      "HTTP",
+      "WebSocket",
+      "run_exception"
+    ],
+    "sha256": "a9a8c74cea43320becfeb00d9fc190fd5c1a2d284c0bde30cefc46707b0d01f6"
+  },
+  {
+    "id": "s292",
+    "script": "s292_shiny_python_run_coalescing.py",
+    "name": "shiny_python_run_coalescing",
+    "category": "shiny-wire",
+    "covers": [
+      "program_server",
+      "HTTP",
+      "WebSocket",
+      "run_coalescing"
+    ],
+    "sha256": "be8f1040617da841ef00e93d89b69defacb90b6b5f44fcbc5b731e7bb47fad23"
+  },
+  {
+    "id": "s293",
+    "script": "s293_shiny_r_run_coalescing.py",
+    "name": "shiny_r_run_coalescing",
+    "category": "shiny-wire",
+    "covers": [
+      "program_server",
+      "HTTP",
+      "WebSocket",
+      "run_coalescing"
+    ],
+    "sha256": "628eeb4334d0047ebf70cd77d290cddd147901c71c409faf51aa76aec0e8939e"
+  },
+  {
+    "id": "s294",
+    "script": "s294_shiny_python_disconnect.py",
+    "name": "shiny_python_disconnect",
+    "category": "shiny-wire",
+    "covers": [
+      "program_server",
+      "HTTP",
+      "WebSocket",
+      "disconnect"
+    ],
+    "sha256": "df8719cda10546c8dfab68c60318f37494beba50d384ca7e08f8cc3455d97189"
+  },
+  {
+    "id": "s295",
+    "script": "s295_shiny_r_disconnect.py",
+    "name": "shiny_r_disconnect",
+    "category": "shiny-wire",
+    "covers": [
+      "program_server",
+      "HTTP",
+      "WebSocket",
+      "disconnect"
+    ],
+    "sha256": "0e3479a152cd0d3d67a447b1e69dd1dabe277e8422c28d360a2a871c165acd48"
+  },
+  {
+    "id": "s296",
+    "script": "s296_shiny_python_unavailable_download.py",
+    "name": "shiny_python_unavailable_download",
+    "category": "shiny-wire",
+    "covers": [
+      "program_server",
+      "HTTP",
+      "WebSocket",
+      "unavailable_download"
+    ],
+    "sha256": "408a28969d687b1f2e17ff9c95a1ca5b5bbd84e3e6a90b61221fcbda72afe622"
+  },
+  {
+    "id": "s297",
+    "script": "s297_shiny_r_unavailable_download.py",
+    "name": "shiny_r_unavailable_download",
+    "category": "shiny-wire",
+    "covers": [
+      "program_server",
+      "HTTP",
+      "WebSocket",
+      "unavailable_download"
+    ],
+    "sha256": "0b0e1006a9f8280256bdbc664d9595c00ffd9c5304d7a3e06afa0c75ae7b2801"
+  },
+  {
+    "id": "s298",
+    "script": "s298_shiny_python_available_download.py",
+    "name": "shiny_python_available_download",
+    "category": "shiny-wire",
+    "covers": [
+      "program_server",
+      "HTTP",
+      "WebSocket",
+      "available_download"
+    ],
+    "sha256": "319d11277906f431377e30cf70f8ae98cb378a37664c6bdac773e547335b4440"
+  },
+  {
+    "id": "s299",
+    "script": "s299_shiny_r_available_download.py",
+    "name": "shiny_r_available_download",
+    "category": "shiny-wire",
+    "covers": [
+      "program_server",
+      "HTTP",
+      "WebSocket",
+      "available_download"
+    ],
+    "sha256": "d6b6ab38ee06782ecb5c8a93fb1887fe7c16779511dcf97a2400ccf8076e7aed"
+  },
+  {
+    "id": "s300",
+    "script": "s300_shiny_python_auto_run.py",
+    "name": "shiny_python_auto_run",
+    "category": "shiny-wire",
+    "covers": [
+      "program_server",
+      "HTTP",
+      "WebSocket",
+      "auto_run"
+    ],
+    "sha256": "e0947ebdb1acbcb55d3b58c6ba26fcbc904eccd03f7f0b7f5dc5360a70939b69"
+  },
+  {
+    "id": "s301",
+    "script": "s301_shiny_r_auto_run.py",
+    "name": "shiny_r_auto_run",
+    "category": "shiny-wire",
+    "covers": [
+      "program_server",
+      "HTTP",
+      "WebSocket",
+      "auto_run"
+    ],
+    "sha256": "086254974c5c29f3a4e4fe4daaa89f7c5b2102705e6765a0b535be89b01ca6d9"
+  },
+  {
+    "id": "s302",
+    "script": "s302_shiny_python_choices_error.py",
+    "name": "shiny_python_choices_error",
+    "category": "shiny-wire",
+    "covers": [
+      "program_server",
+      "HTTP",
+      "WebSocket",
+      "choices_error"
+    ],
+    "sha256": "62b1fd7685a88d9e45158d0a13a75dad040b8553b4cfc5a9d4f5f13477d564bd"
+  },
+  {
+    "id": "s303",
+    "script": "s303_shiny_r_choices_error.py",
+    "name": "shiny_r_choices_error",
+    "category": "shiny-wire",
+    "covers": [
+      "program_server",
+      "HTTP",
+      "WebSocket",
+      "choices_error"
+    ],
+    "sha256": "30caba06b8e0837888594b3d9bcd1bc087ad830d8e0b244bea8028b7c2eba239"
+  },
+  {
+    "id": "s304",
+    "script": "s304_shiny_python_run_button_disabled.py",
+    "name": "shiny_python_run_button_disabled",
+    "category": "shiny-wire",
+    "covers": [
+      "program_server",
+      "HTTP",
+      "WebSocket",
+      "run_button_disabled"
+    ],
+    "sha256": "10b7d2d66f6ccd1a4c1381923c902f7418e84d5dd1d9ca151ae408b3998c3cc4"
+  },
+  {
+    "id": "s305",
+    "script": "s305_shiny_r_run_button_disabled.py",
+    "name": "shiny_r_run_button_disabled",
+    "category": "shiny-wire",
+    "covers": [
+      "program_server",
+      "HTTP",
+      "WebSocket",
+      "run_button_disabled"
+    ],
+    "sha256": "f02852dc3af6753bcde0712adf967cc6b863f5b68c7e2322f86996d4a8a4b2ae"
+  },
+  {
+    "id": "s306",
+    "script": "s306_shiny_python_upload_size.py",
+    "name": "shiny_python_upload_size",
+    "category": "shiny-wire",
+    "covers": [
+      "program_server",
+      "HTTP",
+      "WebSocket",
+      "upload_size"
+    ],
+    "sha256": "b993eae236f5054239147c116dd5b1c7fe255e3f3d59730c7fc823b497999822"
+  },
+  {
+    "id": "s307",
+    "script": "s307_shiny_r_upload_size.py",
+    "name": "shiny_r_upload_size",
+    "category": "shiny-wire",
+    "covers": [
+      "program_server",
+      "HTTP",
+      "WebSocket",
+      "upload_size"
+    ],
+    "sha256": "268fe6f3f24dd51367792d5feceda8ba3a05ba6919d950cb1538c5d943536c70"
+  },
+  {
+    "id": "s308",
+    "script": "s308_remote_join_work.py",
+    "name": "remote_join_work",
+    "category": "remote-paths",
+    "covers": [
+      "join_remote"
+    ],
+    "sha256": "70575294aec486acbd8ea074f09ef64ab42d4a2c71d3cb67d472a78d02ed87a6"
+  },
+  {
+    "id": "s309",
+    "script": "s309_remote_join_win.py",
+    "name": "remote_join_win",
+    "category": "remote-paths",
+    "covers": [
+      "join_remote"
+    ],
+    "sha256": "17d661ce057ff0b6a5b224c73f9c7de6ce9c722b99a506fbd1cc5d48b1293cab"
+  },
+  {
+    "id": "s310",
+    "script": "s310_column_selection_order.py",
+    "name": "column_selection_order",
+    "category": "table-collection",
+    "covers": [
+      "select_columns"
+    ],
+    "sha256": "fc73a87106db2874f8fb87a23d130479ca0b8e2180e75b6a08acfb9507d04917"
+  },
+  {
+    "id": "s311",
+    "script": "s311_column_selection_error_python.py",
+    "name": "column_selection_error_python",
+    "category": "table-collection",
+    "covers": [
+      "select_columns"
+    ],
+    "sha256": "6144fc8a81f908088d75adc5e470ffb18d558eae9cee009294ee93fe59a9a7ac"
+  },
+  {
+    "id": "s312",
+    "script": "s312_column_selection_error_r.py",
+    "name": "column_selection_error_r",
+    "category": "table-collection",
+    "covers": [
+      "select_columns"
+    ],
+    "sha256": "ad1221f0c5ecace903b51b5bc1a140867335e32a6a025e7c1a767797ddbf597e"
+  },
+  {
+    "id": "s313",
+    "script": "s313_table_missing_unicode_spaces.py",
+    "name": "table_missing_unicode_spaces",
+    "category": "table-collection",
+    "covers": [
+      "build_table",
+      "SAS missing",
+      "ASCII blanks"
+    ],
+    "sha256": "d7f8936bb13cb174ddf1c36078280970bf48cc5ea78ffeeeee3b33f8fdf86cfc"
+  },
+  {
+    "id": "s314",
+    "script": "s314_table_formatted_spaces.py",
+    "name": "table_formatted_spaces",
+    "category": "table-collection",
+    "covers": [
+      "build_table",
+      "formatted",
+      "unknown nobs"
+    ],
+    "sha256": "d79126d191ba66593656f621ac424059e02bb6b1e2a6491efc841c37ccd2eaa6"
+  },
+  {
+    "id": "s315",
+    "script": "s315_table_metadata_code.py",
+    "name": "table_metadata_code",
+    "category": "generated-query",
+    "covers": [
+      "table_meta_code"
+    ],
+    "sha256": "f81abba91a81ecc02b5ddcea367279e420131c1136ad2468d8c826cd4d6231af"
+  },
+  {
+    "id": "s316",
+    "script": "s316_formatted_query_code.py",
+    "name": "formatted_query_code",
+    "category": "generated-query",
+    "covers": [
+      "formatted_table_code"
+    ],
+    "sha256": "a41075e67dda55f507f348a36821104d71ab159841a3ca73da72451ff81bde08"
+  },
+  {
+    "id": "s317",
+    "script": "s317_dynamic_choices_query.py",
+    "name": "dynamic_choices_query",
+    "category": "generated-query",
+    "covers": [
+      "choices_code"
+    ],
+    "sha256": "5603830c08587b5a43d1353f2b1234ec7d049fc8b9dc8ddb4f9d70c0e73374db"
+  },
+  {
+    "id": "s318",
+    "script": "s318_dynamic_choices_validation.py",
+    "name": "dynamic_choices_validation",
+    "category": "dynamic-choices",
+    "covers": [
+      "choices_override",
+      "V004"
+    ],
+    "sha256": "06208fbb598a67521fe4aebb4878e165226c4a91aa188ce6d56f919b2790006c"
+  },
+  {
+    "id": "s319",
+    "script": "s319_dynamic_choices_after_session_failure.py",
+    "name": "dynamic_choices_after_session_failure",
+    "category": "dynamic-choices",
+    "covers": [
+      "SaspyEngine.choices",
+      "discard"
+    ],
+    "sha256": "addc8659e07307ca5918506ead2bddc042eaedde894e8267fbd69036e2ec0832"
+  },
+  {
+    "id": "s320",
+    "script": "s320_pool_close_with_inflight_run.py",
+    "name": "pool_close_with_inflight_run",
+    "category": "pool-concurrency",
+    "covers": [
+      "Pool.close",
+      "Pool._release",
+      "warm minimum"
+    ],
+    "sha256": "67e82c1372338c4a2357b0ade6407049a0f585ae0b1ca2ea5569eae234471ed8"
+  },
+  {
+    "id": "s321",
+    "script": "s321_csv_interop_python_to_r.py",
+    "name": "csv_interop_python_to_r",
+    "category": "format-interoperability",
+    "covers": [
+      "csv",
+      "read_upload",
+      "csv_bytes",
+      "xlsx_bytes",
+      "xpt_bytes"
+    ],
+    "sha256": "958cdac0e6f9f90442cd26a935f0a12a43d86c14f26742db20b661d3ec931ff3"
+  },
+  {
+    "id": "s322",
+    "script": "s322_csv_interop_r_to_python.py",
+    "name": "csv_interop_r_to_python",
+    "category": "format-interoperability",
+    "covers": [
+      "csv",
+      "read_upload",
+      "csv_bytes",
+      "xlsx_bytes",
+      "xpt_bytes"
+    ],
+    "sha256": "abd4846e6b9b041c9880d1bdeec79b6ed647537c43232f1219a8e036c0f4439f"
+  },
+  {
+    "id": "s323",
+    "script": "s323_xlsx_interop_python_to_r.py",
+    "name": "xlsx_interop_python_to_r",
+    "category": "format-interoperability",
+    "covers": [
+      "xlsx",
+      "read_upload",
+      "csv_bytes",
+      "xlsx_bytes",
+      "xpt_bytes"
+    ],
+    "sha256": "a0258b1cee6f701616e3d6c562ab3d1b791e9906148bd1e8a2c822851b483f3b"
+  },
+  {
+    "id": "s324",
+    "script": "s324_xlsx_interop_r_to_python.py",
+    "name": "xlsx_interop_r_to_python",
+    "category": "format-interoperability",
+    "covers": [
+      "xlsx",
+      "read_upload",
+      "csv_bytes",
+      "xlsx_bytes",
+      "xpt_bytes"
+    ],
+    "sha256": "9ac4999475b0b517f6a9b70209b4c6edb95c436ed1c2828b49fea4edffd1c840"
+  },
+  {
+    "id": "s325",
+    "script": "s325_xpt_interop_python_to_r.py",
+    "name": "xpt_interop_python_to_r",
+    "category": "format-interoperability",
+    "covers": [
+      "xpt",
+      "read_upload",
+      "csv_bytes",
+      "xlsx_bytes",
+      "xpt_bytes"
+    ],
+    "sha256": "b7e7dd29c48407bc379601fef586fccb09024022f1d49006dc17119c4e129891"
+  },
+  {
+    "id": "s326",
+    "script": "s326_xpt_interop_r_to_python.py",
+    "name": "xpt_interop_r_to_python",
+    "category": "format-interoperability",
+    "covers": [
+      "xpt",
+      "read_upload",
+      "csv_bytes",
+      "xlsx_bytes",
+      "xpt_bytes"
+    ],
+    "sha256": "55b8c0d45edc99a04d0f4bdefdd7c15cbf4ed3c41b606ff93201768bc028d645"
+  },
+  {
+    "id": "s327",
+    "script": "s327_recording_python_to_r.py",
+    "name": "recording_python_to_r",
+    "category": "recording-interoperability",
+    "covers": [
+      "save_recording",
+      "load_recording",
+      "MockEngine.run",
+      "sas_engine_record"
+    ],
+    "sha256": "dbf4180ff858a7d5fed6c5e40cb08d2d5f13e2564f922ae4eaa35f6fe31476b3"
+  },
+  {
+    "id": "s328",
+    "script": "s328_recording_r_to_python.py",
+    "name": "recording_r_to_python",
+    "category": "recording-interoperability",
+    "covers": [
+      "save_recording",
+      "load_recording",
+      "MockEngine.run",
+      "sas_engine_record"
+    ],
+    "sha256": "c586f49c389a18daca70be7d2723b1a54230e98a7bfdfbe07af161a11448aae6"
+  },
+  {
+    "id": "s329",
+    "script": "s329_remote_download_protocols.py",
+    "name": "remote_download_protocols",
+    "category": "engine-orchestration",
+    "covers": [
+      "_fetch_file",
+      "_download",
+      "rtf",
+      "pdf",
+      "sas7bdat transport"
+    ],
+    "sha256": "84dc0d6e035c231cc7345b333d2ebb09c5f1a2aab607137f4ef5dd04f831118b"
+  },
+  {
+    "id": "s330",
+    "script": "s330_ui_control_numeric.py",
+    "name": "ui_control_numeric",
+    "category": "ui-controls",
+    "covers": [
+      "program_ui",
+      "numeric"
+    ],
+    "sha256": "92cdb9465c343d8a8c54ba1536cce5f62dff2b846432eca51fbf2465a137936e"
+  },
+  {
+    "id": "s331",
+    "script": "s331_ui_control_text.py",
+    "name": "ui_control_text",
+    "category": "ui-controls",
+    "covers": [
+      "program_ui",
+      "text"
+    ],
+    "sha256": "e6cfd829e6a7e0f7588ee6867317f9a4e3451b4222e81de6f9da35b1f7000431"
+  },
+  {
+    "id": "s332",
+    "script": "s332_ui_control_choice.py",
+    "name": "ui_control_choice",
+    "category": "ui-controls",
+    "covers": [
+      "program_ui",
+      "choice"
+    ],
+    "sha256": "0396a3621574507716614db31db0a693bbabf9ffaa76e817462a8a8eb92d89ea"
+  },
+  {
+    "id": "s333",
+    "script": "s333_ui_control_multichoice.py",
+    "name": "ui_control_multichoice",
+    "category": "ui-controls",
+    "covers": [
+      "program_ui",
+      "multichoice"
+    ],
+    "sha256": "094059a6b52d1cb5019d304bd307bb08b9d9f062af7b9bd02b9d6b6efd034a49"
+  },
+  {
+    "id": "s334",
+    "script": "s334_ui_control_date.py",
+    "name": "ui_control_date",
+    "category": "ui-controls",
+    "covers": [
+      "program_ui",
+      "date"
+    ],
+    "sha256": "d5aba7a2814783cae68a2e891b02f8229d38a9911dabca52e12641317814f5f1"
+  },
+  {
+    "id": "s335",
+    "script": "s335_ui_control_daterange.py",
+    "name": "ui_control_daterange",
+    "category": "ui-controls",
+    "covers": [
+      "program_ui",
+      "daterange"
+    ],
+    "sha256": "fc99cec89b358ddc12598a6c7e2f9779e9a1168417d985b1e844efc93e516f48"
+  },
+  {
+    "id": "s336",
+    "script": "s336_ui_control_dataset.py",
+    "name": "ui_control_dataset",
+    "category": "ui-controls",
+    "covers": [
+      "program_ui",
+      "dataset"
+    ],
+    "sha256": "ad29f0d8b1ab0ba5b72b637ff695754c259712633d5eee69b3d3cac27d4e34b5"
+  },
+  {
+    "id": "s337",
+    "script": "s337_ui_widget_choice_radio.py",
+    "name": "ui_widget_choice_radio",
+    "category": "ui-controls",
+    "covers": [
+      "program_ui",
+      "radio"
+    ],
+    "sha256": "9115e7198ad43823f0a6063dee12f7cc958cabc8335921978f5346ff90e4cd38"
+  },
+  {
+    "id": "s338",
+    "script": "s338_ui_widget_multichoice_checkbox.py",
+    "name": "ui_widget_multichoice_checkbox",
+    "category": "ui-controls",
+    "covers": [
+      "program_ui",
+      "checkbox"
+    ],
+    "sha256": "b55d0d5173bb238426184adaacadb5acac707321c8ed42205eff37befd3d41ad"
+  },
+  {
+    "id": "s339",
+    "script": "s339_ui_widget_multichoice_select.py",
+    "name": "ui_widget_multichoice_select",
+    "category": "ui-controls",
+    "covers": [
+      "program_ui",
+      "select"
+    ],
+    "sha256": "ed7db86b70892e89ce0817f518a23f9917383e08ffb4f385d492dbaa986f5641"
+  },
+  {
+    "id": "s340",
+    "script": "s340_missing_required_multichoice_min_zero.py",
+    "name": "missing_required_multichoice_min_zero",
+    "category": "value-boundaries",
+    "covers": [
+      "V001",
+      "absence vs empty array"
+    ],
+    "sha256": "071c2cbf839b233381cf999c127b6ba70de10eb5c213dfbb141aa3437904dbfd"
+  },
+  {
+    "id": "s341",
+    "script": "s341_required_multichoice_min_zero___.py",
+    "name": "required_multichoice_min_zero_[]",
+    "category": "value-boundaries",
+    "covers": [
+      "min_selected"
+    ],
+    "sha256": "f2ac0300193b3f67dbec29eb2a88ad74fc3186a777c977827050a487100a70fe"
+  },
+  {
+    "id": "s342",
+    "script": "s342_required_multichoice_min_zero___a__.py",
+    "name": "required_multichoice_min_zero_['a']",
+    "category": "value-boundaries",
+    "covers": [
+      "min_selected"
+    ],
+    "sha256": "ab5bec6237a75b480466ac0be806168e770b18dc0671c78538ba9de8a1957a9d"
+  },
+  {
+    "id": "s343",
+    "script": "s343_sample_control_id_collision.py",
+    "name": "sample_control_id_collision",
+    "category": "ui-identifiers",
+    "covers": [
+      "program_ui",
+      "sample input"
+    ],
+    "sha256": "859a2954a1932fac12ca72ec389908febbf0b546fc4ff96a24b6020d9978007c"
+  },
+  {
+    "id": "s344",
+    "script": "s344_app_explicit_id_collision_python.py",
+    "name": "app_explicit_id_collision_python",
+    "category": "app",
+    "covers": [
+      "app",
+      "duplicate explicit ids"
+    ],
+    "sha256": "b9ede89f32b489198ae9272fc2a8ddd7578aa651e0dbab8b81b38d6e1780e88d"
+  },
+  {
+    "id": "s345",
+    "script": "s345_no_spec_chart_module_python.py",
+    "name": "no_spec_chart_module_python",
+    "category": "chart-errors",
+    "covers": [
+      "chart rendering errors"
+    ],
+    "sha256": "1934e4bbee3b2534f1f7c725a524501c0c519813b4a253c62b50ea17106aeb7f"
+  },
+  {
+    "id": "s346",
+    "script": "s346_app_explicit_id_collision_r.py",
+    "name": "app_explicit_id_collision_r",
+    "category": "app",
+    "covers": [
+      "app",
+      "duplicate explicit ids"
+    ],
+    "sha256": "c25d99d6ea2c800c7ebbc8c5dc8b05fa6614670df766b2672634246fa8a58a3f"
+  },
+  {
+    "id": "s347",
+    "script": "s347_no_spec_chart_module_r.py",
+    "name": "no_spec_chart_module_r",
+    "category": "chart-errors",
+    "covers": [
+      "chart rendering errors"
+    ],
+    "sha256": "322696b5f4addadd71bd1b661214a1dc96f5a56f12676b0eaf4257b195554d2d"
+  },
+  {
+    "id": "s348",
+    "script": "s348_demo_contract_general.py",
+    "name": "demo_contract_general",
+    "category": "demo-integration",
+    "covers": [
+      "demo general",
+      "validate"
+    ],
+    "sha256": "d0e4e4a01ab3a45ff8c3d7b7f12feba8406dd9a16a6afb02eeabe961192c0646"
+  },
+  {
+    "id": "s349",
+    "script": "s349_demo_ui_general.py",
+    "name": "demo_ui_general",
+    "category": "demo-integration",
+    "covers": [
+      "demo general",
+      "program_ui"
+    ],
+    "sha256": "ff48c05a3191f0a16e9c4cf1c2e91b36db3f3a7dd4611429e899a161aafa7657"
+  },
+  {
+    "id": "s350",
+    "script": "s350_demo_lint_general.py",
+    "name": "demo_lint_general",
+    "category": "demo-integration",
+    "covers": [
+      "demo general",
+      "lint"
+    ],
+    "sha256": "f7d2191aaf9d796b2f23e7eed78bd64796a26a3a69d0abcb888fc6b70d745e0d"
+  },
+  {
+    "id": "s351",
+    "script": "s351_demo_contract_pharma.py",
+    "name": "demo_contract_pharma",
+    "category": "demo-integration",
+    "covers": [
+      "demo pharma",
+      "validate"
+    ],
+    "sha256": "b27d35c70fb0ed6d517fe48f4433d09cc36f0229231158f3a304cb5590a94e23"
+  },
+  {
+    "id": "s352",
+    "script": "s352_demo_ui_pharma.py",
+    "name": "demo_ui_pharma",
+    "category": "demo-integration",
+    "covers": [
+      "demo pharma",
+      "program_ui"
+    ],
+    "sha256": "cd219634def0d442e426dc9b9c1483a5ee42624aba4e1787a3e56eb406ad2be0"
+  },
+  {
+    "id": "s353",
+    "script": "s353_demo_lint_pharma.py",
+    "name": "demo_lint_pharma",
+    "category": "demo-integration",
+    "covers": [
+      "demo pharma",
+      "lint"
+    ],
+    "sha256": "5e2da72eaa85f049de287b63e86d6b57b0b01cfa07d73abaa15b8b72e13e8a69"
+  },
+  {
+    "id": "s354",
+    "script": "s354_demo_contract_aml.py",
+    "name": "demo_contract_aml",
+    "category": "demo-integration",
+    "covers": [
+      "demo aml",
+      "validate"
+    ],
+    "sha256": "fc30faf9a9e583e4dbbe0ea5f58963f24d164829a09148dd95559567eb6a1cb8"
+  },
+  {
+    "id": "s355",
+    "script": "s355_demo_ui_aml.py",
+    "name": "demo_ui_aml",
+    "category": "demo-integration",
+    "covers": [
+      "demo aml",
+      "program_ui"
+    ],
+    "sha256": "1d3324809154b89e1eaf1f72173688f65012641b2a46d372682bef15b8b95b70"
+  },
+  {
+    "id": "s356",
+    "script": "s356_demo_lint_aml.py",
+    "name": "demo_lint_aml",
+    "category": "demo-integration",
+    "covers": [
+      "demo aml",
+      "lint"
+    ],
+    "sha256": "23c14a999ea97affdf1b6d16b52075b61fd96051e0287b5136b6770a0a1f3d42"
+  },
+  {
+    "id": "s357",
+    "script": "s357_demo_contract_forecasting.py",
+    "name": "demo_contract_forecasting",
+    "category": "demo-integration",
+    "covers": [
+      "demo forecasting",
+      "validate"
+    ],
+    "sha256": "dfd683c0d91e7dbe3e39a58c204273c58c9fd90ff17d9faee921ec604c36885f"
+  },
+  {
+    "id": "s358",
+    "script": "s358_demo_ui_forecasting.py",
+    "name": "demo_ui_forecasting",
+    "category": "demo-integration",
+    "covers": [
+      "demo forecasting",
+      "program_ui"
+    ],
+    "sha256": "f6efafacf8a3982111c96b0d3d5b98c87d780848a679c19b314146246564cfc7"
+  },
+  {
+    "id": "s359",
+    "script": "s359_demo_lint_forecasting.py",
+    "name": "demo_lint_forecasting",
+    "category": "demo-integration",
+    "covers": [
+      "demo forecasting",
+      "lint"
+    ],
+    "sha256": "bcfb82b77488ff1d53ee90ee062530431a9f70c8b408ddc85b9a9c9a2bfd83b6"
+  },
+  {
+    "id": "s360",
+    "script": "s360_xlsx_cells_python_native_dates_and_blank.py",
+    "name": "xlsx_cells_python_native_dates_and_blank",
+    "category": "xlsx-native-cells",
+    "covers": [
+      "read_upload",
+      "xlsx",
+      "date"
+    ],
+    "sha256": "cd18013edf1cb3c77962fa3a2b27f3b9f8ff1856186b7993da5096d1ade869a6"
+  },
+  {
+    "id": "s361",
+    "script": "s361_xlsx_cells_r_native_dates_and_blank.py",
+    "name": "xlsx_cells_r_native_dates_and_blank",
+    "category": "xlsx-native-cells",
+    "covers": [
+      "read_upload",
+      "xlsx",
+      "date"
+    ],
+    "sha256": "5c45177deaa20db453c717f35d190d1ab2c3d5ceffc9908c154daecc8fd81987"
+  },
+  {
+    "id": "s362",
+    "script": "s362_xlsx_cells_python_leading_blank_then_native.py",
+    "name": "xlsx_cells_python_leading_blank_then_native",
+    "category": "xlsx-native-cells",
+    "covers": [
+      "read_upload",
+      "xlsx",
+      "date"
+    ],
+    "sha256": "ba2bf920998e88bd3548e7a69b1591ec373928ade7e94218c330312136038d24"
+  },
+  {
+    "id": "s363",
+    "script": "s363_xlsx_cells_r_leading_blank_then_native.py",
+    "name": "xlsx_cells_r_leading_blank_then_native",
+    "category": "xlsx-native-cells",
+    "covers": [
+      "read_upload",
+      "xlsx",
+      "date"
+    ],
+    "sha256": "f369795f66d000372256ba94e646157b017c45849513062eaac10db3f9ab94f2"
+  },
+  {
+    "id": "s364",
+    "script": "s364_xlsx_cells_python_literal_na.py",
+    "name": "xlsx_cells_python_literal_NA",
+    "category": "xlsx-native-cells",
+    "covers": [
+      "read_upload",
+      "xlsx",
+      "date"
+    ],
+    "sha256": "f8785cb08f5fd70837ea15d048ca93f9cb2150ae06b03f62393d86a66075a96e"
+  },
+  {
+    "id": "s365",
+    "script": "s365_xlsx_cells_r_literal_na.py",
+    "name": "xlsx_cells_r_literal_NA",
+    "category": "xlsx-native-cells",
+    "covers": [
+      "read_upload",
+      "xlsx",
+      "date"
+    ],
+    "sha256": "59b58bf803567635ecddd96dc44b2fd4cbd4b981134d193087afc9074a5310ea"
+  },
+  {
+    "id": "s366",
+    "script": "s366_xlsx_cells_python_iso_and_native.py",
+    "name": "xlsx_cells_python_iso_and_native",
+    "category": "xlsx-native-cells",
+    "covers": [
+      "read_upload",
+      "xlsx",
+      "date"
+    ],
+    "sha256": "df89e04c5d695d4f9c254f5d4dbd6204326d1557c12de1d27c7f222bc8406867"
+  },
+  {
+    "id": "s367",
+    "script": "s367_xlsx_cells_r_iso_and_native.py",
+    "name": "xlsx_cells_r_iso_and_native",
+    "category": "xlsx-native-cells",
+    "covers": [
+      "read_upload",
+      "xlsx",
+      "date"
+    ],
+    "sha256": "03fa8805d6081ed7ac6ea0927c3545c1efb721eb39425ac639c6fbe625c5f361"
+  },
+  {
+    "id": "s368",
+    "script": "s368_native_sas7bdat_upload_python.py",
+    "name": "native_sas7bdat_upload_python",
+    "category": "native-sas7bdat",
+    "covers": [
+      "read_upload",
+      "sas7bdat",
+      "haven",
+      "pyreadstat"
+    ],
+    "sha256": "d67252451bdf89fb830bb193cccdcd9a8d32c2be1106230c850564e939c87921"
+  },
+  {
+    "id": "s369",
+    "script": "s369_native_sas7bdat_upload_r.py",
+    "name": "native_sas7bdat_upload_r",
+    "category": "native-sas7bdat",
+    "covers": [
+      "read_upload",
+      "sas7bdat",
+      "haven",
+      "pyreadstat"
+    ],
+    "sha256": "654a3699b4dd6d658e6394b15581f2b63733cffe5b1aaf8657e7e5107e4c3d05"
+  },
+  {
+    "id": "s370",
+    "script": "s370_portable_regex_literal_class_____.py",
+    "name": "portable_regex_literal_class_[+?]",
+    "category": "regex-literals",
+    "covers": [
+      "S014",
+      "portable regex character classes"
+    ],
+    "sha256": "4a9198c4f5711384796ab867d7e1f07cb5356f2b75523b1d2df69dd6e547a7ef"
+  },
+  {
+    "id": "s371",
+    "script": "s371_portable_regex_literal_class______.py",
+    "name": "portable_regex_literal_class_[(?=]",
+    "category": "regex-literals",
+    "covers": [
+      "S014",
+      "portable regex character classes"
+    ],
+    "sha256": "6d56c0c29cd66d93edc071d19c231b788c167189cac13093b0788a8d5c6fad31"
+  },
+  {
+    "id": "s372",
+    "script": "s372_schema_fractional_max_length.py",
+    "name": "schema_fractional_max_length",
+    "category": "schema-precision",
+    "covers": [
+      "sas_validate",
+      "JSON Schema",
+      "precision"
+    ],
+    "sha256": "5cbc2ad6e556d5338a697d139cfea701b4cc5d873537139a29561ab45aef20b1"
+  },
+  {
+    "id": "s373",
+    "script": "s373_unicode_module_id_parity.py",
+    "name": "unicode_module_id_parity",
+    "category": "app",
+    "covers": [
+      "default_module_id",
+      "Unicode"
+    ],
+    "sha256": "c049bc7489c9361eb0979fc5baf00b74362d4db67556ff70318cfe25d4d239be"
+  },
+  {
+    "id": "s374",
+    "script": "s374_timeout_generation_reuse.py",
+    "name": "timeout_generation_reuse",
+    "category": "engine-lifecycle",
+    "covers": [
+      "SaspyEngine.run",
+      "timeout generation",
+      "close"
+    ],
+    "sha256": "688d7f80cc250edd6f53a6a12aba8902aa868dc9013fa22ee6e9a55231a7edd8"
+  },
+  {
+    "id": "s375",
+    "script": "s375_raster_mapping_python_color.py",
+    "name": "raster_mapping_python_color",
+    "category": "chart-mapping-semantics",
+    "covers": [
+      "render_chart",
+      "matplotlib",
+      "color"
+    ],
+    "sha256": "5f4071aae3898ccdc77f8999cd42f74106816719b371fc3dfb63cccd12a73ab5"
+  },
+  {
+    "id": "s376",
+    "script": "s376_raster_mapping_python_fill.py",
+    "name": "raster_mapping_python_fill",
+    "category": "chart-mapping-semantics",
+    "covers": [
+      "render_chart",
+      "matplotlib",
+      "fill"
+    ],
+    "sha256": "d51f2a643e3fad83bc6024ff220f03c08650da5fe46df81a4a9e981c6f2a1279"
+  },
+  {
+    "id": "s377",
+    "script": "s377_raster_mapping_python_facet.py",
+    "name": "raster_mapping_python_facet",
+    "category": "chart-mapping-semantics",
+    "covers": [
+      "render_chart",
+      "matplotlib",
+      "facet"
+    ],
+    "sha256": "cfc217a9c75da0261336f51de865b60fe7b09e7df94a4a3e90c8dd8e7d6475d5"
+  },
+  {
+    "id": "s378",
+    "script": "s378_raster_mapping_r_color.py",
+    "name": "raster_mapping_r_color",
+    "category": "chart-mapping-semantics",
+    "covers": [
+      "render_chart",
+      "base",
+      "color"
+    ],
+    "sha256": "a53f8a51474999cd6a1ef3a8c1efc52bcfebfbeedcdc37c26c7914d9fbff7f67"
+  },
+  {
+    "id": "s379",
+    "script": "s379_raster_mapping_r_fill.py",
+    "name": "raster_mapping_r_fill",
+    "category": "chart-mapping-semantics",
+    "covers": [
+      "render_chart",
+      "base",
+      "fill"
+    ],
+    "sha256": "a76f6531cd928470345962ed05f99ceb43eab3ded31aef403c4a123c42ccacb2"
+  },
+  {
+    "id": "s380",
+    "script": "s380_raster_mapping_r_facet.py",
+    "name": "raster_mapping_r_facet",
+    "category": "chart-mapping-semantics",
+    "covers": [
+      "render_chart",
+      "base",
+      "facet"
+    ],
+    "sha256": "a7439ee8a26f8459f9f61b416d9bad6598acf1cf99b9beac9d6b2944274e02b0"
+  },
+  {
+    "id": "s381",
+    "script": "s381_app_helper_real_server_python.py",
+    "name": "app_helper_real_server_python",
+    "category": "app-live-server",
+    "covers": [
+      "app.server",
+      "sas_app server",
+      "file_sha256"
+    ],
+    "sha256": "5ad8c4f633af08be70881c8030db0daff3b21f072b365f37e145e114d98a0faa"
+  },
+  {
+    "id": "s382",
+    "script": "s382_app_helper_real_server_r.py",
+    "name": "app_helper_real_server_r",
+    "category": "app-live-server",
+    "covers": [
+      "app.server",
+      "sas_app server",
+      "file_sha256"
+    ],
+    "sha256": "75cb381244519d8fc5543c642e018d22faf7e1badb922daa65cbeca367683275"
+  }
+]

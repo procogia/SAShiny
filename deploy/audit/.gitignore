@@ -1,0 +1,6 @@
+# Audit run results (never committed).
+results/
+*.jsonl
+*-summary.json
+__pycache__/
+*.pyc

@@ -1,0 +1,12 @@
+"""Audit 227: status_line_end_'\r\n'. Category: run-status."""
+from client import *
+
+body = {'log': 'NOTE: hi\r\nERROR: bad\r\nNOTE: SASHINY-END run=audit syscc=0\r\n'}
+failures = []
+for language in ('python', 'r'):
+    try:
+        got = value(language, 'status', body)
+        assert got['status']=='error',got
+    except AssertionError as exc:
+        failures.append((language, str(exc)))
+assert not failures, failures

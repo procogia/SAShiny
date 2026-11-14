@@ -1,0 +1,55 @@
+# SAShiny audit client image (Igor's two-VM audit, containerized).
+#
+# Installs the client-side dependencies (httpx, websockets, pillow, pytest,
+# playwright + chromium) and the audit harness, then runs the 382-script suite
+# against the server container over the compose network.
+#
+# Build from the repository root:
+#   docker build -f deploy/audit/Dockerfile.client -t sashiny-audit-client .
+
+FROM python:3.12-slim
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
+    PLAYWRIGHT_BROWSERS_PATH=/tmp/browsers
+
+# Playwright's chromium needs system libraries.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        curl \
+        ca-certificates \
+        libglib2.0-0 \
+        libnss3 \
+        libnspr4 \
+        libatk1.0-0 \
+        libatk-bridge2.0-0 \
+        libcups2 \
+        libdrm2 \
+        libxkbcommon0 \
+        libxcomposite1 \
+        libxdamage1 \
+        libxfixes3 \
+        libxrandr2 \
+        libgbm1 \
+        libasound2 \
+        libpango-1.0-0 \
+        libcairo2 \
+    && rm -rf /var/lib/apt/lists/*
+
+# uv (Python package manager).
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:${PATH}"
+
+# --- Harness ----------------------------------------------------------------
+WORKDIR /tmp/audit
+COPY deploy/audit /tmp/audit
+
+# Client dependencies + chromium.
+RUN uv venv /tmp/client-env \
+ && uv pip install --python /tmp/client-env/bin/python httpx websockets pillow pytest playwright \
+ && PLAYWRIGHT_BROWSERS_PATH=/tmp/browsers /tmp/client-env/bin/python -m playwright install chromium --with-deps
+
+# --- Runtime ----------------------------------------------------------------
+# The server host is injected via AUDIT_API / AUDIT_*_SHINY (compose service
+# name "server"). Run the full suite; the runner writes a per-case ledger.
+CMD ["sh", "-c", "/tmp/client-env/bin/python run_suite.py --label docker"]
