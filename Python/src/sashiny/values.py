@@ -219,10 +219,13 @@ def _render_one(  # noqa: PLR0911, PLR0912
         items = [raw] if kind == "date" else raw
         if kind == "daterange" and (not isinstance(raw, list) or len(raw) != 2):  # noqa: PLR2004
             return Issue("V002", iid), []
+        # Type-check every element before any date validation (spec §4): a
+        # non-string element is V002, never V009, even if another element is a
+        # malformed date.
+        if any(not isinstance(it, str) for it in items):
+            return Issue("V002", iid), []
         dates: list[date] = []
         for it in items:
-            if not isinstance(it, str):
-                return Issue("V002", iid), []
             try:
                 if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", it):
                     raise ValueError

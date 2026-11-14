@@ -24,8 +24,14 @@ _SYMPUT = re.compile(
     re.IGNORECASE,
 )
 
-# A `%symexist(NAME)` guard reference.
-_SYMEXIST = re.compile(r"%symexist\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)", re.IGNORECASE)
+# A `%if not %symexist(NAME) %then %do;` guard opening (NAME captured).
+_GUARD_OPEN = re.compile(
+    r"%if\s+not\s+%symexist\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)\s*%then\s*%do\s*;",
+    re.IGNORECASE,
+)
+
+# A `%end;` closing a guard block.
+_GUARD_CLOSE = re.compile(r"%end\s*;", re.IGNORECASE)
 
 
 def _macro_reference(name: str) -> re.Pattern[str]:
@@ -43,9 +49,32 @@ def _assigned_names(program_text: str) -> set[str]:
     return names
 
 
-def _guarded_names(program_text: str) -> set[str]:
-    """Upper-cased macro names referenced by a ``%symexist`` guard."""
-    return {m.group(1).upper() for m in _SYMEXIST.finditer(program_text)}
+def _assignment_positions(program_text: str) -> list[tuple[str, int]]:
+    """Return ``(upper_name, start_offset)`` for every macro assignment."""
+    out: list[tuple[str, int]] = []
+    for m in _LET.finditer(program_text):
+        out.append((m.group(1).upper(), m.start()))
+    for m in _SYMPUT.finditer(program_text):
+        out.append((m.group(1).upper(), m.start()))
+    return out
+
+
+def _guard_ranges(program_text: str) -> list[tuple[str, int, int]]:
+    """Return ``(upper_name, start, end)`` for each ``%if not %symexist`` guard.
+
+    The guard is matched from its ``%if not %symexist(NAME) %then %do;`` opening
+    to the next ``%end;``. Nested guards are not tracked (SAS open-code guards
+    are flat in practice); a conservative miss is preferred over a false
+    negative, so an unmatched opening is ignored.
+    """
+    out: list[tuple[str, int, int]] = []
+    for m in _GUARD_OPEN.finditer(program_text):
+        name = m.group(1).upper()
+        close = _GUARD_CLOSE.search(program_text, m.end())
+        if close is None:
+            continue
+        out.append((name, m.start(), close.end()))
+    return out
 
 
 def _dataset_targets(data: dict[str, Any]) -> set[str]:
@@ -70,19 +99,34 @@ def _lint_l001(
     text: str,
     injected: list[str],
     assigned: set[str],
-    guarded: set[str],
 ) -> list[Issue]:
-    """Return L001 findings: injected macro assigned outside a %symexist guard."""
+    """Return L001 findings: injected macro assigned outside a %symexist guard.
+
+    The guard exemption applies only to assignments *inside* a
+    ``%if not %symexist(NAME) %then %do; ... %end;`` block for that macro
+    (spec §10). A later assignment to the same macro outside any guard is still
+    L001.
+    """
     out: list[Issue] = []
+    positions = _assignment_positions(text)
+    guards = _guard_ranges(text)
     for name in injected:
-        if name in assigned and name not in guarded:
-            out.append(
-                Issue(
-                    "L001",
-                    f"/inputs/{_input_id_for_macro(data, name)}",
-                    f"macro {name} is assigned in the program outside a %symexist guard",
+        if name not in assigned:
+            continue
+        # An assignment is exempt only if it sits inside a guard for this macro.
+        for assigned_name, pos in positions:
+            if assigned_name != name:
+                continue
+            inside = any(gname == name and gstart <= pos < gend for gname, gstart, gend in guards)
+            if not inside:
+                out.append(
+                    Issue(
+                        "L001",
+                        f"/inputs/{_input_id_for_macro(data, name)}",
+                        f"macro {name} is assigned in the program outside a %symexist guard",
+                    )
                 )
-            )
+                break
     return out
 
 
@@ -172,10 +216,9 @@ def lint(data: dict[str, Any], program_text: str) -> list[Issue]:
     text = program_text or ""
     injected = all_macro_names(data)
     assigned = _assigned_names(text)
-    guarded = _guarded_names(text)
 
     issues: list[Issue] = []
-    issues.extend(_lint_l001(data, text, injected, assigned, guarded))
+    issues.extend(_lint_l001(data, text, injected, assigned))
     issues.extend(_lint_l002(data, text, injected))
     issues.extend(_lint_l003(data, text))
     issues.extend(_lint_l004(data))

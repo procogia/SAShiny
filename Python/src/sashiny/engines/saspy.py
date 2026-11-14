@@ -212,7 +212,9 @@ def classify_log(log: str) -> dict[str, int]:
 
 def run_status(log: str, run_id: str = "fixture") -> tuple[str, int | None]:
     """Determine run status from the log (spec §6.5)."""
-    m = re.search(rf"SASHINY-END run={re.escape(run_id)} syscc=(\d+)", log)
+    # Anchor to an executed NOTE sentinel line, not a numbered source echo: the
+    # line must start with "NOTE: SASHINY-END run=<id> syscc=<n>".
+    m = re.search(rf"^NOTE: SASHINY-END run={re.escape(run_id)} syscc=(\d+)$", log, re.MULTILINE)
     if not m:
         return "error", None
     syscc = int(m.group(1))
@@ -366,12 +368,17 @@ class SaspyEngine(Engine):
         self._sas_version_text: str | None = None
         self._tmp: tempfile.TemporaryDirectory[str] | None = None
         self._choices: dict[tuple[str, str], list[dict[str, str]]] = {}
-        self._cancelled = False
+        self._generation = 0
+        self._run_generation = threading.local()
 
     # ------------------------------------------------------------------ session
 
     def _session(self) -> Any:
-        if self._cancelled:
+        # A timed-out run's worker must never open or reuse a session that a
+        # newer run owns (spec ?6.5). Each run carries an immutable generation;
+        # once the engine has moved on, the stale worker raises instead.
+        generation = getattr(self._run_generation, "value", None)
+        if generation is not None and generation != self._generation:
             raise RuntimeError("run was cancelled (timeout)")
         if self._sas is None:
             if self._factory is not None:
@@ -419,20 +426,36 @@ class SaspyEngine(Engine):
             self._tmp.cleanup()
             self._tmp = None
 
-    def _discard_session(self) -> None:
+    def _discard_session(self, background: bool = False) -> None:
         """Close the current session (if any) and forget it.
 
         Used when a run fails or times out: the session must be ended before the
-        reference is lost, otherwise it leaks (spec §6.5).
+        reference is lost, otherwise it leaks (spec ?6.5). Session-scoped caches
+        are invalid once the session is gone (spec ?6.4 reads choices once per
+        session); a replacement session must re-query them.
+
+        ``background`` runs ``endsas()`` on a daemon thread so a blocking teardown
+        cannot extend the whole-run deadline (spec ?6.5); the caller returns
+        promptly and the session is closed asynchronously.
         """
         sas = self._sas
         self._sas = None
+        self._choices.clear()
+        self._sas_version_text = None
         if sas is not None:
-            with suppress(Exception):
-                sas.endsas()
+            if background:
+
+                def _end() -> None:
+                    with suppress(Exception):
+                        sas.endsas()
+
+                threading.Thread(target=_end, name="sashiny-endsas", daemon=True).start()
+            else:
+                with suppress(Exception):
+                    sas.endsas()
 
     def choices(self, contract: Contract) -> dict[str, list[dict[str, str]]]:
-        """Read ``choices_from`` choices once per session and contract (spec §6.4)."""
+        """Read ``choices_from`` choices once per session and contract (spec ?6.4)."""
         out: dict[str, list[dict[str, str]]] = {}
         tag = contract_sha256(contract) or str(contract.base_dir)
         for iid, spec in (contract.data.get("inputs") or {}).items():
@@ -481,9 +504,11 @@ class SaspyEngine(Engine):
         # enforce the whole-run deadline (spec §2.3, §6.5). On timeout the session
         # is aborted and the pool discards it.
         box: dict[str, Result] = {}
-        self._cancelled = False
+        self._generation += 1
+        generation = self._generation
 
         def work() -> None:
+            self._run_generation.value = generation
             try:
                 box["result"] = self._run(contract, values, today, uploads, run_id, started)
             except Exception as exc:  # reported on the result, never raised
@@ -495,8 +520,10 @@ class SaspyEngine(Engine):
         thread.start()
         thread.join(timeout)
         if thread.is_alive():
-            self._cancelled = True
-            self._discard_session()
+            # Invalidate the stale worker's generation so it can never open or
+            # reuse a session owned by a later run (spec ?6.5).
+            self._generation += 1
+            self._discard_session(background=True)
             result = Result.new(run_id, "error", engine=self.name, engine_version=self.version)
             result.metadata["engine_error"] = f"run exceeded timeout_seconds={timeout:g}"
             return result

@@ -195,44 +195,119 @@ def _render_matplotlib(value: ChartValue, spec: ChartSpec) -> Any:
     kind = spec["kind"]
     x = spec["x"]
     y = spec.get("y")
-    xs = _plot_series(value, x)
-    ys = _plot_series(value, y) if y is not None else None
+    color = spec.get("color")
+    fill = spec.get("fill")
+    facet = spec.get("facet")
 
-    # A Figure created directly (not through pyplot) is not tracked by pyplot's
-    # global figure manager, so a long-running Shiny server does not leak it.
+    # Facet: one subplot per distinct facet value (spec §8.5).
+    if facet is not None:
+        groups = _group_by(value, facet)
+        fig = Figure()
+        axes = fig.subplots(1, len(groups), squeeze=False)[0]
+        for ax, (label, idx) in zip(axes, groups, strict=True):
+            subset = _subset_rows(value, idx)
+            _draw_matplotlib(ax, kind, x, y, color, fill, subset)
+            ax.set_title(str(label))
+        if "title" in spec:
+            fig.suptitle(spec["title"])
+        return fig
+
     fig = Figure()
     ax = fig.subplots()
+    _draw_matplotlib(ax, kind, x, y, color, fill, value)
+    if "title" in spec:
+        ax.set_title(spec["title"])
+    if "subtitle" in spec:
+        fig.text(0.5, 0.01, spec["subtitle"], ha="center")
+    return fig
+
+
+def _draw_matplotlib(  # noqa: PLR0912, PLR0913, PLR0917 - one branch per chart kind
+    ax: Any,
+    kind: str,
+    x: str,
+    y: str | None,
+    color: str | None,
+    fill: str | None,
+    value: ChartValue,
+) -> None:
+    """Draw one chart kind on ``ax``, honouring ``color``/``fill`` groupings."""
+    xs = _plot_series(value, x)
+    ys = _plot_series(value, y) if y is not None else None
+    xlab = str(x)
+    ylab = str(y) if y is not None else ""
+
+    def groups(column: str) -> list[tuple[str, list[int]]]:
+        return [(label, idx) for label, idx in _group_by(value, column)]
+
     if kind == "scatter":
         assert ys is not None  # noqa: S101 - scatter requires y (spec §8.5)
-        ax.scatter(xs, ys)
+        if color is not None:
+            for label, idx in groups(color):
+                ax.scatter([xs[i] for i in idx], [ys[i] for i in idx], label=str(label))
+            ax.legend()
+        else:
+            ax.scatter(xs, ys)
     elif kind == "line":
         assert ys is not None  # noqa: S101 - line requires y (spec §8.5)
-        ax.plot(xs, ys)
+        if color is not None:
+            for label, idx in groups(color):
+                ax.plot([xs[i] for i in idx], [ys[i] for i in idx], label=str(label))
+            ax.legend()
+        else:
+            ax.plot(xs, ys)
     elif kind == "bar":
         assert ys is not None  # noqa: S101 - bar requires y (spec §8.5)
-        ax.bar([str(v) for v in xs], ys)
+        if fill is not None:
+            for label, idx in groups(fill):
+                ax.bar([str(xs[i]) for i in idx], [ys[i] for i in idx], label=str(label))
+            ax.legend()
+        else:
+            ax.bar([str(v) for v in xs], ys)
     elif kind == "histogram":
         ax.hist([v for v in xs if not _missing(v)])
     elif ys is None:
         ax.boxplot([v for v in xs if not _missing(v)])
+    elif color is not None:
+        for label, idx in groups(color):
+            ax.boxplot(
+                [ys[i] for i in idx if not _missing(ys[i])],
+                positions=[len(ax.get_xticks()) + 1],
+                labels=[str(label)],
+            )
     else:
-        groups = sorted({str(v) for v in xs})
+        groups_ = sorted({str(v) for v in xs})
         ax.boxplot(
             [
                 [b for a, b in zip(xs, ys, strict=True) if str(a) == g and not _missing(b)]
-                for g in groups
+                for g in groups_
             ]
         )
-        ax.set_xticks(range(1, len(groups) + 1), groups)
-
-    if "title" in spec:
-        ax.set_title(spec["title"])
-    ax.set_xlabel(str(spec.get("xlab", x)))
+        ax.set_xticks(range(1, len(groups_) + 1), groups_)
+    ax.set_xlabel(xlab)
     if y is not None:
-        ax.set_ylabel(str(spec.get("ylab", y)))
-    if "subtitle" in spec:
-        fig.text(0.5, 0.01, spec["subtitle"], ha="center")
-    return fig
+        ax.set_ylabel(ylab)
+
+
+def _group_by(value: ChartValue, column: str) -> list[tuple[str, list[int]]]:
+    """Return ``(label, row_indices)`` groups in first-seen order for ``column``."""
+    idx = _column_index(value, column)
+    order: list[str] = []
+    seen: set[str] = set()
+    buckets: dict[str, list[int]] = {}
+    for i, row in enumerate(value.get("rows", [])):
+        label = str(row[idx])
+        if label not in seen:
+            seen.add(label)
+            order.append(label)
+        buckets.setdefault(label, []).append(i)
+    return [(label, buckets[label]) for label in order]
+
+
+def _subset_rows(value: ChartValue, idx: list[int]) -> ChartValue:
+    """Return a copy of ``value`` restricted to the given row indices."""
+    rows = value.get("rows", [])
+    return {**value, "rows": [rows[i] for i in idx]}
 
 
 def _missing(v: Any) -> bool:
@@ -257,6 +332,10 @@ def _render_plotly(value: ChartValue, spec: ChartSpec) -> Any:
         kwargs["color"] = spec["color"]
     if spec.get("facet") is not None:
         kwargs["facet_col"] = spec["facet"]
+    # plotly.express bar honours `color` as a fill/grouping; map the declarative
+    # `fill` field to `color` so a bar chart is grouped and filled by it.
+    if spec.get("fill") is not None:
+        kwargs["color"] = spec["fill"]
     labels = {}
     if "xlab" in spec:
         labels[spec["x"]] = spec["xlab"]

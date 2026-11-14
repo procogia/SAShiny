@@ -19,7 +19,7 @@ from typing import Any
 from ..contract import Contract
 from ..recording import contract_sha256, key_for, load_recording, program_sha256
 from ..result import Result
-from ..upload import UploadError, _check_file, resolve_upload
+from ..upload import UploadError, UploadFile, _check_file, read_upload, resolve_upload
 from ..values import render_values
 from .base import Engine
 
@@ -119,6 +119,12 @@ class MockEngine(Engine):
             return result
         try:
             files = resolve_files(contract, uploads)
+            # Run the full §7 conversion for every supplied dataset input, exactly
+            # like the live engine, so a missing declared column, an unparseable
+            # cell or an unreadable file is reported as V014 offline (spec §6.1
+            # step 2 / §7).
+            for iid, path in files.items():
+                read_upload(UploadFile(path=path, name=path.name), contract.data["inputs"][iid])
         except UploadError as exc:
             result = Result.new(run_id, "error", **base)
             result.metadata["issues"] = [{"code": "V014", "message": str(exc)}]

@@ -8,6 +8,7 @@ out, and enforces ``min``/``max``/``idle_timeout`` bounds. It works against any
 
 from __future__ import annotations
 
+import math
 import threading
 import time
 import uuid
@@ -91,6 +92,12 @@ class Pool(Engine):
             raise ValueError("min_size and max_size must be non-negative")
         if min_size > max_size:
             raise ValueError("min_size must not exceed max_size")
+        # Session counts are discrete: a fractional maximum would admit one more
+        # session than configured (spec §6.5 bounds the pool).
+        if not isinstance(min_size, int) or not isinstance(max_size, int):
+            raise ValueError("min_size and max_size must be whole numbers")
+        if not math.isfinite(acquire_timeout) or acquire_timeout < 0:
+            raise ValueError("acquire_timeout must be a non-negative finite number")
         self.min_size = min_size
         self.max_size = max_size
         self.idle_timeout = idle_timeout
@@ -98,6 +105,7 @@ class Pool(Engine):
         self.acquire_timeout = acquire_timeout
         self._sessions: list[PoolSession] = []
         self._cond = threading.Condition()
+        self._closed = False
         self._top_up()
 
     def _new_session(self) -> PoolSession:
@@ -108,6 +116,8 @@ class Pool(Engine):
     def _top_up(self) -> None:
         """Create sessions until the warm minimum `min_size` is met."""
         with self._cond:
+            if self._closed:
+                return
             while len(self._sessions) < self.min_size:
                 session = self._new_session()
                 self._sessions.append(session)
@@ -131,8 +141,9 @@ class Pool(Engine):
             self._release(session, discard=False)
 
     def close(self) -> None:
-        """Close every pooled session."""
+        """Close every pooled session and stop creating new ones."""
         with self._cond:
+            self._closed = True
             sessions, self._sessions = self._sessions, []
         for s in sessions:
             self._close(s)
@@ -141,6 +152,8 @@ class Pool(Engine):
         deadline = time.monotonic() + self.acquire_timeout
         with self._cond:
             while True:
+                if self._closed:
+                    raise PoolExhausted("pool closed")
                 now = time.monotonic()
                 # Reap idle sessions past the timeout.
                 idle = [

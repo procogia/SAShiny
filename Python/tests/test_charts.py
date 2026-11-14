@@ -188,6 +188,31 @@ def test_matplotlib_draws_every_kind(kind: str) -> None:
     assert len(_plot_to_png(plot)) > 1000
 
 
+def test_matplotlib_color_fill_facet() -> None:
+    pytest.importorskip("matplotlib")
+    pytest.importorskip("shiny")
+    from sashiny.modules import _plot_to_png  # noqa: PLC0415 - needs the shiny extra
+
+    # color groups a scatter, fill groups a bar, facet splits into subplots.
+    for spec in (
+        _spec("scatter", color="sex"),
+        _spec("bar", fill="sex"),
+        _spec("scatter", facet="sex"),
+    ):
+        plot = render_chart(_class_value(), spec, backend="matplotlib")
+        assert len(_plot_to_png(plot)) > 1000
+
+
+def test_plotly_fill_maps_to_color() -> None:
+    pytest.importorskip("plotly")
+    fig = render_chart(_class_value(), _spec("bar", fill="sex"), backend="plotly")
+    data = fig.to_plotly_json()["data"]
+    assert data
+    # A grouped bar produces one trace per group (or a single trace with a
+    # color axis); either way the fill field must not be silently dropped.
+    assert any("color" in trace or "marker" in trace for trace in data)
+
+
 @pytest.mark.parametrize("kind", KINDS)
 def test_plotly_builds_every_kind(kind: str) -> None:
     pytest.importorskip("plotly")

@@ -52,6 +52,45 @@ def test_l001_ignores_symexist_guard() -> None:
     assert "L001" not in _codes(issues)
 
 
+def test_l001_guard_does_not_exempt_other_macro() -> None:
+    # Issue #78: a %symexist guard for one macro must not exempt an assignment
+    # to a different injected macro.
+    data = _data(
+        inputs={
+            "min_msrp": {"type": "numeric", "label": "Min MSRP"},
+            "ratio": {"type": "numeric", "label": "Ratio"},
+        }
+    )
+    program = (
+        "%if not %symexist(MIN_MSRP) %then %do;\n"
+        "  %let MIN_MSRP = 5;\n"
+        "%end;\n"
+        "%let RATIO = 0.5;\n"
+        "proc print data=sashelp.class; run;"
+    )
+    issues = sashiny.lint(data, program)
+    codes = _codes(issues)
+    assert "L001" in codes
+    # Only RATIO is flagged; MIN_MSRP is inside its guard.
+    l001 = [i for i in issues if i.code == "L001"]
+    assert len(l001) == 1
+    assert "RATIO" in l001[0].message
+
+
+def test_l001_flags_later_assignment_outside_guard() -> None:
+    # Issue #78: a later assignment to the same macro outside any guard is L001.
+    data = _data()
+    program = (
+        "%if not %symexist(MIN_MSRP) %then %do;\n"
+        "  %let MIN_MSRP = 5;\n"
+        "%end;\n"
+        "%let MIN_MSRP = 10;\n"
+        "proc print data=sashelp.class; run;"
+    )
+    issues = sashiny.lint(data, program)
+    assert "L001" in _codes(issues)
+
+
 def test_l001_flags_call_symput() -> None:
     data = _data()
     program = "data _null_; call symputx('MIN_MSRP', '5'); run;"

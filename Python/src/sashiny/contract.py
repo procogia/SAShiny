@@ -222,8 +222,12 @@ def _is_int(x: Any) -> bool:
 
 
 def _check_regex(pattern: str) -> str | None:
+    # Forbidden constructs are only meaningful outside character classes: a
+    # literal `+?` or `(?=` inside `[...]` is not a quantifier or look-around
+    # (spec §3.3). Mask class contents before scanning, mirroring _has_anchor.
+    outside = _outside_class(pattern)
     for rx, what in _FORBIDDEN_REGEX:
-        if rx.search(pattern):
+        if rx.search(outside):
             return what
     if _has_anchor(pattern):
         return "anchor"
@@ -232,6 +236,39 @@ def _check_regex(pattern: str) -> str | None:
     except re.error as exc:
         return f"does not compile: {exc}"
     return None
+
+
+def _outside_class(pattern: str) -> str:
+    r"""Return ``pattern`` with the contents of every ``[...]`` replaced by spaces.
+
+    Escaped characters are kept so ``\\[`` (a literal bracket) is not mistaken
+    for a class opener. The result is used only to scan for forbidden
+    constructs, so its exact characters do not matter.
+    """
+    out: list[str] = []
+    in_class = False
+    i = 0
+    n = len(pattern)
+    while i < n:
+        ch = pattern[i]
+        if ch == "\\" and i + 1 < n:
+            out.append(ch)
+            out.append(pattern[i + 1])
+            i += 2
+            continue
+        if ch == "[":
+            in_class = True
+            out.append(" ")
+            i += 1
+            continue
+        if ch == "]" and in_class:
+            in_class = False
+            out.append(" ")
+            i += 1
+            continue
+        out.append(" " if in_class else ch)
+        i += 1
+    return "".join(out)
 
 
 # --------------------------------------------------------------------------- semantic layer
@@ -266,11 +303,12 @@ def _semantic(contract: Contract, today: date) -> list[Issue]:  # noqa: PLR0912,
         if kind == "numeric" and "min" in spec and "max" in spec and spec["min"] > spec["max"]:
             issues.append(Issue("S003", p, "min > max"))
         if kind in ("date", "daterange") and ("min" in spec or "max" in spec):
-            lo = _resolve_bound(spec.get("min"), today)
-            hi = _resolve_bound(spec.get("max"), today)
-            if lo is None or hi is None:
+            lo = _resolve_bound(spec.get("min"), today) if "min" in spec else None
+            hi = _resolve_bound(spec.get("max"), today) if "max" in spec else None
+            # A one-sided bound is valid; only a present-but-invalid bound is S003.
+            if ("min" in spec and lo is None) or ("max" in spec and hi is None):
                 issues.append(Issue("S003", p, "invalid date bound"))
-            elif lo > hi:
+            elif lo is not None and hi is not None and lo > hi:
                 issues.append(Issue("S003", p, "min > max"))
         # S005
         vals = choice_values(spec)
@@ -307,6 +345,14 @@ def _semantic(contract: Contract, today: date) -> list[Issue]:  # noqa: PLR0912,
             names = [c["name"].upper() for c in spec["columns"]]
             if len(set(names)) != len(names):
                 issues.append(Issue("S016", f"{p}/columns", "duplicate column names"))
+        # S017 (generated component ids)
+        if (
+            iid in ("run", "status", "log")
+            or iid.startswith("out_")
+            or iid.startswith("dl_")
+            or iid.endswith("__sample")
+        ):
+            issues.append(Issue("S017", p, "id collides with a generated id"))
         # S013 (sample)
         if (
             kind == "dataset"

@@ -81,6 +81,8 @@ def wrapper_code(
     tail: list[str] = []
     run = data.get("run") or {}
     if run.get("entry") == "macro":
+        # With no macro variables the call is `%<MACRO>();` (spec §6.3). An empty
+        # join would otherwise emit `%<MACRO>(=%bquote(&));`.
         args = ", ".join(f"{n}=%bquote(&{n})" for n in macros)
         tail.append(f"%{run['macro']}({args});")
     tail.append("%put NOTE: SASHINY-END-PROGRAM;")

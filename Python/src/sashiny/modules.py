@@ -18,14 +18,14 @@ from pathlib import Path
 from typing import Any
 
 from htmltools import HTMLDependency
-from shiny import Inputs, Outputs, Session, module, reactive, ui
+from shiny import Inputs, Outputs, Session, module, reactive, req, ui
 from shiny import render as shiny_render
 from shiny.ui import TagChild
 
 from .contract import Contract
 from .engines import Engine
 from .result import Result
-from .upload import UploadFile
+from .upload import UploadError, UploadFile
 
 logger = logging.getLogger(__name__)
 
@@ -150,7 +150,12 @@ def shiny_values(
         if kind == "dataset":
             if raw:
                 info = raw[0]
-                uploads[iid] = UploadFile(path=Path(info["datapath"]), name=info["name"])
+                upload = UploadFile(path=Path(info["datapath"]), name=info["name"])
+                # Enforce max_size_mb when the file is received (spec §7), not
+                # only later in read_upload, so an oversized upload is refused
+                # before any SAS work (issue #54).
+                _check_upload_size(upload, spec)
+                uploads[iid] = upload
             elif "sample" in spec and read(f"{iid}{SAMPLE_SUFFIX}"):
                 uploads[iid] = True
             continue
@@ -168,6 +173,20 @@ def shiny_values(
         else:
             values[iid] = raw
     return values, uploads
+
+
+def _check_upload_size(upload: UploadFile, spec: dict[str, Any]) -> None:
+    """Reject an upload over ``max_size_mb`` when it is received (spec §7).
+
+    A missing file is left to ``read_upload``'s ``_check_file`` (which reports
+    ``file not found`` as V014); only an existing file's size is checked here.
+    """
+    if not upload.path.is_file():
+        return
+    limit = spec.get("max_size_mb", 50)
+    size_mb = upload.path.stat().st_size / (1024 * 1024)
+    if size_mb > limit:
+        raise UploadError(f"{upload.name} is {size_mb:.1f} MB (limit {limit} MB)")
 
 
 def _status_text(result: Result) -> str:
@@ -558,30 +577,27 @@ def _register_card(  # noqa: PLR0913, PLR0917 - Shiny render callback + running 
 
 
 def _register_download(output: Outputs, oid: str, result: Callable[[], Result | None]) -> None:
-    def _value() -> dict[str, str] | None:
-        # Return None (not a `req()` SilentException) when there is no result or
-        # no download value yet, so the download handler returns an empty body
-        # instead of an HTTP 500 + traceback (issue #51; R returns 404).
+    def _value() -> dict[str, str]:
+        # `req()` raises a SilentException when there is no result or no download
+        # value yet, which Shiny turns into an HTTP 404 (matching R's `shiny::req`,
+        # issue #51) instead of an HTTP 500 + traceback.
         res = result()
-        if res is None:
-            return None
+        req(res is not None)
+        assert res is not None  # req() raises on falsy; narrow for mypy
         value = res.outputs.get(oid)
-        if not (isinstance(value, dict) and "data" in value):
-            return None
+        req(isinstance(value, dict) and "data" in value)
+        assert isinstance(value, dict)  # req() raises on falsy; narrow for mypy
         return value
 
     def _filename() -> str:
-        value = _value()
-        return value["filename"] if value else ""
+        return _value()["filename"]
 
     def _media_type() -> str:
-        value = _value()
-        return value["mime"] if value else ""
+        return _value()["mime"]
 
     def _download() -> Iterator[bytes]:
         value = _value()
-        if value:
-            yield base64.b64decode(value["data"])
+        yield base64.b64decode(value["data"])
 
     # Shiny 1.9 renamed render.download to render.download_button.
     renderer = getattr(shiny_render, "download_button", None)

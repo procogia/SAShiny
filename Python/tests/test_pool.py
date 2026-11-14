@@ -171,3 +171,48 @@ def test_pool_returns_error_result_when_exhausted() -> None:
     exhausted = [r for r in results if r.status == "error"]
     assert all("pool exhausted" in r.metadata["engine_error"] for r in exhausted)
     pool.close()
+
+
+def test_pool_close_stops_creating_sessions() -> None:
+    made: list[sashiny.Engine] = []
+
+    def factory() -> sashiny.Engine:
+        engine = sashiny.MockEngine()
+        made.append(engine)
+        return engine
+
+    pool = sashiny.Pool(factory, min_size=2, max_size=4)
+    assert len(made) == 2
+    pool.close()
+    # After close, no new sessions may be created (issue #80).
+    assert len(made) == 2
+    assert pool._sessions == []
+
+
+def test_pool_run_after_close_returns_error() -> None:
+    pool = sashiny.Pool(sashiny.MockEngine(), max_size=2)
+    contract = _minimal_contract()
+    pool.close()
+    result = pool.run(contract, {}, today=TODAY)
+    assert result.status == "error"
+    assert "pool closed" in result.metadata["engine_error"]
+
+
+def test_pool_close_during_inflight_run_does_not_resurrect() -> None:
+    pool = sashiny.Pool(_SlowEngine, max_size=1, acquire_timeout=5.0)
+    contract = _minimal_contract()
+    result_holder: list[sashiny.Result] = []
+
+    def run() -> None:
+        result_holder.append(pool.run(contract, {}, today=TODAY))
+
+    t = threading.Thread(target=run)
+    t.start()
+    # Wait until the slow engine has actually started, then close the pool.
+    pool._sessions[0].engine._started.wait(timeout=5.0)
+    pool.close()
+    t.join()
+    # The in-flight run completes, but close() must not have re-created any
+    # session via _top_up/_release (issue #80).
+    assert result_holder[0].status == "success"
+    assert pool._sessions == []
