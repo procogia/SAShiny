@@ -450,34 +450,38 @@ sas_program_server <- function(id, contract, engine, server_override = NULL, ren
     # error before the first run without forcing an uninitialised eventReactive
     # (which raises a shiny.silent.error under ignoreNULL=TRUE).
     result <- shiny::reactiveVal(NULL)
-        # Run the engine off the event loop (issue #44): a slow SAS run must not
-        # block unrelated browser sessions. ExtendedTask runs the work in a
-        # background process and only the result is read back on the main thread.
-        # testServer cannot await a background process, so it runs synchronously.
-        use_extended <- shiny::isRunning() && requireNamespace("callr", quietly = TRUE)
-        if (use_extended) {
-          run_task <- shiny::ExtendedTask$new(function(contract, values, uploads) {
-            sas_engine_run(engine, contract, values, uploads = uploads)
-          })
-          shiny::observeEvent(input$run,
-            {
-              converted <- .sashiny_shiny_values(contract, function(iid) input[[iid]])
-              run_task$invoke(contract, converted$values, converted$uploads)
-            },
-            ignoreNULL = !isTRUE(settings$auto_run)
-          )
-          shiny::observeEvent(run_task$result(), {
-            result(run_task$result())
-          })
-        } else {
-          shiny::observeEvent(input$run,
-            {
-              converted <- .sashiny_shiny_values(contract, function(iid) input[[iid]])
-              result(sas_engine_run(engine, contract, converted$values, uploads = converted$uploads))
-            },
-            ignoreNULL = !isTRUE(settings$auto_run)
-          )
-        }
+    # Run the engine off the event loop (issue #44): a slow SAS run must not
+    # block unrelated browser sessions. ExtendedTask runs its function in a
+    # background process and reads the result back on the main thread. The
+    # function must return a promise, so wrap the synchronous engine call in
+    # promises::promise_resolve() (promises is a hard dependency of shiny).
+    # testServer cannot await a background process, so it runs synchronously.
+    use_extended <- shiny::isRunning() && requireNamespace("callr", quietly = TRUE)
+    if (use_extended) {
+      run_task <- shiny::ExtendedTask$new(function(contract, values, uploads) {
+        promises::promise_resolve(
+          sas_engine_run(engine, contract, values, uploads = uploads)
+        )
+      })
+      shiny::observeEvent(input$run,
+        {
+          converted <- .sashiny_shiny_values(contract, function(iid) input[[iid]])
+          run_task$invoke(contract, converted$values, converted$uploads)
+        },
+        ignoreNULL = !isTRUE(settings$auto_run)
+      )
+      shiny::observeEvent(run_task$result(), {
+        result(run_task$result())
+      })
+    } else {
+      shiny::observeEvent(input$run,
+        {
+          converted <- .sashiny_shiny_values(contract, function(iid) input[[iid]])
+          result(sas_engine_run(engine, contract, converted$values, uploads = converted$uploads))
+        },
+        ignoreNULL = !isTRUE(settings$auto_run)
+      )
+      }
 
     output$status <- shiny::renderText({
       res <- result()

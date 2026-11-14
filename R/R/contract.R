@@ -224,7 +224,9 @@ sas_validate <- function(contract, today = Sys.Date()) {
 #' not start with a letter, and truncate to 32 characters.
 #' @noRd
 .sashiny_default_module_id <- function(program) {
-  base <- basename(program)
+  # Strip the directory with a regex on the UTF-8 form, not basename(), which
+  # cannot translate a non-ASCII file name in a C/POSIX locale (issue #99).
+  base <- sub(".*[/\\\\]", "", enc2utf8(program))
   if (grepl("\\.sas$", base, ignore.case = TRUE)) {
     base <- substr(base, 1L, nchar(base) - 4L)
   }

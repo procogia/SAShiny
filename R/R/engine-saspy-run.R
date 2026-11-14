@@ -326,18 +326,20 @@ sas_engine_run.sashiny_engine_saspy <- function(engine, contract, values, today 
     cfg = engine$cfg, cfgname = engine$cfgname, record_to = engine$record_to,
     session_factory = engine$session_factory,
     contract_path = contract$path, values = values, today = today,
-    uploads = uploads, run_id = run_id, result_file = result_file
+    uploads = uploads, run_id = run_id, result_file = result_file,
+    started = started, t0 = t0
   )
   proc <- callr::r_bg(
     function(args) {
       engine <- SAShiny::sas_engine_saspy(args$cfg, cfgname = args$cfgname,
         record_to = args$record_to, session_factory = args$session_factory)
       contract <- SAShiny::sas_contract(args$contract_path)
-      # The parent enforces the deadline by killing this process, so the
-      # contract's own timeout is removed here to run synchronously.
-      contract$data$run$timeout_seconds <- NULL
-      result <- SAShiny::sas_engine_run(engine, contract, args$values,
-        today = args$today, uploads = args$uploads, run_id = args$run_id)
+      # Call the synchronous run body directly. Re-entering sas_engine_run()
+      # here would take the background branch again (a real engine has no
+      # session_factory), spawning an unbounded chain of nested processes.
+      run_sync <- utils::getFromNamespace(".sashiny_run_saspy", "SAShiny")
+      result <- run_sync(engine, contract, args$values, args$today, args$uploads,
+        args$run_id, args$started, args$t0)
       saveRDS(result, args$result_file)
       invisible(NULL)
     },

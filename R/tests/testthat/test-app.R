@@ -44,5 +44,8 @@ test_that("default module id is derived from the program file name (spec section
 })
 
 test_that("default module id lower-cases a capital dotted I to a plain i (issue #63)", {
+  # The dotted-I lower-casing relies on a UTF-8 locale; R's tolower() cannot
+  # map U+0130 to 'i' in a C/POSIX locale (issue #99).
+  skip_if_not(l10n_info()[["UTF-8"]])
   expect_identical(.sashiny_default_module_id("\u0130stanbul.sas"), "istanbul")
 })
