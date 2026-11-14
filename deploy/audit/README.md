@@ -52,6 +52,22 @@ export AUDIT_API=http://localhost:8000
 /tmp/client-env/bin/python run_suite.py --label host
 ```
 
+## The two app-helper cases (s381, s382)
+
+`s381`/`s382` drive the real app-helper server (`app_probe.py`/`app_probe.R`) on ports 8004/8005,
+which `start_server.py` does not start (they are separate processes, as in the original Daytona
+workflow). To run them, start the probes in the server container first:
+
+```sh
+docker compose -f deploy/audit/docker-compose.yml exec server sh -c \
+  '/tmp/SAShiny/Python/.venv/bin/python -m shiny run /tmp/audit/app_probe.py --host 0.0.0.0 --port 8004 &'
+docker compose -f deploy/audit/docker-compose.yml exec server sh -c \
+  'Rscript -e "shiny::runApp(\"/tmp/audit/app_probe.R\", host=\"0.0.0.0\", port=8005, launch.browser=FALSE)" &'
+```
+
+`app_wire.py` derives the probe hosts from `AUDIT_API` (Daytona preview format); for Docker, set
+`AUDIT_APP_PROBE_PYTHON`/`AUDIT_APP_PROBE_R` explicitly and adjust `app_wire.py` accordingly.
+
 ## Safety
 
 - No credentials, private datasets or authinfo files are uploaded; all inputs/outputs are synthetic.
