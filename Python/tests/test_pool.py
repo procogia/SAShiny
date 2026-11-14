@@ -216,3 +216,24 @@ def test_pool_close_during_inflight_run_does_not_resurrect() -> None:
     # session via _top_up/_release (issue #80).
     assert result_holder[0].status == "success"
     assert pool._sessions == []
+
+
+class _FactoryFailingEngine(sashiny.Engine):
+    def run(self, contract, values, *, today=None, uploads=None, run_id=None):  # type: ignore[no-untyped-def]
+        return sashiny.Result.new(run_id or "r", "success")
+
+    def close(self) -> None:
+        pass
+
+
+def test_pool_factory_failure_returns_error_result() -> None:
+    # Issue #75: a lazy engine-factory exception during acquisition must become
+    # an error Result, not escape from Pool.run.
+    def factory() -> sashiny.Engine:
+        raise RuntimeError("connection refused")
+
+    pool = sashiny.Pool(factory, min_size=0, max_size=1)
+    contract = _minimal_contract()
+    result = pool.run(contract, {}, today=TODAY)
+    assert result.status == "error"
+    assert "connection refused" in result.metadata["engine_error"]

@@ -221,6 +221,10 @@ class Pool(Engine):
             result = Result.new(run_id or str(uuid.uuid4()), "error", engine=self.name)
             result.metadata["engine_error"] = str(exc)
             return result
+        except Exception as exc:  # a lazy factory/connection failure (issue #75)
+            result = Result.new(run_id or str(uuid.uuid4()), "error", engine=self.name)
+            result.metadata["engine_error"] = f"{type(exc).__name__}: {exc}"
+            return result
         discard = False
         try:
             try:

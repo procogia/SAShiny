@@ -47,3 +47,9 @@ def test_default_module_id_derivation() -> None:
     assert sashiny.default_module_id("2nd-report.sas") == "p_2nd_report"
     assert sashiny.default_module_id("Report.SAS") == "report"
     assert sashiny.default_module_id("a" * 40 + ".sas") == "a" * 32
+
+
+def test_default_module_id_unicode_normalization() -> None:
+    # Issue #63: a capital dotted I (U+0130) must lower-case to a plain `i`,
+    # not `i` + a combining dot, so the id matches R's `tolower`.
+    assert sashiny.default_module_id("\u0130stanbul.sas") == "istanbul"

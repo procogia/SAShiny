@@ -12,6 +12,7 @@ This module is the shipped equivalent of the reference oracle
 from __future__ import annotations
 
 import re
+import unicodedata
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
@@ -192,14 +193,16 @@ def resolve_date(value: str, today: date) -> date:
 def default_module_id(program: str) -> str:
     """Derive the default module id from a program file name (spec §2).
 
-    Take the base name without the ``.sas`` extension, lower-case it, replace
-    each character outside ``[a-z0-9_]`` with ``_``, prefix ``p_`` if it does
-    not start with a letter, and truncate to 32 characters.
+    Take the base name without the ``.sas`` extension, lower-case it, remove
+    combining marks (so ``İ`` lower-cases to ``i``, not ``i`` + a combining dot),
+    replace each character outside ``[a-z0-9_]`` with ``_``, prefix ``p_`` if it
+    does not start with a letter, and truncate to 32 characters.
     """
     base = Path(program).name
     if base.lower().endswith(".sas"):
         base = base[:-4]
-    base = re.sub(r"[^a-z0-9_]", "_", base.lower())
+    base = "".join(c for c in base.lower() if not unicodedata.combining(c))
+    base = re.sub(r"[^a-z0-9_]", "_", base)
     if not base or not base[0].isalpha():
         base = "p_" + base
     return base[:32]

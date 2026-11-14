@@ -218,9 +218,10 @@ sas_validate <- function(contract, today = Sys.Date()) {
 
 #' Derive the default module id from a program file name (spec section 2).
 #'
-#' Take the base name without the `.sas` extension, lower-case it, replace each
-#' character outside `[a-z0-9_]` with `_`, prefix `p_` if it does not start with
-#' a letter, and truncate to 32 characters.
+#' Take the base name without the `.sas` extension, lower-case it, remove
+#' combining marks (so `İ` lower-cases to `i`, not `i` + a combining dot),
+#' replace each character outside `[a-z0-9_]` with `_`, prefix `p_` if it does
+#' not start with a letter, and truncate to 32 characters.
 #' @noRd
 .sashiny_default_module_id <- function(program) {
   base <- basename(program)
@@ -228,6 +229,9 @@ sas_validate <- function(contract, today = Sys.Date()) {
     base <- substr(base, 1L, nchar(base) - 4L)
   }
   base <- tolower(base)
+  # Strip combining marks (U+0300-U+036F and the other Mn/Mc/Me blocks) so a
+  # decomposed lower-case form matches Python's `unicodedata.combining` strip.
+  base <- gsub("[\u0300-\u036f\u1ab0-\u1aff\u1dc0-\u1dff\u20d0-\u20ff\ufe20-\ufe2f]", "", base, perl = TRUE)
   base <- gsub("[^a-z0-9_]", "_", base)
   if (!nzchar(base) || !grepl("^[a-z]", base)) {
     base <- paste0("p_", base)

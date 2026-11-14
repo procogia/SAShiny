@@ -113,3 +113,12 @@ test_that("pool run after close returns an error result (issue #80)", {
   expect_identical(result$status, "error")
   expect_match(result$metadata$engine_error, "pool exhausted")
 })
+
+test_that("pool factory failure returns an error result (issue #75)", {
+  pool <- sas_pool(function() stop("connection refused"), min_size = 0L, max_size = 1L)
+  contract <- sas_contract(file.path(.sashiny_fixtures(), "contracts", "valid",
+                                     "minimal", "contract.sashiny.yml"))
+  result <- sas_pool_run(pool, contract, list(), today = .sashiny_today)
+  expect_identical(result$status, "error")
+  expect_match(result$metadata$engine_error, "connection refused")
+})

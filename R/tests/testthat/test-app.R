@@ -42,3 +42,7 @@ test_that("default module id is derived from the program file name (spec section
   expect_identical(.sashiny_default_module_id("Report.SAS"), "report")
   expect_identical(.sashiny_default_module_id(paste0(strrep("a", 40), ".sas")), strrep("a", 32))
 })
+
+test_that("default module id lower-cases a capital dotted I to a plain i (issue #63)", {
+  expect_identical(.sashiny_default_module_id("\u0130stanbul.sas"), "istanbul")
+})

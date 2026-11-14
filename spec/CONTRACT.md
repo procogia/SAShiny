@@ -47,7 +47,8 @@ ui:      {...}             # optional
 
 Identifiers (`id`, input and output keys) match `^[a-z][a-z0-9_]{0,31}$` and are used directly as
 Shiny ids. The default module `id` is derived from the program file name. Take the base name without
-the `.sas` extension, lower-case it, replace each character outside `[a-z0-9_]` with `_`, prefix `p_`
+the `.sas` extension, lower-case it, remove combining marks (so `İ` lower-cases to `i`, not `i` plus a
+combining dot), replace each character outside `[a-z0-9_]` with `_`, prefix `p_`
 if it does not start with a letter, and truncate to 32 characters. Two programs that resolve to the
 same module `id` (whether explicit or derived) MUST be rejected when the app is built.
 
@@ -377,6 +378,13 @@ within the timeout, the run returns an error `Result` with `metadata.engine_erro
 The `max_size_mb` limit is enforced when the file is received, not only when it is converted: an
 upload larger than the declared limit MUST be rejected (or its storage aborted) before the whole file
 is written, so a client cannot fill server storage with a file the contract would refuse.
+
+The transport layer enforces the *largest* declared `max_size_mb` across all dataset inputs (R raises
+`shiny.maxRequestSize` to that value; Shiny for Python has no transport-level cap hook, so the check
+runs at the earliest SAShiny-controlled point, in `shiny_values`). A file over one input's limit but
+under the largest is still stored by the transport and then rejected by the per-input `read_upload`
+check (V014). This is the best the Shiny upload protocol allows; the per-input limit is always
+enforced before any SAS work.
 
 ---
 

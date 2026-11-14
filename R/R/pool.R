@@ -149,7 +149,17 @@ sas_engine_run.sashiny_pool <- function(engine, contract, values, today = Sys.Da
                                         uploads = NULL, run_id = NULL) {
   pool <- engine
   run_id <- run_id %||% .sashiny_run_id()
-  session <- .sashiny_acquire(pool)
+  # A lazy factory/connection failure during acquisition must become an error
+  # result, not escape (issue #75).
+  session <- tryCatch(
+    .sashiny_acquire(pool),
+    error = function(e) {
+      return(.sashiny_engine_error(run_id, list(engine = "pool"), e))
+    }
+  )
+  if (inherits(session, "sashiny_result")) {
+    return(session)
+  }
   if (is.null(session)) {
     return(.sashiny_engine_error(
       run_id, list(engine = "pool"),

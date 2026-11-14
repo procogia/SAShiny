@@ -583,10 +583,10 @@ def _register_download(output: Outputs, oid: str, result: Callable[[], Result | 
         # issue #51) instead of an HTTP 500 + traceback.
         res = result()
         req(res is not None)
-        assert res is not None  # req() raises on falsy; narrow for mypy
+        assert res is not None  # noqa: S101 - req() raises on falsy; narrow for mypy
         value = res.outputs.get(oid)
         req(isinstance(value, dict) and "data" in value)
-        assert isinstance(value, dict)  # req() raises on falsy; narrow for mypy
+        assert isinstance(value, dict)  # noqa: S101 - req() raises on falsy; narrow for mypy
         return value
 
     def _filename() -> str:
