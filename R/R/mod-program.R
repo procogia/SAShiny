@@ -385,7 +385,10 @@ sas_program_ui <- function(id, contract, ui_override = NULL, today = Sys.Date())
     spec <- contract$data$outputs[[oid]]
     label <- spec$label %||% oid
     body <- if (identical(spec$type, "download")) {
-      shiny::downloadButton(ns(paste0("dl_", oid)), paste("Download", label))
+        # The download button is rendered conditionally (only once a result with
+        # this output exists), so a disabled placeholder is shown before the first
+        # run and after a failed run (issue #51).
+        shiny::uiOutput(ns(paste0("dl_btn_", oid)))
     } else {
       shiny::uiOutput(ns(paste0("out_", oid)))
     }
@@ -447,13 +450,34 @@ sas_program_server <- function(id, contract, engine, server_override = NULL, ren
     # error before the first run without forcing an uninitialised eventReactive
     # (which raises a shiny.silent.error under ignoreNULL=TRUE).
     result <- shiny::reactiveVal(NULL)
-    shiny::observeEvent(input$run,
-      {
-        converted <- .sashiny_shiny_values(contract, function(iid) input[[iid]])
-        result(sas_engine_run(engine, contract, converted$values, uploads = converted$uploads))
-      },
-      ignoreNULL = !isTRUE(settings$auto_run)
-    )
+        # Run the engine off the event loop (issue #44): a slow SAS run must not
+        # block unrelated browser sessions. ExtendedTask runs the work in a
+        # background process and only the result is read back on the main thread.
+        # testServer cannot await a background process, so it runs synchronously.
+        use_extended <- shiny::isRunning() && requireNamespace("callr", quietly = TRUE)
+        if (use_extended) {
+          run_task <- shiny::ExtendedTask$new(function(contract, values, uploads) {
+            sas_engine_run(engine, contract, values, uploads = uploads)
+          })
+          shiny::observeEvent(input$run,
+            {
+              converted <- .sashiny_shiny_values(contract, function(iid) input[[iid]])
+              run_task$invoke(contract, converted$values, converted$uploads)
+            },
+            ignoreNULL = !isTRUE(settings$auto_run)
+          )
+          shiny::observeEvent(run_task$result(), {
+            result(run_task$result())
+          })
+        } else {
+          shiny::observeEvent(input$run,
+            {
+              converted <- .sashiny_shiny_values(contract, function(iid) input[[iid]])
+              result(sas_engine_run(engine, contract, converted$values, uploads = converted$uploads))
+            },
+            ignoreNULL = !isTRUE(settings$auto_run)
+          )
+        }
 
     output$status <- shiny::renderText({
       res <- result()
@@ -528,6 +552,18 @@ sas_program_server <- function(id, contract, engine, server_override = NULL, ren
       content = function(file) writeBin(openssl::base64_decode(value()$data), file),
       contentType = NULL
     )
+    # Render the download button only once a result with this output exists, so
+    # a disabled placeholder is shown before the first run and after a failed
+    # run (issue #51). The real button keeps the handler's id `dl_<oid>`.
+    label <- spec$label %||% oid
+    output[[paste0("dl_btn_", oid)]] <- shiny::renderUI({
+      v <- result()$outputs[[oid]]
+      if (is.list(v) && !is.null(v$data)) {
+        shiny::downloadButton(paste0("dl_", oid), paste("Download", label))
+      } else {
+        shiny::actionButton(paste0("dl_btn_", oid), paste("Download", label), disabled = TRUE)
+      }
+    })
     return(invisible(NULL))
   }
   output[[paste0("out_", oid)]] <- shiny::renderUI({

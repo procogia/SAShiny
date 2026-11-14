@@ -130,7 +130,7 @@ test_that("the module UI has one card per output and uses contract defaults", {
   html <- as.character(sas_program_ui("mod", contract, today = as.Date("2026-11-11")))
   for (oid in names(contract$data$outputs)) {
     is_download <- identical(contract$data$outputs[[oid]]$type, "download")
-    prefix <- if (is_download) "mod-dl_" else "mod-out_"
+      prefix <- if (is_download) "mod-dl_btn_" else "mod-out_"
     expect_match(html, paste0(prefix, oid), fixed = TRUE)
   }
   expect_match(html, "Use the sample file", fixed = TRUE)

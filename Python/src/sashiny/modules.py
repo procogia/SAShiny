@@ -153,8 +153,9 @@ def shiny_values(
                 upload = UploadFile(path=Path(info["datapath"]), name=info["name"])
                 # Enforce max_size_mb when the file is received (spec §7), not
                 # only later in read_upload, so an oversized upload is refused
-                # before any SAS work (issue #54).
-                _check_upload_size(upload, spec)
+                # before any SAS work (issue #54). Use the client-declared size
+                # from uploadInit, which is known before the file is written.
+                _check_upload_size(upload, spec, declared_size=info.get("size"))
                 uploads[iid] = upload
             elif "sample" in spec and read(f"{iid}{SAMPLE_SUFFIX}"):
                 uploads[iid] = True
@@ -175,16 +176,23 @@ def shiny_values(
     return values, uploads
 
 
-def _check_upload_size(upload: UploadFile, spec: dict[str, Any]) -> None:
+def _check_upload_size(
+    upload: UploadFile, spec: dict[str, Any], declared_size: int | None = None
+) -> None:
     """Reject an upload over ``max_size_mb`` when it is received (spec §7).
 
-    A missing file is left to ``read_upload``'s ``_check_file`` (which reports
-    ``file not found`` as V014); only an existing file's size is checked here.
+    ``declared_size`` is the byte size the client reported in its ``uploadInit``
+    message (Shiny's ``FileInfo["size"]``); it is known before the file is
+    written, so it is preferred over re-stat'ing the file. A missing file is
+    left to ``read_upload``'s ``_check_file`` (which reports ``file not found``
+    as V014).
     """
-    if not upload.path.is_file():
-        return
+    if declared_size is None:
+        if not upload.path.is_file():
+            return
+        declared_size = upload.path.stat().st_size
     limit = spec.get("max_size_mb", 50)
-    size_mb = upload.path.stat().st_size / (1024 * 1024)
+    size_mb = declared_size / (1024 * 1024)
     if size_mb > limit:
         raise UploadError(f"{upload.name} is {size_mb:.1f} MB (limit {limit} MB)")
 
@@ -364,7 +372,10 @@ _RENDERERS: dict[str, Callable[[Any], TagChild]] = {
 def _output_card(oid: str, spec: dict[str, Any]) -> TagChild:
     label = spec.get("label", oid)
     if spec["type"] == "download":
-        body: TagChild = ui.download_button(f"dl_{oid}", f"Download {label}")
+        # The download button is rendered conditionally (only once a result with
+        # this output exists), so a disabled placeholder is shown before the first
+        # run and after a failed run (issue #51).
+        body: TagChild = ui.output_ui(f"dl_btn_{oid}")
     else:
         body = ui.output_ui(f"out_{oid}")
     return ui.card(ui.card_header(label), _help(spec), body, fill=False)
@@ -532,7 +543,7 @@ def program_server(  # noqa: PLR0913, PLR0917 - Shiny module signature + overrid
 
     for oid, spec in contract.data["outputs"].items():
         if spec["type"] == "download":
-            _register_download(output, oid, result)
+            _register_download(output, oid, spec, result)
         else:
             _register_card(output, oid, spec, result, running, (chart_render or {}).get(oid))
 
@@ -576,7 +587,9 @@ def _register_card(  # noqa: PLR0913, PLR0917 - Shiny render callback + running 
         return _error_tag(value) or _RENDERERS[kind](value)
 
 
-def _register_download(output: Outputs, oid: str, result: Callable[[], Result | None]) -> None:
+def _register_download(
+    output: Outputs, oid: str, spec: dict[str, Any], result: Callable[[], Result | None]
+) -> None:
     def _value() -> dict[str, str]:
         # `req()` raises a SilentException when there is no result or no download
         # value yet, which Shiny turns into an HTTP 404 (matching R's `shiny::req`,
@@ -604,3 +617,17 @@ def _register_download(output: Outputs, oid: str, result: Callable[[], Result | 
     if renderer is None:  # pragma: no cover - Shiny < 1.9
         renderer = shiny_render.download
     output(id=f"dl_{oid}")(renderer(filename=_filename, media_type=_media_type)(_download))
+
+    # Render the download button only once a result with this output exists, so a
+    # disabled placeholder is shown before the first run and after a failed run
+    # (issue #51). The real button keeps the download handler's id `dl_{oid}`.
+    label = spec.get("label", oid)
+
+    @output(id=f"dl_btn_{oid}")
+    @shiny_render.ui
+    def _button() -> TagChild:
+        res = result()
+        value = res.outputs.get(oid) if res is not None else None
+        if isinstance(value, dict) and "data" in value:
+            return ui.download_button(f"dl_{oid}", f"Download {label}")
+        return ui.input_action_button(f"dl_btn_{oid}", f"Download {label}", disabled=True)

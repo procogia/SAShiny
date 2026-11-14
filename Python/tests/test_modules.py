@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import tempfile
 from pathlib import Path
 
@@ -20,7 +21,9 @@ def test_program_ui_has_one_card_per_output() -> None:
     contract = sashiny.load(ROOT / "examples" / "general" / "cars_explorer.sashiny.yml")
     html = str(modules.program_ui("cars", contract))
     for oid, spec in contract.data["outputs"].items():
-        expected = f"cars-dl_{oid}" if spec["type"] == "download" else f"cars-out_{oid}"
+        # Downloads render a conditional button placeholder (issue #51); other
+        # outputs render a static output_ui.
+        expected = f"cars-dl_btn_{oid}" if spec["type"] == "download" else f"cars-out_{oid}"
         assert expected in html, oid
     assert "Summarise" in html
     assert "cars-status" in html
@@ -51,12 +54,33 @@ def test_download_handler_404s_without_result() -> None:
 
             return deco
 
-    modules._register_download(_Outputs(), "report", lambda: None)
+    modules._register_download(_Outputs(), "report", {"type": "download"}, lambda: None)
     # The renderer's `filename` closure calls `_value()`, which calls `req()`
     # and raises SilentException when there is no result (issue #51).
     renderer = captured["dl_report"]
     with pytest.raises(SilentException):
         renderer.filename()
+
+
+def test_download_button_gated_until_result() -> None:
+    # Issue #51: the download button is rendered only once a result with that
+    # output exists; before that a disabled placeholder is shown.
+    captured: dict[str, object] = {}
+
+    class _Outputs:
+        def __call__(self, id: str):
+            def deco(fn):
+                captured[id] = fn
+                return fn
+
+            return deco
+
+    modules._register_download(_Outputs(), "report", {"type": "download"}, lambda: None)
+    button = captured["dl_btn_report"]
+    # The button renderer is a `render.ui` renderer; its `fn` is async, so await it.
+    html = str(asyncio.run(button.fn()))
+    assert "disabled" in html
+    assert "Download" in html
 
 
 def test_upload_size_checked_when_received() -> None:
@@ -71,3 +95,11 @@ def test_upload_size_checked_when_received() -> None:
             modules._check_upload_size(upload, {"max_size_mb": 0.0001})
     finally:
         Path(path).unlink(missing_ok=True)
+
+
+def test_upload_size_uses_declared_size() -> None:
+    # Issue #54: the client-declared size from uploadInit is used, so an
+    # oversized upload is refused even before the file is stat'ed.
+    upload = modules.UploadFile(path=Path("does-not-exist.csv"), name="big.csv")
+    with pytest.raises(UploadError, match="limit"):
+        modules._check_upload_size(upload, {"max_size_mb": 0.0001}, declared_size=200_000)
