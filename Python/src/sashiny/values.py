@@ -13,7 +13,7 @@ import re
 from datetime import date
 from typing import Any
 
-from .contract import Issue, choice_values, macro_names, resolve_date
+from .contract import NUMERIC_LITERAL, SAS_NAME, Issue, choice_values, macro_names, resolve_date
 
 __all__ = ["render_values", "superq_macros"]
 
@@ -209,7 +209,15 @@ def _render_one(  # noqa: PLR0911, PLR0912
             return Issue("V008", iid), []
         ordered = [c for c in allowed if c in raw] if allowed is not None else list(raw)
         mode = spec.get("render", "quoted")
+        # Bare values are emitted unquoted (spec §6.3), so every selected
+        # value must be a SAS name or numeric literal. Static choices are checked
+        # by S007; dynamic choices_from values are checked here.
+        if mode == "bare" and any(
+            not (SAS_NAME.match(v) or NUMERIC_LITERAL.match(v)) for v in ordered
+        ):
+            return Issue("V004", iid), []
         parts = [v if mode == "bare" else render_text(v, mode) for v in ordered]
+
         sep = ", " if spec.get("separator", "space") == "comma" else " "
         out = [sep.join(parts)]
         if "count_macro" in spec:

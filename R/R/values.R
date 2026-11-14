@@ -255,7 +255,7 @@ sas_render_values <- function(data, values, today = Sys.Date(), only = NULL,
   err <- function(code) list(err = sashiny_issue(code, iid), rendered = character())
 
   if (identical(kind, "numeric")) {
-    if (is.logical(raw) || !is.numeric(raw)) {
+    if (is.logical(raw) || !is.numeric(raw) || length(raw) != 1L) {
       return(err("V002"))
     }
     if (!is.finite(raw)) {
@@ -271,7 +271,7 @@ sas_render_values <- function(data, values, today = Sys.Date(), only = NULL,
   }
 
   if (identical(kind, "text")) {
-    if (!is.character(raw)) {
+    if (!is.character(raw) || length(raw) != 1L) {
       return(err("V002"))
     }
     if (grepl(.sashiny_control, raw, perl = TRUE)) {
@@ -287,7 +287,7 @@ sas_render_values <- function(data, values, today = Sys.Date(), only = NULL,
   }
 
   if (identical(kind, "choice")) {
-    if (!is.character(raw)) {
+    if (!is.character(raw) || length(raw) != 1L) {
       return(err("V002"))
     }
     if (grepl(.sashiny_control, raw, perl = TRUE)) {
@@ -318,6 +318,15 @@ sas_render_values <- function(data, values, today = Sys.Date(), only = NULL,
     }
     ordered <- if (!is.null(allowed)) allowed[allowed %in% raw] else raw
     mode <- spec$render %||% "quoted"
+      if (identical(mode, "bare")) {
+        # Bare values are emitted unquoted (spec §6.3), so every selected value
+        # must be a SAS name or numeric literal. Static choices are checked by
+        # S007; dynamic choices_from values are checked here at render time.
+        bad <- !grepl(.sashiny_sas_name, ordered) & !grepl(.sashiny_numeric_literal, ordered)
+        if (any(bad)) {
+          return(err("V004"))
+        }
+      }
     parts <- if (identical(mode, "bare")) ordered else vapply(ordered, .sashiny_render_text, character(1), mode = mode)
     sep <- if (identical(spec$separator %||% "space", "comma")) ", " else " "
     out <- paste(parts, collapse = sep)

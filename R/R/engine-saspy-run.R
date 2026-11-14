@@ -301,6 +301,67 @@ sas_engine_run.sashiny_engine_saspy <- function(engine, contract, values, today 
   started <- .sashiny_now()
   t0 <- Sys.time()
   data <- contract$data
+  run <- data$run %||% list()
+  timeout <- as.numeric(run$timeout_seconds %||% 300)
+  # Enforce the whole-run deadline (spec §2.3, §6.5). The blocking saspy
+  # submission cannot be interrupted in-process, so a run with an explicit
+  # timeout executes in a background R process that is killed on timeout. The
+  # session is created in that process and is therefore discarded with it
+  # (spec §6.5). Runs without an explicit timeout (and testing hooks that use
+  # a closure factory) stay in-process to preserve session reuse.
+  if (is.null(run$timeout_seconds) && !is.null(engine$session_factory)) {
+    return(.sashiny_run_saspy(engine, contract, values, today, uploads, run_id, started, t0))
+  }
+  .sashiny_run_saspy_bg(engine, contract, values, today, uploads, run_id, started, t0, timeout)
+}
+
+#' Run the saspy engine in a background process with a whole-run deadline.
+#' @noRd
+.sashiny_run_saspy_bg <- function(engine, contract, values, today, uploads, run_id, started, t0,
+                                  timeout) {
+  .sashiny_need("callr", "to enforce run.timeout_seconds")
+  result_file <- tempfile("sashiny-result-", fileext = ".rds")
+  on.exit(unlink(result_file), add = TRUE)
+  args <- list(
+    cfg = engine$cfg, cfgname = engine$cfgname, record_to = engine$record_to,
+    session_factory = engine$session_factory,
+    contract_path = contract$path, values = values, today = today,
+    uploads = uploads, run_id = run_id, result_file = result_file
+  )
+  proc <- callr::r_bg(
+    function(args) {
+      engine <- SAShiny::sas_engine_saspy(args$cfg, cfgname = args$cfgname,
+        record_to = args$record_to, session_factory = args$session_factory)
+      contract <- SAShiny::sas_contract(args$contract_path)
+      # The parent enforces the deadline by killing this process, so the
+      # contract's own timeout is removed here to run synchronously.
+      contract$data$run$timeout_seconds <- NULL
+      result <- SAShiny::sas_engine_run(engine, contract, args$values,
+        today = args$today, uploads = args$uploads, run_id = args$run_id)
+      saveRDS(result, args$result_file)
+      invisible(NULL)
+    },
+    args = list(args),
+    package = "SAShiny",
+    supervise = TRUE
+  )
+  proc$wait(timeout = timeout * 1000)
+  if (proc$is_alive()) {
+    proc$kill()
+    return(.sashiny_engine_error(run_id, list(engine = "saspy"),
+      simpleError(sprintf("run exceeded timeout_seconds=%g", timeout))))
+  }
+  if (!file.exists(result_file)) {
+    return(.sashiny_engine_error(run_id, list(engine = "saspy"),
+      simpleError("background run produced no result")))
+  }
+  readRDS(result_file)
+}
+
+#' The synchronous saspy run body (spec §6.1).
+#' @noRd
+.sashiny_run_saspy <- function(engine, contract, values, today, uploads, run_id, started, t0) {
+  data <- contract$data
   flags <- lapply(uploads %||% list(), function(v) !is.null(v) && !isFALSE(v))
   choices <- tryCatch(sas_engine_choices(engine, contract), error = function(e) e)
   if (inherits(choices, "error")) {

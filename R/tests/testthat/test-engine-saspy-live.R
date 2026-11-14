@@ -272,3 +272,47 @@ test_that("empty reticulate-converted tables (nrow is NULL) collect cleanly (iss
   expect_false(result$outputs$stats$truncated)
   expect_identical(result$outputs$missing, list(error = "dataset WORK.NOPE not found"))
 })
+
+# A serialisable session factory (a top-level named function, no captured state)
+# so the deadline test can run it in a background process.
+.sashiny_slow_factory <- function() {
+  fake <- new.env()
+  fake$ended <- FALSE
+  fake$submit <- function(code, results = "HTML") {
+    if (grepl("SASHINY-BEGIN run=", code, fixed = TRUE)) Sys.sleep(1.4)
+    list(
+      LOG = paste0(
+        "NOTE: SASHINY-BEGIN run=x\nNOTE: SASHINY-BEGIN-PROGRAM\n",
+        "NOTE: SASHINY-END-PROGRAM\nNOTE: SASHINY-END run=x syscc=0\n"
+      ),
+      LST = ""
+    )
+  }
+  fake$sd2df <- function(...) NULL
+  fake$df2sd <- function(...) NULL
+  fake$download <- function(...) list(Success = FALSE, LOG = "")
+  fake$endsas <- function() fake$ended <- TRUE
+  fake
+}
+
+test_that("run.timeout_seconds is enforced in a background process (issue #34)", {
+  skip_if_not_installed("callr")
+  # A minimal contract without choices_from, so the slow factory only needs to
+  # handle the main submission.
+  dir <- tempfile("sashiny-timeout-")
+  dir.create(dir)
+  writeLines("data work.out; n = 1; run;", file.path(dir, "program.sas"))
+  writeLines(c(
+    "sashiny: 1", "program: program.sas", "title: Timeout",
+    "outputs:", "  log:", "    type: log",
+    "run:", "  timeout_seconds: 1"
+  ), file.path(dir, "contract.sashiny.yml"))
+  contract <- sas_contract(file.path(dir, "contract.sashiny.yml"))
+  engine <- sas_engine_saspy(list(java = "java"), session_factory = .sashiny_slow_factory)
+  started <- proc.time()[["elapsed"]]
+  result <- sas_engine_run(engine, contract, list(), today = .sashiny_today)
+  elapsed <- proc.time()[["elapsed"]] - started
+  expect_identical(result$status, "error")
+  expect_match(result$metadata$engine_error, "timeout_seconds")
+  expect_lt(elapsed, 2)
+})

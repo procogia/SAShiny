@@ -34,6 +34,7 @@ Imports:
     yaml
 Suggests:
     bslib,
+    callr,
     ggplot2,
     haven,
     knitr,
