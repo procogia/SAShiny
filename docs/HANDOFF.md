@@ -17,7 +17,7 @@ the current state, the path to CRAN/PyPI, and the rules you must follow.
 > from `meharpsingh/SAShiny` on 2026-11-10 (the old URL redirects). The four new
 > owners have `admin`. Secret scanning and push protection are enabled.
 
-## Current state (0.1.0, Beta)
+## Current state (R 0.1.6, Python 0.1.7, Beta)
 
 - **Phase 2 (core)** done: contract loader/validator, value renderer, wrapper
   generator, lint, mock engine, result object — both R and Python pass every
@@ -30,8 +30,11 @@ the current state, the path to CRAN/PyPI, and the rules you must follow.
   is empty until someone records the demo inputs against live SAS.
 - **Phase 4 (Shiny modules)** done: auto-UI, custom override, log panel,
   downloads, multi-program app, Shiny test client.
-- **Quality:** `R CMD check` 0 errors/warnings; Python 122 tests + ruff/mypy
-  clean + 90% coverage.
+- **Quality:** `R CMD check --as-cran` Status OK (Debian, R 4.5.x, 2026-11-14);
+  Python 312 tests pass (37 skipped) and ruff/mypy are clean; the spec check passes 152/152.
+- **Published:** PyPI `sashiny` 0.1.7 (release `py-v0.1.7`). CRAN: 0.1.1 is in
+  the incoming queue; the 0.1.6 tarball is prepared, but the maintainer has not
+  submitted it yet.
 
 ## Non-negotiable rules (from `.github/copilot-instructions.md`)
 

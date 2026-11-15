@@ -221,7 +221,7 @@ Install before release:
 | 5. **Lisbon demo (2026-11-11)** | Demo build of the three example apps | See section 10.1 | |
 | 6. Templates + docs | `use_sashiny_app()`, golem template, `sashiny new`; vignettes; pkgdown + Python docs | A new user ships an app from the docs alone | |
 | 7. Hardening | security review, pool stress tests, audit run metadata | Threat model + tests green | |
-| 8. Release | CRAN submission (repo goes public), PyPI release | Accepted on CRAN; published on PyPI | |
+| 8. Release | CRAN submission (repo goes public), PyPI release | Accepted on CRAN; published on PyPI | ?? PyPI 0.1.7 published (2026-11-14); CRAN 0.1.6 prepared, awaiting maintainer submission; live SAS #11/#12 open |
 
 ### 10.1 Lisbon demo plan (3 days)
 
