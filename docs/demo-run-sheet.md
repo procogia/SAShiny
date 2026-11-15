@@ -5,12 +5,13 @@ Python side by side**, across three tracks (General / Pharma / AML). This run-sh
 is the presentation script plus the fallback plan.
 
 > **Owner:** Mehar. **Primary:** local apps on Mehar's Mac (ProCogia VPN).
-> **Audience:** hosted Daytona URL (Offline default).
+> **Audience:** hosted Daytona URL (ODA default).
 
 ## Local setup (once)
 
 1. Connect the ProCogia VPN for the Viya and 9.4 profiles.
-2. Install Java (for SAS IOM) and the project dependencies. Python needs the
+2. Obtain access to a compatible SAS compiler for the selected profile; SAShiny
+   does not provide SAS. Install Java (for SAS IOM) and the project dependencies. Python needs the
    `shiny`, `saspy` and `upload` extras; R needs the package's demo dependencies.
 3. Keep credentials in `~/.authinfo` (mode `600`), never in the repository.
    The required keys are `oda`, `viya` and `iom`; see
@@ -30,7 +31,7 @@ is the presentation script plus the fallback plan.
 ## Start the local apps
 
 Run either command from the repository root; the app's profile picker offers
-ProCogia Viya, ProCogia SAS 9.4, ODA and Offline:
+SAS ODA, SAS Viya and SAS 9.4:
 
 ```sh
 Rscript -e 'shiny::runApp("R/inst/examples/demo")'
@@ -48,11 +49,10 @@ cd Python && uv run --extra shiny --extra saspy --extra upload shiny run example
    input values you will show. A live run records automatically; R and Python
    share recordings. Offline matching is exact, so changed inputs need a new
    recording.
-3. Start either app, select **Offline**, and run each planned scenario to verify
-   that its recording replays. The repository currently ships no recording
-   files, so Offline runs report that no recording matches until this step is
-   completed.
-4. Confirm the hosted Daytona sandbox is up and defaults to Offline (see
+3. Check recording replay with the offline tests described in
+   `docs/live-demo-tests.md`. A live connection failure also falls back to a
+   matching recording; if none exists, the run reports that no recording matches.
+4. Confirm the hosted Daytona sandbox is up and defaults to ODA (see
    `deploy/daytona/README.md`).
 
 ## The demo (3 tracks × 2 languages)
@@ -76,23 +76,22 @@ both apps:
 
 ## Connection profiles
 
-- **Local (Mehar's Mac, VPN):** ProCogia Viya, ProCogia 9.4 (IOM/SSH), ODA,
-  Offline.
-- **Hosted (Daytona):** ODA and Offline (default). Outbound TCP 8591 to ODA
+- **Local (Mehar's Mac, VPN):** SAS Viya, SAS 9.4 (IOM), ODA.
+- **Hosted (Daytona):** ODA (default). Outbound TCP 8591 to ODA
   hosts was verified reachable from the ProCogia Daytona tier on 2026-11-14;
   details are in `deploy/daytona/README.md`.
 
-Show the profile picker and the live/offline toggle; switch profiles live to
+Show the profile picker; switch profiles live to
 demonstrate the same app on different backends.
 
 ## Fallback plan
 
 | Risk | Mitigation |
 |---|---|
-| VPN drops in the venue | Switch the profile to ODA or Offline in the app; recordings were made the day before. |
-| Daytona ODA connection or credentials unavailable | Keep Offline selected; hosted app defaults to Offline and can replay preloaded recordings. |
-| ODA account not created | Skip ODA; the demo uses Offline recordings. |
-| Live SAS slow/unavailable | Offline recordings replay instantly; the mock engine is the default. |
+| VPN drops in the venue | Switch the profile to ODA; failed live runs fall back to matching recordings. |
+| Daytona ODA connection or credentials unavailable | Failed live runs fall back to matching preloaded recordings. |
+| ODA account not created | Failed live runs fall back to matching recordings. |
+| Live SAS slow/unavailable | Failed live runs fall back to matching recordings. |
 
 ## After the demo
 

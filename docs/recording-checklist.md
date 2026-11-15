@@ -1,6 +1,6 @@
 # Demo recording checklist (Lisbon, 2026-11-11)
 
-Record each track once against live SAS so the Offline profile can replay it.
+Record each track once against live SAS so the offline fallback can replay it.
 Recordings are shared between R and Python, so record in one app only.
 
 Faster: run the live test suite with `SASHINY_RECORD_TO` set. It records and
@@ -14,7 +14,7 @@ scenarios themselves are defined in `examples/demo-scenarios.yml`.
 - [ ] VPN is on if you use ProCogia Viya or SAS 9.4.
 - [ ] Start one demo app from the repository root:
       `cd Python && uv run --extra shiny --extra saspy --extra upload shiny run examples/demo/app.py`
-- [ ] In the sidebar, set **SAS connection** to the live profile (not Offline).
+- [ ] In the sidebar, set **SAS connection** to the desired live profile.
 
 ## Rules that keep recordings matching
 
@@ -74,7 +74,7 @@ To change one input on stage, record that exact combination too, for example:
 
 - [ ] `examples/recordings/` has one new `.json` file per Run (3, or 6 with the optional scenarios)
 - [ ] `SASHINY_REQUIRE_RECORDINGS=1` passes in both languages (`docs/live-demo-tests.md`)
-- [ ] Switch the profile to **Offline**, press Run on each tab, and check the Run card reads `offline: replayed recording from ...`
+- [ ] Verify offline replay using the tests in `docs/live-demo-tests.md`.
 - [ ] Check the same in the R app (`Rscript -e 'shiny::runApp("R/inst/examples/demo")'`)
 - [ ] Turn off the VPN and repeat one track to confirm the fallback works without a network connection
 - [ ] Commit: `git add examples/recordings/*.json && git commit -m "Record demo runs"` and push, so the Daytona URL serves them too

@@ -25,9 +25,23 @@ def _demo():  # type: ignore[no-untyped-def]
     return module
 
 
+def test_demo_connection_choices_and_prerequisite() -> None:
+    demo = _demo()
+    assert demo.PROFILES == {
+        "oda": "SAS ODA (OnDemand for Academics)",
+        "viya": "SAS Viya",
+        "sas94": "SAS 9.4",
+    }
+    html = str(demo.app_ui)
+    assert 'value="oda" selected' in html
+    assert "responsible for obtaining access to a compatible SAS compiler" in html
+    assert "SAShiny does not provide SAS" in html
+
+
 def test_demo_offline_runs_every_track() -> None:
     demo = _demo()
     with test_server(demo.app) as session:
+        session.set_inputs(profile="offline")
         for tid in demo.TRACKS:
             session.set_inputs(**{f"{tid}-run": 1})
             # The module runs the engine via an extended task; flush until it settles.

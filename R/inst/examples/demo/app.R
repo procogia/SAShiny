@@ -3,8 +3,7 @@
 # Four tabs (General / Pharma / AML / Forecasting) run the example contracts. The sidebar
 # picks the SAS connection:
 #
-# - Offline replays recordings from examples/recordings (spec section 8.3).
-# - ODA, ProCogia Viya and ProCogia SAS 9.4 run live through saspy. Every live
+# - SAS ODA, SAS Viya and SAS 9.4 run live through saspy. Every live
 #   run is also saved as a recording, so running the demo inputs once live
 #   fills the offline fallback. If a live session cannot start, the run falls
 #   back to the matching recording and says so in the Run card.
@@ -65,10 +64,9 @@ tracks <- list(
 contracts <- lapply(tracks, function(t) sas_contract(t[[2]]))
 
 profiles <- c(
-  "Offline (recordings)" = "offline",
-  "SAS OnDemand for Academics" = "oda",
-  "ProCogia SAS Viya (VPN)" = "viya",
-  "ProCogia SAS 9.4 (VPN)" = "sas94"
+  "SAS ODA (OnDemand for Academics)" = "oda",
+  "SAS Viya" = "viya",
+  "SAS 9.4" = "sas94"
 )
 
 `%||%` <- function(x, y) if (is.null(x)) y else x
@@ -163,10 +161,12 @@ ui <- do.call(bslib::page_navbar, c(list(
   title = "SAShiny demo",
   sidebar = bslib::sidebar(
     open = "closed",
-    selectInput("profile", "SAS connection", profiles, selected = "offline"),
+    selectInput("profile", "SAS connection", profiles, selected = "oda"),
     markdown(paste(
-      "Offline replays recorded runs. Live profiles need saspy, Java (IOM) and",
-      "credentials in `~/.authinfo`."
+      "You are responsible for obtaining access to a compatible SAS compiler",
+      "for your chosen profile; SAShiny does not provide SAS. Live profiles need",
+      "saspy, Java (IOM) and credentials in `~/.authinfo`. If live SAS is",
+      "unavailable, matching recordings are replayed when available."
     ))
   ),
   bslib::nav_panel("About", markdown(paste(
@@ -177,7 +177,7 @@ ui <- do.call(bslib::page_navbar, c(list(
 ), tabs))
 
 server <- function(input, output, session) {
-  profile <- reactive(input$profile %||% "offline")
+  profile <- reactive(input$profile %||% "oda")
   engine <- demo_engine(profile)
   for (tid in names(tracks)) {
     sas_program_server(tid, contracts[[tid]], engine)
