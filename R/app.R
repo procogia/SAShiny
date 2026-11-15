@@ -18,8 +18,17 @@ sas_app <- function(contracts, engine, title = "SAShiny") {
     if (inherits(c, "sashiny_contract")) c else sas_contract(c)
   })
 
-  module_id <- function(i, contract) {
-    contract$data$id %||% paste0("program_", i)
+  module_id <- function(contract) {
+    contract$data$id %||% .sashiny_default_module_id(contract$data$program)
+  }
+
+  ids <- vapply(loaded, module_id, character(1))
+  # Reject duplicate module ids (spec section 2): two tabs sharing a namespace
+  # would collide on every input and output id.
+  if (anyDuplicated(ids)) {
+    dup <- ids[duplicated(ids)][[1]]
+    stop(sprintf("duplicate module id %s: two contracts resolve to the same id", dup),
+         call. = FALSE)
   }
 
   ui <- shiny::navbarPage(
@@ -28,14 +37,14 @@ sas_app <- function(contracts, engine, title = "SAShiny") {
       contract <- loaded[[i]]
       shiny::tabPanel(
         contract$data$title %||% paste0("Program ", i),
-        sas_program_ui(module_id(i, contract), contract)
+        sas_program_ui(ids[[i]], contract)
       )
     })
   )
 
   server <- function(input, output, session) {
     for (i in seq_along(loaded)) {
-      sas_program_server(module_id(i, loaded[[i]]), loaded[[i]], engine)
+      sas_program_server(ids[[i]], loaded[[i]], engine)
     }
   }
 

@@ -35,7 +35,7 @@ sas_load_profiles <- function(path = NULL) {
 #' @return A named integer vector with `error` and `warning` counts.
 #' @noRd
 .sashiny_classify_log <- function(log) {
-  lines <- strsplit(log, "\n", fixed = TRUE)[[1]]
+  lines <- .sashiny_split_log(log)
   c(
     error = sum(startsWith(lines, "ERROR")),
     warning = sum(startsWith(lines, "WARNING"))
@@ -49,13 +49,16 @@ sas_load_profiles <- function(path = NULL) {
 #' @return A list with `status` and `syscc`.
 #' @noRd
 .sashiny_run_status <- function(log, run_id = "fixture") {
-  m <- regexpr(paste0("SASHINY-END run=", run_id, " syscc=([0-9]+)"), log, perl = TRUE)
-  if (m == -1L) {
+  # Anchor to an executed NOTE sentinel line, not a numbered source echo
+  # (spec §6.5): the line must start with "NOTE: SASHINY-END run=<id> syscc=<n>".
+  lines <- .sashiny_split_log(log)
+  end <- grep(paste0("^NOTE: SASHINY-END run=", run_id, " syscc=([0-9]+)$"), lines)
+  if (length(end) == 0L) {
     return(list(status = "error", syscc = NULL))
   }
   syscc <- as.integer(sub(
-    ".*syscc=([0-9]+).*", "\\1",
-    regmatches(log, m)
+    paste0("^NOTE: SASHINY-END run=", run_id, " syscc=([0-9]+)$"), "\\1",
+    lines[end[[1]]]
   ))
   counts <- .sashiny_classify_log(log)
   if (syscc > 4L || counts[["error"]] > 0L) {

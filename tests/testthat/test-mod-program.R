@@ -130,7 +130,7 @@ test_that("the module UI has one card per output and uses contract defaults", {
   html <- as.character(sas_program_ui("mod", contract, today = as.Date("2026-11-11")))
   for (oid in names(contract$data$outputs)) {
     is_download <- identical(contract$data$outputs[[oid]]$type, "download")
-    prefix <- if (is_download) "mod-dl_" else "mod-out_"
+      prefix <- if (is_download) "mod-dl_btn_" else "mod-out_"
     expect_match(html, paste0(prefix, oid), fixed = TRUE)
   }
   expect_match(html, "Use the sample file", fixed = TRUE)
@@ -157,6 +157,25 @@ test_that("the module replays a recording into its output cards", {
       expect_false(grepl("SASHINY", output$out_log$html, fixed = TRUE))
       session$setInputs(min_age = 99, run = 2)
       expect_match(output$status, "no recording matches", fixed = TRUE)
+    }
+  )
+})
+
+test_that("the module shows a choices_from error before the first run", {
+  skip_on_cran()
+  skip_if_not_installed("shiny")
+  contract <- sas_contract(file.path(.sashiny_fixtures(), "contracts", "valid",
+                                     "choice", "contract.sashiny.yml"))
+  engine <- structure(list(), class = c("sashiny_broken_choices", "sashiny_engine"))
+  registerS3method("sas_engine_choices", "sashiny_broken_choices",
+    function(engine, contract) stop("SAS unreachable"),
+    envir = asNamespace("SAShiny")
+  )
+  shiny::testServer(
+    sas_program_server, args = list(contract = contract, engine = engine), {
+      # No Run click yet: the status card must already show the choice error.
+      expect_match(output$status, "could not read choices", fixed = TRUE)
+      expect_match(output$status, "SAS unreachable", fixed = TRUE)
     }
   )
 })
@@ -193,3 +212,29 @@ test_that("each chart output gets its own render callback", {
     }
   )
 })
+
+  test_that("upload limit is raised to the largest max_size_mb and restored", {
+    skip_on_cran()
+    skip_if_not_installed("shiny")
+    prev <- getOption("shiny.maxRequestSize")
+    on.exit(options(shiny.maxRequestSize = prev), add = TRUE)
+    inputs <- list(
+      a = list(type = "dataset", max_size_mb = 10),
+      b = list(type = "dataset", max_size_mb = 50),
+      c = list(type = "numeric")
+    )
+    .sashiny_set_upload_limit(inputs)
+    expect_identical(getOption("shiny.maxRequestSize"), 50 * 1024 * 1024)
+    .sashiny_restore_upload_limit()
+    expect_identical(getOption("shiny.maxRequestSize"), prev)
+  })
+
+  test_that("upload limit defaults to 50 MB when undeclared", {
+    skip_on_cran()
+    skip_if_not_installed("shiny")
+    prev <- getOption("shiny.maxRequestSize")
+    on.exit(options(shiny.maxRequestSize = prev), add = TRUE)
+    .sashiny_set_upload_limit(list(a = list(type = "dataset")))
+    expect_identical(getOption("shiny.maxRequestSize"), 50 * 1024 * 1024)
+    .sashiny_restore_upload_limit()
+  })

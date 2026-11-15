@@ -91,7 +91,7 @@
   )
   path <- file.path(directory, paste0(key, ".json"))
   json <- jsonlite::toJSON(payload,
-    auto_unbox = TRUE, null = "null", na = "null", digits = NA, pretty = TRUE
+      auto_unbox = TRUE, null = "null", na = "null", digits = I(17), pretty = TRUE
   )
   writeLines(enc2utf8(as.character(json)), path, useBytes = TRUE)
   path
@@ -284,6 +284,23 @@ sas_engine_run.sashiny_engine_mock <- function(engine, contract, values, today =
       code = "V014", message = conditionMessage(files)
     ))))
   }
+    # Run the full §7 conversion for every supplied dataset input, exactly like the
+    # live engine, so a missing declared column, an unparseable cell or an
+    # unreadable file is reported as V014 offline (spec §6.1 step 2 / §7).
+    converted <- tryCatch(
+      {
+        for (iid in names(files)) {
+          .sashiny_read_upload(files[[iid]], contract$data$inputs[[iid]])
+        }
+        NULL
+      },
+      sashiny_upload_error = function(e) e
+    )
+    if (inherits(converted, "sashiny_upload_error")) {
+      return(.sashiny_invalid_result(run_id, base, list(list(
+        code = "V014", message = conditionMessage(converted)
+      ))))
+    }
 
   key <- .sashiny_recording_key(contract, res$macros, files)
   recording <- .sashiny_load_recording(engine$recordings_dir, key)
@@ -325,7 +342,7 @@ sas_engine_record <- function(engine, contract, macros, recording, files = list(
   key <- .sashiny_recording_key(contract, macros, files)
   path <- file.path(engine$recordings_dir, paste0(key, ".json"))
   payload <- c(list(sashiny_recording = 1L), recording)
-  json <- jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null", digits = NA, pretty = TRUE)
+    json <- jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null", digits = I(17), pretty = TRUE)
   writeLines(enc2utf8(as.character(json)), path, useBytes = TRUE)
   invisible(path)
 }

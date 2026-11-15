@@ -77,7 +77,14 @@
     ))
   }
   if (identical(mode, "iso")) {
-    return(format(dt, "%Y-%m-%d"))
+      # format(dt, "%Y-%m-%d") drops zero-padding for years below 1000 on some
+      # platforms (e.g. "1-01-01"); render the four-digit year explicitly.
+      return(sprintf(
+        "%04d-%02d-%02d",
+        as.integer(format(dt, "%Y")),
+        as.integer(format(dt, "%m")),
+        as.integer(format(dt, "%d"))
+      ))
   }
   if (identical(mode, "sasdate")) {
     return(as.character(as.integer(difftime(dt, .sashiny_sas_epoch, units = "days"))))
@@ -96,6 +103,41 @@
     paste0("^[", .sashiny_ws, "]+"), "",
     sub(paste0("[", .sashiny_ws, "]+$"), "", v)
   )
+}
+
+#' Parse input values from JSON text
+#'
+#' Parses a JSON object of input values (spec section 2.1) for
+#' [sas_render_values()]. R character strings cannot hold U+0000, and
+#' `jsonlite` silently truncates a string at an escaped `\u0000`, which would
+#' let a control character slip past V007 (spec section 4). Each escaped U+0000
+#' is therefore mapped to U+0001 before parsing, so the value is still
+#' rejected exactly like the original (V007 for text and choice values).
+#'
+#' @param json A JSON object as a single string (or a raw vector of UTF-8).
+#' @return A named list of input values keyed by input id.
+#' @export
+#' @examples
+#' values <- sas_json_values('{"company": "a\\u0000b"}')
+#' data <- list(inputs = list(company = list(type = "text", label = "Company")))
+#' sas_render_values(data, values)$issues[[1]]$code
+sas_json_values <- function(json) {
+  if (is.raw(json)) {
+    # A literal NUL byte is invalid JSON; keep it a parse error, not a truncation.
+    json[json == as.raw(0L)] <- as.raw(1L)
+    json <- rawToChar(json)
+  }
+  if (!is.character(json) || length(json) != 1L || is.na(json)) {
+    stop("`json` must be a single JSON string.", call. = FALSE)
+  }
+  # An escape is live only when preceded by an even number of backslashes.
+  json <- gsub("(?<!\\\\)((?:\\\\\\\\)*)\\\\u0000", "\\1\\\\u0001", json, perl = TRUE)
+  values <- jsonlite::fromJSON(json, simplifyVector = FALSE)
+  if (!is.list(values) || (length(values) > 0L && is.null(names(values)))) {
+    stop("`json` must be a JSON object of input values.", call. = FALSE)
+  }
+  if (length(values) == 0L) values <- structure(list(), names = character())
+  values
 }
 
 #' Validate and render values
@@ -149,6 +191,23 @@ sas_render_values <- function(data, values, today = Sys.Date(), only = NULL,
       next
     }
     if (kind %in% c("multichoice", "daterange") && is.list(raw)) {
+          # A JSON object (named list) is not an array (spec §2.1): V002.
+          if (!is.null(names(raw))) {
+            add("V002", iid)
+            next
+          }
+          # A daterange must be exactly two elements (spec §2.1): V002 otherwise.
+          if (identical(kind, "daterange") && length(raw) != 2L) {
+            add("V002", iid)
+            next
+          }
+          # Every element must be a single string (spec §2.1). A nested list, NULL,
+          # character vector or non-string element is a type error (V002), not flattened.
+          is_str <- vapply(raw, function(e) is.character(e) && length(e) == 1L, logical(1))
+          if (length(raw) > 0L && !all(is_str)) {
+            add("V002", iid)
+            next
+          }
       raw <- if (length(raw) == 0L) character() else unlist(raw, use.names = FALSE)
     }
 
@@ -164,16 +223,28 @@ sas_render_values <- function(data, values, today = Sys.Date(), only = NULL,
       next
     }
 
-    if (is.character(raw) && kind %in% c("text", "choice")) {
+    if (is.character(raw) && identical(kind, "text")) {
       raw <- .sashiny_ws_strip(raw)
     }
     optional <- isTRUE(spec$optional)
 
-    if (identical(kind, "multichoice") && identical(raw, character())) {
-      absent <- optional
-      if (!optional && (spec$min_selected %||% 1L) >= 1L) {
-        add("V001", iid)
-        next
+    if (identical(kind, "multichoice")) {
+          if (is.null(raw)) {
+            # Missing/null: a required input is always V001 (spec §4 V001).
+            if (!optional) {
+              add("V001", iid)
+              next
+            }
+            absent <- TRUE
+          } else if (identical(raw, character())) {
+            # Empty selection: V001 only when min_selected >= 1.
+            absent <- optional
+            if (!optional && (spec$min_selected %||% 1L) >= 1L) {
+              add("V001", iid)
+              next
+            }
+          } else {
+            absent <- FALSE
       }
     } else {
       absent <- is.null(raw) || identical(raw, "")
@@ -220,7 +291,7 @@ sas_render_values <- function(data, values, today = Sys.Date(), only = NULL,
   err <- function(code) list(err = sashiny_issue(code, iid), rendered = character())
 
   if (identical(kind, "numeric")) {
-    if (is.logical(raw) || !is.numeric(raw)) {
+    if (is.logical(raw) || !is.numeric(raw) || length(raw) != 1L) {
       return(err("V002"))
     }
     if (!is.finite(raw)) {
@@ -236,7 +307,7 @@ sas_render_values <- function(data, values, today = Sys.Date(), only = NULL,
   }
 
   if (identical(kind, "text")) {
-    if (!is.character(raw)) {
+    if (!is.character(raw) || length(raw) != 1L) {
       return(err("V002"))
     }
     if (grepl(.sashiny_control, raw, perl = TRUE)) {
@@ -252,7 +323,7 @@ sas_render_values <- function(data, values, today = Sys.Date(), only = NULL,
   }
 
   if (identical(kind, "choice")) {
-    if (!is.character(raw)) {
+    if (!is.character(raw) || length(raw) != 1L) {
       return(err("V002"))
     }
     if (grepl(.sashiny_control, raw, perl = TRUE)) {
@@ -283,6 +354,15 @@ sas_render_values <- function(data, values, today = Sys.Date(), only = NULL,
     }
     ordered <- if (!is.null(allowed)) allowed[allowed %in% raw] else raw
     mode <- spec$render %||% "quoted"
+      if (identical(mode, "bare")) {
+        # Bare values are emitted unquoted (spec §6.3), so every selected value
+        # must be a SAS name or numeric literal. Static choices are checked by
+        # S007; dynamic choices_from values are checked here at render time.
+        bad <- !grepl(.sashiny_sas_name, ordered) & !grepl(.sashiny_numeric_literal, ordered)
+        if (any(bad)) {
+          return(err("V004"))
+        }
+      }
     parts <- if (identical(mode, "bare")) ordered else vapply(ordered, .sashiny_render_text, character(1), mode = mode)
     sep <- if (identical(spec$separator %||% "space", "comma")) ", " else " "
     out <- paste(parts, collapse = sep)

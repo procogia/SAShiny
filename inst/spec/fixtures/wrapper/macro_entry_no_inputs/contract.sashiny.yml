@@ -1,0 +1,10 @@
+sashiny: 1
+program: program.sas
+title: Macro entry with no inputs
+outputs:
+  log:
+    type: log
+run:
+  entry: macro
+  macro: empty
+  reset_work: false

@@ -1,0 +1,20 @@
+sashiny: 1
+program: program.sas
+title: Macro entry that normalises its own parameters
+inputs:
+  region:
+    type: choice
+    label: Region
+    choices: [Asia, Europe, USA]
+  top_n:
+    type: numeric
+    label: Top N
+  label:
+    type: text
+    label: Label
+outputs:
+  log:
+    type: log
+run:
+  entry: macro
+  macro: report

@@ -1,3 +1,55 @@
+# SAShiny 0.1.6
+
+## New features
+
+* `sas_json_values()` parses a JSON object of input values. An escaped
+  `\u0000`, which an R string cannot hold, is rejected as V007 instead of
+  silently truncating the value (spec section 4, #102).
+
+## Fixes
+
+* `sas_program_server()` no longer blocks other browser sessions during a run:
+  in a running app a mock or saspy run executes in a 'callr' background process
+  polled with 'later'. A `sas_pool()` or custom engine still runs in-process
+  (#44).
+* The plotly chart backend draws one subplot per `facet` level instead of
+  ignoring the mapping (spec section 8.5, #72).
+* A multichoice or daterange element that is a character vector of length other
+  than one is V002, not flattened (spec section 2.1, #60).
+* `sas_pool()` rejects a non-finite `min_size`/`max_size` such as `Inf` (#94).
+
+* Live saspy runs work with pandas 3. Every table output was reported as
+  "dataset not found", because reticulate before 1.45.0 does not convert
+  pandas 3 data frames; reticulate 1.45.0 or later is now required for live
+  runs, with a clear error for older versions. Dataset uploads no longer fail
+  with "call stack is not deep enough", because the pandas date conversion and
+  `df2sd` now run inside a Python function.
+
+# SAShiny 0.1.5
+
+## Lint
+
+* `sashiny_lint()` now reports the advisory L001–L005 findings (spec §10):
+  an injected macro assigned outside a `%symexist` guard, an injected macro
+  never referenced, a `table`/`download` `from` dataset never created, more
+  than one rtf/pdf download, and `entry: macro` without a matching `%macro`
+  (#28).
+
+## Fixes
+
+* `.sashiny_extract_plots()` rejects `select < 1` with a clean error instead of
+  returning an empty list (#29).
+* R/Python parity in cell and upload normalisation: character cells strip ASCII
+  whitespace only, a literal `NA` in a date column is unparseable, a
+  whitespace-only non-CSV numeric cell is missing, and character columns drop
+  the `.0` of integer-valued floats (#30–#33).
+* Contract/value validation parity: impossible calendar-date bounds return
+  `S003` instead of raising, `^`/`$` inside character classes are allowed, and
+  choice values are no longer whitespace-trimmed (spec §3.2, §3.3, §4;
+  #38–#40, #46).
+* Engine and pool lifecycle: failed SAS sessions are closed before their
+  reference is dropped and the pool warms `min_size` sessions (#35, #37).
+
 # SAShiny 0.1.4
 
 ## Demo

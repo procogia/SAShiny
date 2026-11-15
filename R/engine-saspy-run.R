@@ -78,8 +78,16 @@ print.sashiny_engine_saspy <- function(x, ...) {
   }
   sas <- .sashiny_saspy_open(engine)
   # Session setup (spec 6.1): ODA starts with NONOTES, which hides the sentinels.
-  sas$submit(.sashiny_session_setup_code, results = "TEXT")
+  # Retain the session before setup so a setup failure can still close it; a
+  # session lost here would otherwise leak (spec §6.5).
   engine$sas <- sas
+  tryCatch(
+    sas$submit(.sashiny_session_setup_code, results = "TEXT"),
+    error = function(e) {
+      .sashiny_discard_session(engine)
+      stop(e)
+    }
+  )
   engine$sas
 }
 
@@ -94,7 +102,8 @@ print.sashiny_engine_saspy <- function(x, ...) {
     return(engine$session_factory())
   }
   if (is.list(engine$cfg)) .sashiny_preflight(engine$cfg)
-  .sashiny_need("reticulate", "to run live SAS via saspy")
+  # reticulate 1.45.0 is the first release that converts pandas 3 data frames.
+  .sashiny_need("reticulate", "to run live SAS via saspy", version = "1.45.0")
   saspy <- reticulate::import("saspy")
   cfgfile <- engine$cfg
   if (is.list(cfgfile)) {
@@ -187,6 +196,24 @@ sas_engine_close.sashiny_engine_saspy <- function(engine) {
   invisible(NULL)
 }
 
+#' Close the current session (if any) and forget it.
+#'
+#' Used when a run fails or times out: the session must be ended before the
+#' reference is lost, otherwise it leaks (spec section 6.5).
+#' @noRd
+.sashiny_discard_session <- function(engine) {
+  sas <- engine$sas
+  engine$sas <- NULL
+  # Session-scoped caches are invalid once the session is gone (spec §6.4 reads
+  # choices once per session); a replacement session must re-query them.
+  engine$choices <- list()
+  engine$sas_version <- NULL
+  if (!is.null(sas)) {
+    try(sas$endsas(), silent = TRUE)
+  }
+  invisible(NULL)
+}
+
 #' @export
 sas_engine_choices.sashiny_engine_saspy <- function(engine, contract) {
   inputs <- contract$data$inputs %||% list()
@@ -274,10 +301,73 @@ sas_engine_run.sashiny_engine_saspy <- function(engine, contract, values, today 
   started <- .sashiny_now()
   t0 <- Sys.time()
   data <- contract$data
+  run <- data$run %||% list()
+  timeout <- as.numeric(run$timeout_seconds %||% 300)
+  # Enforce the whole-run deadline (spec §2.3, §6.5). The blocking saspy
+  # submission cannot be interrupted in-process, so a run with an explicit
+  # timeout executes in a background R process that is killed on timeout. The
+  # session is created in that process and is therefore discarded with it
+  # (spec §6.5). Runs without an explicit timeout (and testing hooks that use
+  # a closure factory) stay in-process to preserve session reuse.
+  if (is.null(run$timeout_seconds) && !is.null(engine$session_factory)) {
+    return(.sashiny_run_saspy(engine, contract, values, today, uploads, run_id, started, t0))
+  }
+  .sashiny_run_saspy_bg(engine, contract, values, today, uploads, run_id, started, t0, timeout)
+}
+
+#' Run the saspy engine in a background process with a whole-run deadline.
+#' @noRd
+.sashiny_run_saspy_bg <- function(engine, contract, values, today, uploads, run_id, started, t0,
+                                  timeout) {
+  .sashiny_need("callr", "to enforce run.timeout_seconds")
+  result_file <- tempfile("sashiny-result-", fileext = ".rds")
+  on.exit(unlink(result_file), add = TRUE)
+  args <- list(
+    cfg = engine$cfg, cfgname = engine$cfgname, record_to = engine$record_to,
+    session_factory = engine$session_factory,
+    contract_path = contract$path, values = values, today = today,
+    uploads = uploads, run_id = run_id, result_file = result_file,
+    started = started, t0 = t0
+  )
+  proc <- callr::r_bg(
+    function(args) {
+      engine <- SAShiny::sas_engine_saspy(args$cfg, cfgname = args$cfgname,
+        record_to = args$record_to, session_factory = args$session_factory)
+      contract <- SAShiny::sas_contract(args$contract_path)
+      # Call the synchronous run body directly. Re-entering sas_engine_run()
+      # here would take the background branch again (a real engine has no
+      # session_factory), spawning an unbounded chain of nested processes.
+      run_sync <- utils::getFromNamespace(".sashiny_run_saspy", "SAShiny")
+      result <- run_sync(engine, contract, args$values, args$today, args$uploads,
+        args$run_id, args$started, args$t0)
+      saveRDS(result, args$result_file)
+      invisible(NULL)
+    },
+    args = list(args),
+    package = "SAShiny",
+    supervise = TRUE
+  )
+  proc$wait(timeout = timeout * 1000)
+  if (proc$is_alive()) {
+    proc$kill()
+    return(.sashiny_engine_error(run_id, list(engine = "saspy"),
+      simpleError(sprintf("run exceeded timeout_seconds=%g", timeout))))
+  }
+  if (!file.exists(result_file)) {
+    return(.sashiny_engine_error(run_id, list(engine = "saspy"),
+      simpleError("background run produced no result")))
+  }
+  readRDS(result_file)
+}
+
+#' The synchronous saspy run body (spec §6.1).
+#' @noRd
+.sashiny_run_saspy <- function(engine, contract, values, today, uploads, run_id, started, t0) {
+  data <- contract$data
   flags <- lapply(uploads %||% list(), function(v) !is.null(v) && !isFALSE(v))
   choices <- tryCatch(sas_engine_choices(engine, contract), error = function(e) e)
   if (inherits(choices, "error")) {
-    engine$sas <- NULL
+      .sashiny_discard_session(engine)
     return(.sashiny_engine_error(run_id, list(engine = "saspy"), choices))
   }
   res <- sas_render_values(data, values, today,
@@ -311,7 +401,7 @@ sas_engine_run.sashiny_engine_saspy <- function(engine, contract, values, today 
     ))))
   }
   if (inherits(submitted, "error")) {
-    engine$sas <- NULL # the next run starts a fresh session
+      .sashiny_discard_session(engine) # the next run starts a fresh session
     return(.sashiny_engine_error(run_id, base, submitted))
   }
 
@@ -329,7 +419,15 @@ sas_engine_run.sashiny_engine_saspy <- function(engine, contract, values, today 
   )
   if (!is.null(engine$record_to)) {
     key <- .sashiny_recording_key(contract, res$macros, submitted$files)
-    result$metadata$recording <- .sashiny_save_recording(engine$record_to, key, result)
+    recording <- tryCatch(
+      .sashiny_save_recording(engine$record_to, key, result),
+      error = function(e) e
+    )
+    if (inherits(recording, "error")) {
+      result$metadata$recording_error <- conditionMessage(recording)
+    } else {
+      result$metadata$recording <- recording
+    }
   }
   result
 }
@@ -364,31 +462,30 @@ sas_engine_run.sashiny_engine_saspy <- function(engine, contract, values, today 
 #' Through reticulate, date columns are sent as pandas datetimes so `df2sd`
 #' writes SAS dates; other sessions (tests) receive the R data frame.
 #'
-#' `reticulate::r_to_py()` creates a string `Index` from R row names, which
-#' triggers `warnings.warn()` inside saspy's `dataframe2sasdata()`. When
-#' `df2sd` is invoked directly from C (reticulate) with no Python frame on the
-#' call stack, Python's `warnings.warn()` raises `ValueError: call stack is not
-#' deep enough`. Resetting the index to a `RangeIndex` and invoking `df2sd`
-#' through a Python wrapper function avoids both issues.
+#' The pandas work runs inside a small Python function. pandas 3 inspects the
+#' calling Python frames when a column is assigned, and saspy calls
+#' `warnings.warn()` in `df2sd`. Both raise `ValueError: call stack is not deep
+#' enough` when reticulate calls them directly from R, with no Python frame
+#' above them.
 #' @noRd
 .sashiny_df2sd <- function(sas, df, lib, mem, datetimes) {
   if (inherits(sas, "python.builtin.object")) {
-    pd <- reticulate::import("pandas", convert = FALSE)
     dates <- names(datetimes)
     for (n in dates) df[[n]] <- format(df[[n]], "%Y-%m-%d")
     rownames(df) <- NULL
-    py_df <- reticulate::r_to_py(df)$reset_index(drop = TRUE)
-    for (n in dates) {
-      col <- pd$to_datetime(reticulate::py_get_item(py_df, n),
-        format = "%Y-%m-%d", errors = "coerce"
-      )
-      reticulate::py_set_item(py_df, n, col)
-    }
-    call_df2sd <- reticulate::py_eval(
-      "lambda sas, df, mem, lib, dt: sas.df2sd(df, table=mem, libref=lib, datetimes=dt)",
-      convert = FALSE
+    send <- reticulate::py_run_string(paste(
+      "def _sashiny_df2sd(sas, df, mem, lib, dates, dt):",
+      "    import pandas as pd",
+      "    df = df.reset_index(drop=True)",
+      "    for n in dates:",
+      "        df[n] = pd.to_datetime(df[n], format='%Y-%m-%d', errors='coerce')",
+      "    return sas.df2sd(df, table=mem, libref=lib, datetimes=dt)",
+      sep = "\n"
+    ), local = TRUE, convert = FALSE)[["_sashiny_df2sd"]]
+    send(
+      sas, reticulate::r_to_py(df), mem, lib,
+      reticulate::r_to_py(as.list(dates)), reticulate::dict(datetimes)
     )
-    call_df2sd(sas, py_df, mem, lib, reticulate::dict(datetimes))
   } else {
     sas$df2sd(df, table = mem, libref = lib, datetimes = datetimes)
   }

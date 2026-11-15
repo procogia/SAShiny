@@ -119,6 +119,62 @@
           }
         ]
       }
+        },
+        {
+          "name": "empty_string_element",
+          "values": {
+            "origins": [
+              ""
+            ],
+            "types": []
+          },
+          "expected": {
+            "status": "invalid",
+            "errors": [
+              {
+                "code": "V004",
+                "input": "origins"
+              }
+            ]
+          }
+        },
+        {
+          "name": "null_element",
+          "values": {
+            "origins": [
+              null
+            ],
+            "types": []
+          },
+          "expected": {
+            "status": "invalid",
+            "errors": [
+              {
+                "code": "V002",
+                "input": "origins"
+              }
+            ]
+          }
+        },
+        {
+          "name": "nested_array_element",
+          "values": {
+            "origins": [
+              [
+                "Asia"
+              ]
+            ],
+            "types": []
+          },
+          "expected": {
+            "status": "invalid",
+            "errors": [
+              {
+                "code": "V002",
+                "input": "origins"
+              }
+            ]
+          }
     }
   ]
 }

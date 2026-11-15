@@ -57,7 +57,12 @@
     spec <- inputs[[iid]]
     if (!identical(spec$type, "dataset")) next
     upload <- .sashiny_resolve_upload(uploads[[iid]], spec, contract$base_dir)
-    if (!is.null(upload)) files[[iid]] <- upload
+    if (!is.null(upload)) {
+      # Check extension, existence and size (section 7 step 1); a bad file is
+      # reported as V014 rather than a raw error.
+      .sashiny_check_upload(upload, spec)
+      files[[iid]] <- upload
+    }
   }
   files
 }
@@ -108,8 +113,12 @@
   }
   if (identical(ext, "xlsx")) {
     .sashiny_need("openxlsx", "to read xlsx uploads")
+      # na.strings = character(0) preserves literal "NA"/"nan"/"None" text and
+      # leading-zero strings (spec §7 step 3: only empty/whitespace is missing).
+      # Without it openxlsx coerces literal "NA" to a missing value before the
+      # declared-column conversion can distinguish it from a blank cell.
     df <- openxlsx::read.xlsx(upload$path, sheet = 1L, detectDates = TRUE, check.names = FALSE,
-      sep.names = " "
+        sep.names = " ", na.strings = character(0)
     )
     return(list(df = df, all_text = FALSE))
   }
@@ -175,7 +184,10 @@
     return(as.Date(x, tz = "UTC"))
   }
   text <- trimws(as.character(x))
-  blank <- is.na(x) | text %in% c("", "NA", "NaT", "None", "nan")
+  # Only native missing and empty/whitespace are "missing" (spec section 7 step 3);
+  # any other non-ISO text (including the literal "NA", "nan", "NaT", "None")
+  # is unparseable and reported as V014.
+  blank <- is.na(x) | !nzchar(text)
   ok <- grepl("^[0-9]{4}-[0-9]{2}-[0-9]{2}$", text)
   parsed <- as.Date(ifelse(blank | !ok, NA, text), format = "%Y-%m-%d")
   if (any(is.na(parsed) & !blank)) {

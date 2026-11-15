@@ -21,9 +21,44 @@
   backreference = "\\\\[1-9]",
   unicode_prop = "\\\\[pPkK]",
   lazy_quantifier = "[*+?}]\\?",
-  possessive_quantifier = "[*+?}]\\+",
-  anchor = "(?<!\\\\)[\\^$]"
+  possessive_quantifier = "[*+?}]\\+"
 )
+
+#' Detect an unescaped `^`/`$` outside a character class (spec section 3.3).
+#'
+#' A `^` or `$` inside `[...]` is not an anchor: `[^x]` is a negated class and
+#' `[$]` is a literal dollar sign.
+#' @noRd
+.sashiny_has_anchor <- function(pattern) {
+  chars <- strsplit(pattern, "", fixed = TRUE)[[1]]
+  in_class <- FALSE
+  i <- 1L
+  n <- length(chars)
+  while (i <= n) {
+    ch <- chars[[i]]
+    if (identical(ch, "\\")) {
+      i <- i + 2L
+      next
+    }
+    if (identical(ch, "[")) {
+      in_class <- TRUE
+      i <- i + 1L
+      if (i <= n && identical(chars[[i]], "^")) i <- i + 1L
+      if (i <= n && identical(chars[[i]], "]")) i <- i + 1L
+      next
+    }
+    if (identical(ch, "]") && in_class) {
+      in_class <- FALSE
+      i <- i + 1L
+      next
+    }
+    if (ch %in% c("^", "$") && !in_class) {
+      return(TRUE)
+    }
+    i <- i + 1L
+  }
+  FALSE
+}
 
 #' A single validation issue
 #'
@@ -98,7 +133,10 @@ sas_contract <- function(path) {
 sas_validate <- function(contract, today = Sys.Date()) {
   issues <- list()
   validator <- jsonvalidate::json_validator(.sashiny_schema(), engine = "ajv")
-  json <- jsonlite::toJSON(contract$data, auto_unbox = TRUE, null = "null")
+    # digits = NA preserves the original numeric values (jsonlite's default
+    # rounds to ~15 significant digits, which can turn 1.000001 into 1 and hide
+    # a schema type error).
+    json <- jsonlite::toJSON(contract$data, auto_unbox = TRUE, null = "null", digits = NA)
   result <- validator(json, verbose = TRUE, error = FALSE)
   if (isTRUE(result)) {
     schema_errors <- NULL
@@ -167,23 +205,69 @@ sas_validate <- function(contract, today = Sys.Date()) {
 #' Resolve a date value, mapping "today" to `today`.
 #' @noRd
 .sashiny_resolve_date <- function(value, today) {
-  if (identical(value, "today")) today else as.Date(value)
+  if (identical(value, "today")) {
+    return(today)
+  }
+  # Year 0000 is not a real calendar date (spec §4 V009). R's `as.Date` would
+  # otherwise accept it and map it to a "year 0" date.
+  if (grepl("^0000-", value)) {
+    stop("year 0000 is not a real calendar date", call. = FALSE)
+  }
+  as.Date(value)
+}
+
+#' Derive the default module id from a program file name (spec section 2).
+#'
+#' Take the base name without the `.sas` extension, lower-case it, remove
+#' combining marks (so `İ` lower-cases to `i`, not `i` + a combining dot),
+#' replace each character outside `[a-z0-9_]` with `_`, prefix `p_` if it does
+#' not start with a letter, and truncate to 32 characters.
+#' @noRd
+.sashiny_default_module_id <- function(program) {
+  # Strip the directory with a regex on the UTF-8 form, not basename(), which
+  # cannot translate a non-ASCII file name in a C/POSIX locale (issue #99).
+  base <- sub(".*[/\\\\]", "", enc2utf8(program))
+  if (grepl("\\.sas$", base, ignore.case = TRUE)) {
+    base <- substr(base, 1L, nchar(base) - 4L)
+  }
+  base <- tolower(base)
+  # Strip combining marks (U+0300-U+036F and the other Mn/Mc/Me blocks) so a
+  # decomposed lower-case form matches Python's `unicodedata.combining` strip.
+  base <- gsub("[\u0300-\u036f\u1ab0-\u1aff\u1dc0-\u1dff\u20d0-\u20ff\ufe20-\ufe2f]", "", base, perl = TRUE)
+  base <- gsub("[^a-z0-9_]", "_", base)
+  if (!nzchar(base) || !grepl("^[a-z]", base)) {
+    base <- paste0("p_", base)
+  }
+  substr(base, 1L, 32L)
+}
+
+#' Resolve a date bound, returning NULL when it is not a real calendar date.
+#' @noRd
+.sashiny_resolve_bound <- function(value, today) {
+  if (is.null(value)) {
+    return(NULL)
+  }
+  tryCatch(.sashiny_resolve_date(value, today), error = function(e) NULL)
 }
 
 #' Test whether a value is an integer (numeric with no fractional part).
 #' @noRd
 .sashiny_is_int <- function(x) {
-  is.numeric(x) && !is.logical(x) && x == floor(x)
+  is.numeric(x) && length(x) == 1L && is.finite(x) && x == floor(x)
 }
 
 #' Check a regex against the portable subset (spec section 3.3).
 #' Returns NULL when acceptable, otherwise a description of the problem.
 #' @noRd
 .sashiny_check_regex <- function(pattern) {
+  outside <- .sashiny_outside_class(pattern)
   for (what in names(.sashiny_forbidden_regex)) {
-    if (grepl(.sashiny_forbidden_regex[[what]], pattern, perl = TRUE)) {
+    if (grepl(.sashiny_forbidden_regex[[what]], outside, perl = TRUE)) {
       return(what)
     }
+  }
+  if (.sashiny_has_anchor(pattern)) {
+    return("anchor")
   }
   ok <- tryCatch(
     {
@@ -196,6 +280,44 @@ sas_validate <- function(contract, today = Sys.Date()) {
     return("does not compile")
   }
   NULL
+}
+
+#' The pattern with every `[...]` class's contents replaced by spaces.
+#'
+#' Forbidden constructs are only meaningful outside character classes: a literal
+#' `+?` or `(?=` inside `[...]` is not a quantifier or look-around (spec section
+#' 3.3). Escaped characters are kept so `\\[` is not mistaken for a class opener.
+#' @noRd
+.sashiny_outside_class <- function(pattern) {
+  chars <- strsplit(pattern, "", fixed = TRUE)[[1]]
+  out <- character(length(chars))
+  in_class <- FALSE
+  i <- 1L
+  n <- length(chars)
+  while (i <= n) {
+    ch <- chars[[i]]
+    if (identical(ch, "\\") && i < n) {
+      out[[i]] <- ch
+      out[[i + 1L]] <- chars[[i + 1L]]
+      i <- i + 2L
+      next
+    }
+    if (identical(ch, "[")) {
+      in_class <- TRUE
+      out[[i]] <- " "
+      i <- i + 1L
+      next
+    }
+    if (identical(ch, "]") && in_class) {
+      in_class <- FALSE
+      out[[i]] <- " "
+      i <- i + 1L
+      next
+    }
+    out[[i]] <- if (in_class) " " else ch
+    i <- i + 1L
+  }
+  paste0(out, collapse = "")
 }
 
 # ---------------------------------------------------------------------------
@@ -242,9 +364,15 @@ sas_validate <- function(contract, today = Sys.Date()) {
       spec$min > spec$max) {
       add("S003", p, "min > max")
     }
-    if (kind %in% c("date", "daterange") && !is.null(spec$min) && !is.null(spec$max) &&
-      .sashiny_resolve_date(spec$min, today) > .sashiny_resolve_date(spec$max, today)) {
-      add("S003", p, "min > max")
+    if (kind %in% c("date", "daterange") && (!is.null(spec$min) || !is.null(spec$max))) {
+          lo <- if (!is.null(spec$min)) .sashiny_resolve_bound(spec$min, today) else NULL
+          hi <- if (!is.null(spec$max)) .sashiny_resolve_bound(spec$max, today) else NULL
+          # A one-sided bound is valid; only a present-but-invalid bound is S003.
+          if ((!is.null(spec$min) && is.null(lo)) || (!is.null(spec$max) && is.null(hi))) {
+        add("S003", p, "invalid date bound")
+          } else if (!is.null(lo) && !is.null(hi) && lo > hi) {
+        add("S003", p, "min > max")
+      }
     }
     # S005
     vals <- .sashiny_choice_values(spec)
@@ -290,6 +418,12 @@ sas_validate <- function(contract, today = Sys.Date()) {
         add("S016", paste0(p, "/columns"), "duplicate column names")
       }
     }
+        # S017 (generated component ids)
+        if (iid %in% c("run", "status", "log") ||
+          startsWith(iid, "out_") || startsWith(iid, "dl_") ||
+          endsWith(iid, "__sample")) {
+          add("S017", p, "id collides with a generated module component id")
+        }
     # S013 (sample)
     if (identical(kind, "dataset") && !is.null(spec$sample) &&
       !file.exists(file.path(contract$base_dir, spec$sample))) {

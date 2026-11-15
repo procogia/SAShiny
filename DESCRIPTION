@@ -1,6 +1,6 @@
 Package: SAShiny
 Title: Use Unchanged 'SAS' Programs as the Server of 'Shiny' Applications
-Version: 0.1.4
+Version: 0.1.6
 Authors@R: c(
     person("Mehar Pratap", "Singh", , "meharpsingh@gmail.com",
            role = c("aut", "cre", "cph")),
@@ -34,12 +34,15 @@ Imports:
     yaml
 Suggests:
     bslib,
+    callr,
     ggplot2,
     haven,
     knitr,
+    later,
     openxlsx,
     plotly,
-    reticulate,
+    promises,
+    reticulate (>= 1.45.0),
     rlang,
     rmarkdown,
     shiny,
@@ -52,4 +55,3 @@ Roxygen: list(markdown = TRUE)
 SystemRequirements: Optional: 'SAS' 9.4 or 'SAS Viya', and 'Python' (>= 3.10)
     with 'saspy' (live connections only).
 Config/roxygen2/version: 8.1.1
-RoxygenNote: 7.3.3

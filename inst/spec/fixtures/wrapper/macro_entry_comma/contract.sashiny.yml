@@ -1,0 +1,16 @@
+sashiny: 1
+program: program.sas
+title: Macro entry with a comma-separated multichoice
+inputs:
+  arms:
+    type: multichoice
+    label: Arms
+    choices: [Placebo, Drug A, Drug B]
+    separator: comma
+outputs:
+  log:
+    type: log
+run:
+  entry: macro
+  macro: arms_table
+  reset_work: false

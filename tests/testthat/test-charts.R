@@ -168,6 +168,19 @@ test_that("the plotly backend builds every chart kind", {
   }
 })
 
+test_that("the plotly backend draws one panel per facet level (issue #72)", {
+  skip_if_not_installed("plotly")
+  levels <- unique(vapply(chart_value()$rows, function(r) as.character(r[[3]]), ""))
+  for (kind in chart_kinds) {
+    spec <- chart_spec(kind, facet = "sex")
+    built <- plotly::plotly_build(sas_render_chart(chart_value(), spec, backend = "plotly"))
+    axes <- unique(vapply(built$x$data, function(t) t$xaxis %||% "x", ""))
+    expect_length(axes, length(levels))
+    titles <- vapply(built$x$layout$annotations, function(a) a$text, "")
+    expect_setequal(titles, levels)
+  }
+})
+
 test_that("the base backend draws every chart kind to a PNG, headless", {
   before <- grDevices::dev.list()
   for (kind in chart_kinds) {

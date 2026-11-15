@@ -12,16 +12,24 @@
   if (is.null(x)) y else x
 }
 
-#' Stop with a clear message when a suggested package is missing.
+#' Stop with a clear message when a suggested package is missing or too old.
 #'
 #' @param pkg The package name.
 #' @param reason Why it is needed, e.g. `"to read xlsx uploads"`.
+#' @param version The minimum version, or NULL for any version.
 #' @noRd
-.sashiny_need <- function(pkg, reason) {
+.sashiny_need <- function(pkg, reason, version = NULL) {
   if (!requireNamespace(pkg, quietly = TRUE)) {
     message <- sprintf(
       "The '%s' package is required %s. Install it with install.packages(\"%s\").",
       pkg, reason, pkg
+    )
+    stop(message, call. = FALSE)
+  }
+  if (!is.null(version) && utils::packageVersion(pkg) < version) {
+    message <- sprintf(
+      "The '%s' package %s or later is required %s (installed: %s). Update it with install.packages(\"%s\").",
+      pkg, version, reason, utils::packageVersion(pkg), pkg
     )
     stop(message, call. = FALSE)
   }

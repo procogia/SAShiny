@@ -114,6 +114,9 @@
   if (is.null(select)) {
     return(plots)
   }
+  if (select < 1) {
+    stop(sprintf("select=%d but graph positions are 1-based", select), call. = FALSE)
+  }
   if (select > length(plots)) {
     stop(sprintf("select=%d but the run produced %d graph(s)", select, length(plots)),
       call. = FALSE
@@ -223,7 +226,9 @@
   out_rows <- lapply(rows, function(row) {
     cells <- lapply(seq_along(meta), function(j) .sashiny_clean_cell(row[[j]], numeric[[j]]))
     if (formatted) {
-      cells <- lapply(cells, function(c) if (is.null(c)) "" else trimws(as.character(c)))
+      cells <- lapply(cells, function(c) {
+        if (is.null(c)) "" else trimws(as.character(c), whitespace = "[[:space:]]")
+      })
     }
     cells
   })

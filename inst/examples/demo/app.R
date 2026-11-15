@@ -24,6 +24,12 @@
 library(shiny)
 library(SAShiny)
 
+# Allow uploads up to the largest contract `max_size_mb` (the AML example uses
+# 200 MB). Shiny's default 5 MiB `maxRequestSize` would otherwise reject files
+# the contract explicitly permits; the contract's own `max_size_mb` check is
+# still enforced at run time (spec §7).
+options(shiny.maxRequestSize = 250 * 1024^2)
+
 # Locate the repository's examples/ directory by walking up from the app
 # directory, so the app works from a source checkout at any depth.
 find_examples_dir <- function(start = getwd(), max_up = 6L) {
@@ -93,20 +99,28 @@ live_engine <- function(profile) {
   sas_pool(factory, max_size = 2L)
 }
 
+# One shared live pool per profile, so `max_size` bounds live SAS sessions
+# across every browser session rather than per session (issue #62).
+shared_live <- new.env(parent = emptyenv())
+shared_live_engine <- function(profile) {
+  if (is.null(shared_live[[profile]])) {
+    shared_live[[profile]] <- live_engine(profile)
+  }
+  shared_live[[profile]]
+}
+
 # An engine that routes each run to the selected profile and falls back to
 # the offline recordings when live SAS is unavailable.
 demo_engine <- function(profile) {
   offline <- sas_engine_mock(recordings_dir)
-  live <- new.env(parent = emptyenv())
   current <- function() {
     name <- shiny::isolate(profile())
     if (identical(name, "offline")) {
       return(list(name = name, engine = offline))
     }
-    if (is.null(live[[name]])) live[[name]] <- live_engine(name)
-    list(name = name, engine = live[[name]])
+    list(name = name, engine = shared_live_engine(name))
   }
-  structure(list(current = current, offline = offline, live = live), class = "demo_engine")
+  structure(list(current = current, offline = offline), class = "demo_engine")
 }
 
 run_demo <- function(engine, contract, values, today = Sys.Date(),
@@ -168,9 +182,8 @@ server <- function(input, output, session) {
   for (tid in names(tracks)) {
     sas_program_server(tid, contracts[[tid]], engine)
   }
-  session$onSessionEnded(function() {
-    for (name in ls(engine$live)) sas_engine_close(engine$live[[name]])
-  })
+  # Live pools are shared across sessions (issue #62), so they are not closed
+  # here; they live for the app's lifetime.
 }
 
 shinyApp(ui, server)

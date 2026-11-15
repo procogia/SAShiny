@@ -1,0 +1,45 @@
+{
+  "contract": "contracts/valid/choice_whitespace",
+  "today": "2026-11-11",
+  "cases": [
+    {
+      "name": "padded_value_preserved",
+      "values": {
+        "padded": " A "
+      },
+      "expected": {
+        "status": "ok",
+        "macros": {
+          "PADDED": " A "
+        }
+      }
+    },
+    {
+      "name": "plain_value_preserved",
+      "values": {
+        "padded": "A"
+      },
+      "expected": {
+        "status": "ok",
+        "macros": {
+          "PADDED": "A"
+        }
+      }
+    },
+    {
+      "name": "unknown_value_rejected",
+      "values": {
+        "padded": "B"
+      },
+      "expected": {
+        "status": "invalid",
+        "errors": [
+          {
+            "code": "V004",
+            "input": "padded"
+          }
+        ]
+      }
+    }
+  ]
+}

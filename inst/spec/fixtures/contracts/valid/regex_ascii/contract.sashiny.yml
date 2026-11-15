@@ -1,0 +1,15 @@
+sashiny: 1
+program: program.sas
+title: Regex ASCII shorthand semantics
+inputs:
+  digits:
+    type: text
+    label: Digits
+    pattern: "\\d+"
+  word:
+    type: text
+    label: Word
+    pattern: "\\w+"
+outputs:
+  log:
+    type: log

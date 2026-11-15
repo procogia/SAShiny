@@ -2,10 +2,10 @@ sashiny: 1
 program: program.sas
 title: Invalid
 inputs:
-  log:
+  foo:
     type: numeric
     label: x
     macro: lg
 outputs:
-  log:
+  foo:
     type: log

@@ -39,3 +39,44 @@ test_that("value fixtures render correctly", {
     }
   }
 })
+test_that("a multichoice element must be a single string (issue #60)", {
+  data <- list(inputs = list(x = list(type = "multichoice", label = "X", choices = list("A", "B"))))
+  res <- sas_render_values(data, list(x = list(c("A", "B"))), .sashiny_today)
+  expect_identical(vapply(res$issues, function(i) i$code, ""), "V002")
+  ok <- sas_render_values(data, list(x = list("A", "B")), .sashiny_today)
+  expect_length(ok$issues, 0L)
+  range <- list(inputs = list(d = list(type = "daterange", label = "D")))
+  bad <- sas_render_values(range, list(d = list(c("2026-01-01", "2026-01-02"), "2026-01-03")),
+    .sashiny_today
+  )
+  expect_identical(vapply(bad$issues, function(i) i$code, ""), "V002")
+})
+
+test_that("sas_json_values keeps an escaped U+0000 a V007 error (issue #102)", {
+  data <- list(inputs = list(
+    company = list(type = "text", label = "Company"),
+    pick = list(type = "choice", label = "Pick", choices = list("a"), optional = TRUE)
+  ))
+  values <- sas_json_values('{"company": "a\\u0000b"}')
+  expect_identical(nchar(values$company), 3L)
+  res <- sas_render_values(data, values, .sashiny_today)
+  expect_identical(vapply(res$issues, function(i) i$code, ""), "V007")
+  expect_identical(vapply(res$issues, function(i) i$path, ""), "company")
+  # An escaped backslash before "u0000" is literal text, not a NUL escape.
+  literal <- sas_json_values('{"company": "a\\\\u0000b"}')
+  expect_identical(literal$company, "a\\u0000b")
+  expect_length(sas_render_values(data, literal, .sashiny_today)$issues, 0L)
+  # Raw bytes are accepted; a literal NUL byte is never silently truncated: it
+  # is either a JSON parse error or a V007 value.
+  expect_identical(sas_json_values(charToRaw('{"company": "x"}'))$company, "x")
+  nul <- tryCatch(
+    sas_json_values(c(charToRaw('{"company": "a'), as.raw(0L), charToRaw('b"}'))),
+    error = function(e) NULL
+  )
+  if (!is.null(nul)) {
+    expect_identical(sas_render_values(data, nul, .sashiny_today)$issues[[1]]$code, "V007")
+  }
+  expect_identical(sas_json_values("{}"), structure(list(), names = character()))
+  expect_error(sas_json_values("[1, 2]"), "JSON object")
+  expect_error(sas_json_values(1), "single JSON string")
+})
