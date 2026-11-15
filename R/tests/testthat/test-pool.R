@@ -77,6 +77,9 @@ test_that("pool warms min_size sessions", {
 test_that("pool rejects invalid bounds", {
   expect_error(sas_pool(sas_engine_mock(), min_size = 3L, max_size = 2L), "min_size")
   expect_error(sas_pool(sas_engine_mock(), min_size = -1L), "non-negative")
+  # Inf == floor(Inf), so a non-finite size must be rejected explicitly (#94).
+  expect_error(sas_pool(sas_engine_mock(), max_size = Inf), "whole numbers")
+  expect_error(sas_pool(sas_engine_mock(), max_size = NaN))
 })
 
 test_that("pool returns an error result when exhausted (spec section 6.5)", {

@@ -253,7 +253,7 @@ sas_validate <- function(contract, today = Sys.Date()) {
 #' Test whether a value is an integer (numeric with no fractional part).
 #' @noRd
 .sashiny_is_int <- function(x) {
-  is.numeric(x) && !is.logical(x) && x == floor(x)
+  is.numeric(x) && length(x) == 1L && is.finite(x) && x == floor(x)
 }
 
 #' Check a regex against the portable subset (spec section 3.3).

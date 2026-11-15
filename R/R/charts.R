@@ -270,25 +270,47 @@ sas_chart_backends <- function() {
   .sashiny_chart_need("plotly")
   data <- .sashiny_chart_frame(value)
   col <- function(name) stats::as.formula(paste0("~`", name, "`"))
-  args <- list(data, x = col(spec$x))
-  if (!is.null(spec$y) && spec$kind != "histogram") args$y <- col(spec$y)
-  if (!is.null(spec$color)) args$color <- col(spec$color)
+  xlab <- spec$xlab %||% spec$x
+  ylab <- spec$ylab %||% (if (spec$kind == "histogram") NULL else spec$y) %||% ""
+  build <- function(frame, showlegend = TRUE) {
+    args <- list(frame, x = col(spec$x))
+    if (!is.null(spec$y) && spec$kind != "histogram") args$y <- col(spec$y)
+    if (!is.null(spec$color)) args$color <- col(spec$color)
     # plotly bar honours `color` as a fill/grouping; map the declarative `fill`
     # field to `color` so a bar chart is grouped and filled by it.
     if (!is.null(spec$fill)) args$color <- col(spec$fill)
-  # Facet maps to a subplot column (spec §8.5), so groups are not collapsed.
-  if (!is.null(spec$facet)) args$facet_col <- col(spec$facet)
-  args <- c(args, switch(spec$kind,
-    scatter = list(type = "scatter", mode = "markers"),
-    line = list(type = "scatter", mode = "lines"),
-    bar = list(type = "bar"),
-    histogram = list(type = "histogram"),
-    box = list(type = "box")
-  ))
-  fig <- do.call(plotly::plot_ly, args)
-  plotly::layout(fig,
-    title = spec$title %||% "",
-    xaxis = list(title = spec$xlab %||% spec$x),
-    yaxis = list(title = spec$ylab %||% (if (spec$kind == "histogram") NULL else spec$y) %||% "")
-  )
+    args <- c(args, switch(spec$kind,
+      scatter = list(type = "scatter", mode = "markers"),
+      line = list(type = "scatter", mode = "lines"),
+      bar = list(type = "bar"),
+      histogram = list(type = "histogram"),
+      box = list(type = "box")
+    ))
+    args$showlegend <- showlegend
+    if (!is.null(spec$color) || !is.null(spec$fill)) {
+      args$legendgroup <- col(spec$fill %||% spec$color)
+    }
+    fig <- do.call(plotly::plot_ly, args)
+    plotly::layout(fig, xaxis = list(title = xlab), yaxis = list(title = ylab))
+  }
+  if (is.null(spec$facet)) {
+    return(plotly::layout(build(data), title = spec$title %||% ""))
+  }
+  # One subplot per facet level (spec section 8.5): plot_ly has no facet
+  # argument, so split the frame and combine the panels with a shared y axis.
+  levels <- unique(as.character(data[[spec$facet]]))
+  n <- length(levels)
+  panels <- lapply(seq_len(n), function(i) {
+    build(data[as.character(data[[spec$facet]]) == levels[[i]], , drop = FALSE],
+      showlegend = i == 1L
+    )
+  })
+  fig <- plotly::subplot(panels, nrows = 1L, shareY = TRUE, titleX = TRUE, titleY = TRUE)
+  labels <- lapply(seq_len(n), function(i) {
+    list(
+      text = levels[[i]], x = (i - 0.5) / n, y = 1, xref = "paper", yref = "paper",
+      xanchor = "center", yanchor = "bottom", showarrow = FALSE
+    )
+  })
+  plotly::layout(fig, title = spec$title %||% "", annotations = labels)
 }
