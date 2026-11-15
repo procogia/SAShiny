@@ -50,7 +50,7 @@ __all__ = [
     "wrapper_code",
 ]
 
-__version__ = "0.1.6"
+__version__ = "0.1.7"
 
 
 def __getattr__(name: str) -> Any:

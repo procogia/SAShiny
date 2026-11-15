@@ -6,6 +6,8 @@ All notable changes to the Python library are documented here. The format follow
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-11-14
+
 ### Added
 - `sashiny.json_values()` parses a JSON object of input values, the counterpart
   of R's `sas_json_values()` (spec §4, #102).
