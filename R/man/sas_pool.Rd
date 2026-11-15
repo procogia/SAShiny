@@ -28,7 +28,7 @@ session; or a single engine shared by all pooled sessions (suitable for
 \item{max_runs_per_session}{Runs before a session is discarded and replaced.}
 
 \item{acquire_timeout}{Seconds to wait for a free session when every session
-is busy before reporting \code{pool exhausted} (spec section 6.5).}
+is busy before reporting \verb{pool exhausted} (spec section 6.5).}
 }
 \value{
 A \code{sashiny_pool} object (an environment).

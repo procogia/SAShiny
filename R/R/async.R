@@ -31,7 +31,7 @@
 
 #' The whole-run deadline of a saspy run, in seconds (spec sections 2.3, 6.5).
 #'
-#' Mirrors [sas_engine_run.sashiny_engine_saspy()]: an explicit
+#' Mirrors `sas_engine_run.sashiny_engine_saspy()`: an explicit
 #' `run.timeout_seconds` always applies; otherwise the 300 second default
 #' applies except to the in-process testing hook (`session_factory`). Other
 #' engines have no deadline.
