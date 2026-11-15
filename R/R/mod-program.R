@@ -465,7 +465,7 @@ sas_program_server <- function(id, contract, engine, server_override = NULL, ren
     # sent to another process, so it still runs in-process (and blocks).
     # testServer cannot await a background process, so it runs synchronously.
     use_extended <- shiny::isRunning() && requireNamespace("callr", quietly = TRUE) &&
-      requireNamespace("later", quietly = TRUE)
+      requireNamespace("later", quietly = TRUE) && requireNamespace("promises", quietly = TRUE)
     if (use_extended) {
       portable <- .sashiny_portable_engine(engine)
       run_task <- shiny::ExtendedTask$new(function(contract, values, uploads) {

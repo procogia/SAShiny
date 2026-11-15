@@ -239,6 +239,10 @@ test_that("the pre-flight check requires an authinfo entry", {
 })
 
 test_that("a missing Java is reported on the result, before saspy is imported", {
+  # The deadline runs saspy in a callr process that loads the installed package.
+  skip_if_not_installed("callr")
+  skip_if(length(find.package("SAShiny", lib.loc = .libPaths(), quiet = TRUE)) == 0L,
+    "SAShiny is not installed")
   engine <- sas_engine_saspy(list(iomhost = "h", java = "", authkey = "oda"))
   result <- sas_engine_run(engine, fake_contract(), list(min_age = 30, make = "BMW"),
     today = .sashiny_today, uploads = list(adsl = TRUE)
@@ -296,7 +300,10 @@ test_that("empty reticulate-converted tables (nrow is NULL) collect cleanly (iss
 }
 
 test_that("run.timeout_seconds is enforced in a background process (issue #34)", {
+  # The deadline runs saspy in a callr process that loads the installed package.
   skip_if_not_installed("callr")
+  skip_if(length(find.package("SAShiny", lib.loc = .libPaths(), quiet = TRUE)) == 0L,
+    "SAShiny is not installed")
   # A minimal contract without choices_from, so the slow factory only needs to
   # handle the main submission.
   dir <- tempfile("sashiny-timeout-")

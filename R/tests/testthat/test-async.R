@@ -26,7 +26,10 @@
   skip_if_not_installed("later")
   skip_if_not_installed("promises")
   # The background process loads the installed package.
-  skip_if(!nzchar(system.file(package = "SAShiny")), "SAShiny is not installed")
+  skip_if(
+    length(find.package("SAShiny", lib.loc = .libPaths(), quiet = TRUE)) == 0L,
+    "SAShiny is not installed"
+  )
 }
 
 test_that("only mock and saspy engines are sent to a background process", {
