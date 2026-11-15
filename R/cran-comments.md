@@ -6,9 +6,11 @@
   Windows (release): all pass.
 * macOS builder, R-release (arm64): Status: OK, 0 errors, 0 warnings, 0 notes
   (0.1.4, 2026-11-12).
-* win-builder, R-devel: to be re-run by the maintainer for 0.1.6. An earlier
-  R-devel ERROR ("no recognized vignette engine") applied to the old `.Rhtml`
-  vignette, which is now `.Rmd` with `knitr::rmarkdown`.
+* win-builder, R-devel (2026-11-14 r90890 ucrt): Status: 1 NOTE (new
+  submission; "PBC" flagged as possibly misspelled, see below) (0.1.6,
+  2026-11-14). The earlier R-devel ERROR ("no recognized vignette engine")
+  applied to the old `.Rhtml` vignette, which is now `.Rmd` with
+  `knitr::rmarkdown`.
 * R-hub: not re-run for 0.1.4 (the `RHUB_TOKEN` secret is not configured in the
   repository). The 0.1.1-era R-hub results (Linux, Windows, macOS, clang-asan,
   nosuggests) were `Status: OK`.
