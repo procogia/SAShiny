@@ -54,3 +54,15 @@ def test_demo_live_without_settings_falls_back(monkeypatch: pytest.MonkeyPatch) 
             time.sleep(0.05)
         assert "unavailable" in status
         assert "url is required" in status
+
+
+def test_hosted_demo_only_offers_oda_and_offline(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("SASHINY_HOSTED", "1")
+    demo = _demo()
+    assert set(demo.PROFILES) == {"offline", "oda"}
+
+
+def test_local_demo_offers_all_profiles(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("SASHINY_HOSTED", raising=False)
+    demo = _demo()
+    assert set(demo.PROFILES) == {"offline", "oda", "viya", "sas94"}

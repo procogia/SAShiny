@@ -64,12 +64,18 @@ tracks <- list(
 )
 contracts <- lapply(tracks, function(t) sas_contract(t[[2]]))
 
-profiles <- c(
+all_profiles <- c(
   "Offline (recordings)" = "offline",
   "SAS OnDemand for Academics" = "oda",
   "ProCogia SAS Viya (VPN)" = "viya",
   "ProCogia SAS 9.4 (VPN)" = "sas94"
 )
+hosted <- tolower(trimws(Sys.getenv("SASHINY_HOSTED", ""))) %in% c("1", "true", "yes")
+profiles <- if (hosted) {
+  all_profiles[c("Offline (recordings)", "SAS OnDemand for Academics")]
+} else {
+  all_profiles
+}
 
 `%||%` <- function(x, y) if (is.null(x)) y else x
 

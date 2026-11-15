@@ -30,9 +30,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# uv (Python package manager).
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 ENV PATH="/root/.local/bin:${PATH}"
+
+# uv (Python package manager). Avoid a pipeline so download failures stop the
+# image build instead of being masked by the shell.
+RUN curl --fail --location --silent --show-error \
+        https://astral.sh/uv/install.sh -o /tmp/install-uv.sh \
+    && sh /tmp/install-uv.sh \
+    && rm /tmp/install-uv.sh \
+    && command -v uv
 
 # --- Python library + demo app ---------------------------------------------
 WORKDIR /app
@@ -64,10 +70,15 @@ COPY examples ./examples
 # --- Runtime ----------------------------------------------------------------
 # The demo app defaults to Offline. Credentials are injected at runtime from the
 # platform secret store (never in the image).
+COPY deploy/daytona/container-entrypoint.sh /usr/local/bin/sashiny-entrypoint
+RUN chmod 755 /usr/local/bin/sashiny-entrypoint
+
 ENV SASHINY_CONNECTIONS=/app/examples/connections.example.yml \
-    SASHINY_PROFILE=offline
+    SASHINY_PROFILE=offline \
+    SASHINY_HOSTED=1
 
 EXPOSE 8000
 
 # Run the Python demo app (Shiny for Python) by default.
+ENTRYPOINT ["/usr/local/bin/sashiny-entrypoint"]
 CMD ["sh", "-c", "cd Python && uv run --with shiny shiny run examples/demo/app.py --host 0.0.0.0 --port 8000"]

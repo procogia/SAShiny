@@ -35,6 +35,10 @@ cd Python && uv sync && uv run ruff check . && uv run mypy && uv run pytest
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
 
+To run the R and Python demo apps locally or prepare the Daytona-hosted demo,
+see the [demo run-sheet](docs/demo-run-sheet.md) and
+[Daytona deployment guide](deploy/daytona/README.md).
+
 ## Maintainers
 
 - Mehar Pratap Singh (author, maintainer)

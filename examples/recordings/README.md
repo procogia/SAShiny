@@ -12,3 +12,8 @@ To fill this folder, run the demo inputs once against live SAS with recording on
 
 Recordings contain SAS output for synthetic example data only. Do not commit
 recordings made from real data.
+
+This checkout currently has no recording JSON files. Until recordings are
+created and committed, the Offline profile starts normally but displays
+"no recording matches these inputs"; create and verify recordings before
+building the hosted demo image.

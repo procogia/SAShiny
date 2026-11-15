@@ -61,6 +61,8 @@ PROFILES = {
     "viya": "ProCogia SAS Viya (VPN)",
     "sas94": "ProCogia SAS 9.4 (VPN)",
 }
+if os.environ.get("SASHINY_HOSTED", "").strip().lower() in {"1", "true", "yes"}:
+    PROFILES = {name: label for name, label in PROFILES.items() if name in {"offline", "oda"}}
 
 
 def _live_engine(profile: str) -> sashiny.Engine:
