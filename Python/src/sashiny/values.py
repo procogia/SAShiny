@@ -8,6 +8,7 @@ variable. Rendering is exact and specified; nothing here needs SAS-escaping
 
 from __future__ import annotations
 
+import json
 import math
 import re
 from datetime import date
@@ -15,7 +16,7 @@ from typing import Any
 
 from .contract import NUMERIC_LITERAL, SAS_NAME, Issue, choice_values, macro_names, resolve_date
 
-__all__ = ["render_values", "superq_macros"]
+__all__ = ["json_values", "render_values", "superq_macros"]
 
 SAS_EPOCH = date(1960, 1, 1)
 MONTHS = ("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC")
@@ -79,6 +80,28 @@ def render_date(dt: date, mode: str) -> str:
 
 def _ws_strip(v: str) -> str:
     return v.strip(_WS)
+
+
+def json_values(text: str | bytes) -> dict[str, Any]:
+    """Parse a JSON object of input values (spec §2.1) for :func:`render_values`.
+
+    The counterpart of R's ``sas_json_values()``. Python strings hold U+0000,
+    so an escaped U+0000 is kept and later rejected as ``V007`` (spec §4).
+
+    Args:
+        text: A JSON object as text or UTF-8 bytes.
+
+    Returns:
+        The input values keyed by input id.
+
+    Raises:
+        ValueError: ``text`` is not valid JSON or not a JSON object.
+
+    """
+    values = json.loads(text)
+    if not isinstance(values, dict):
+        raise ValueError("json must be a JSON object of input values")
+    return values
 
 
 def render_values(  # noqa: PLR0912, PLR0913, PLR0917

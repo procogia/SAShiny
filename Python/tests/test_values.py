@@ -58,3 +58,17 @@ def test_values(vf: Path, case: dict) -> None:
         want = {(e["code"], e["input"]) for e in exp["errors"]}
         got = {(i.code, i.path) for i in issues}
         assert got == want, f"want {sorted(want)} got {sorted(got)}"
+
+
+def test_json_values_keeps_escaped_nul_as_v007() -> None:
+    # Issue #102: parity with R's sas_json_values(); an escaped U+0000 is V007.
+    data = {"inputs": {"company": {"type": "text", "label": "Company"}}}
+    values = sashiny.json_values('{"company": "a\\u0000b"}')
+    assert values == {"company": "a\x00b"}
+    _, issues = sashiny.render_values(data, values, date(2026, 11, 11))
+    assert [(i.code, i.path) for i in issues] == [("V007", "company")]
+    literal = sashiny.json_values(b'{"company": "a\\\\u0000b"}')
+    assert literal == {"company": "a\\u0000b"}
+    assert sashiny.render_values(data, literal, date(2026, 11, 11))[1] == []
+    with pytest.raises(ValueError, match="JSON object"):
+        sashiny.json_values("[1, 2]")

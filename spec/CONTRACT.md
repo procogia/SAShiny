@@ -191,6 +191,12 @@ its elements. Only after the shape is correct are the elements type-checked (eac
 else `V002`) and then validated (dates, choices, bounds). A `daterange` element that is not a string is
 therefore `V002`, never `V009`, even when the other element is a malformed date.
 
+A host that parses JSON values MUST NOT lose a control character before validation. In particular,
+some runtimes (R character strings) cannot hold U+0000, and a JSON parser may silently truncate a
+string at `\u0000`. Such a host MUST reject the value as `V007` instead, for example by mapping each
+escaped U+0000 to another control character before parsing (R `sas_json_values()`; Python
+`sashiny.json_values()` keeps U+0000 as is).
+
 ---
 
 ## 5. Value rendering

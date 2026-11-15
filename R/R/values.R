@@ -105,6 +105,41 @@
   )
 }
 
+#' Parse input values from JSON text
+#'
+#' Parses a JSON object of input values (spec section 2.1) for
+#' [sas_render_values()]. R character strings cannot hold U+0000, and
+#' `jsonlite` silently truncates a string at an escaped `\u0000`, which would
+#' let a control character slip past V007 (spec section 4). Each escaped U+0000
+#' is therefore mapped to U+0001 before parsing, so the value is still
+#' rejected exactly like the original (V007 for text and choice values).
+#'
+#' @param json A JSON object as a single string (or a raw vector of UTF-8).
+#' @return A named list of input values keyed by input id.
+#' @export
+#' @examples
+#' values <- sas_json_values('{"company": "a\\u0000b"}')
+#' data <- list(inputs = list(company = list(type = "text", label = "Company")))
+#' sas_render_values(data, values)$issues[[1]]$code
+sas_json_values <- function(json) {
+  if (is.raw(json)) {
+    # A literal NUL byte is invalid JSON; keep it a parse error, not a truncation.
+    json[json == as.raw(0L)] <- as.raw(1L)
+    json <- rawToChar(json)
+  }
+  if (!is.character(json) || length(json) != 1L || is.na(json)) {
+    stop("`json` must be a single JSON string.", call. = FALSE)
+  }
+  # An escape is live only when preceded by an even number of backslashes.
+  json <- gsub("(?<!\\\\)((?:\\\\\\\\)*)\\\\u0000", "\\1\\\\u0001", json, perl = TRUE)
+  values <- jsonlite::fromJSON(json, simplifyVector = FALSE)
+  if (!is.list(values) || (length(values) > 0L && is.null(names(values)))) {
+    stop("`json` must be a JSON object of input values.", call. = FALSE)
+  }
+  if (length(values) == 0L) values <- structure(list(), names = character())
+  values
+}
+
 #' Validate and render values
 #'
 #' Validates input values (V001-V014) and renders them into the logical text of
@@ -166,9 +201,10 @@ sas_render_values <- function(data, values, today = Sys.Date(), only = NULL,
             add("V002", iid)
             next
           }
-          # Every element must be a string (spec §2.1). A nested list, NULL or
-          # non-string element is a type error (V002), not silently flattened.
-          if (length(raw) > 0L && !all(vapply(raw, is.character, logical(1)))) {
+          # Every element must be a single string (spec §2.1). A nested list, NULL,
+          # character vector or non-string element is a type error (V002), not flattened.
+          is_str <- vapply(raw, function(e) is.character(e) && length(e) == 1L, logical(1))
+          if (length(raw) > 0L && !all(is_str)) {
             add("V002", iid)
             next
           }

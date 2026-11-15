@@ -16,7 +16,7 @@ from .recording import load_recording, save_recording
 from .result import LogLine, Result, TableResult
 from .run import run
 from .upload import UploadError, UploadFile
-from .values import render_values
+from .values import json_values, render_values
 from .wrapper import reset_code, wrapper_code
 
 __all__ = [
@@ -36,6 +36,7 @@ __all__ = [
     "chart_backends",
     "connect",
     "default_module_id",
+    "json_values",
     "lint",
     "load",
     "load_profiles",
