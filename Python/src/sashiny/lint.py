@@ -77,6 +77,26 @@ def _guard_ranges(program_text: str) -> list[tuple[str, int, int]]:
     return out
 
 
+def _entry_macro_scope(data: dict[str, Any], program_text: str) -> tuple[int, int, set[str]] | None:
+    """Return ``(start, end, upper_params)`` of the entry macro definition.
+
+    Only under ``run.entry: macro``. The range runs from ``%macro <MACRO>(`` to
+    the next ``%mend`` (or the end of the text). ``None`` when not applicable.
+    """
+    run = data.get("run") or {}
+    macro = run.get("macro")
+    if run.get("entry") != "macro" or not macro:
+        return None
+    m = re.search(rf"%macro\s+{re.escape(macro)}\s*\(([^)]*)\)", program_text, re.IGNORECASE)
+    if m is None:
+        return None
+    params = {p.split("=", 1)[0].strip().upper() for p in m.group(1).split(",")}
+    params.discard("")
+    mend = re.search(r"%mend\b", program_text[m.end() :], re.IGNORECASE)
+    end = m.end() + mend.start() if mend else len(program_text)
+    return m.start(), end, params
+
+
 def _dataset_targets(data: dict[str, Any]) -> set[str]:
     """Upper-cased WORK member names that dataset inputs target."""
     targets: set[str] = set()
@@ -110,6 +130,9 @@ def _lint_l001(
     out: list[Issue] = []
     positions = _assignment_positions(text)
     guards = _guard_ranges(text)
+    # Under entry: macro, assigning one of the entry macro's own parameters
+    # inside its definition is parameter self-normalisation and is exempt.
+    scope = _entry_macro_scope(data, text)
     for name in injected:
         if name not in assigned:
             continue
@@ -118,6 +141,8 @@ def _lint_l001(
             if assigned_name != name:
                 continue
             inside = any(gname == name and gstart <= pos < gend for gname, gstart, gend in guards)
+            if scope is not None and name in scope[2] and scope[0] <= pos < scope[1]:
+                inside = True
             if not inside:
                 out.append(
                     Issue(

@@ -87,6 +87,32 @@
   out
 }
 
+# `list(start, end, params)` for the entry macro definition under `run.entry: macro`:
+# from `%macro <MACRO>(` to the next `%mend` (or the end of the text), with the
+# upper-cased parameter names. NULL when not applicable.
+.sashiny_entry_macro_scope <- function(data, program_text) {
+  run <- data$run %||% list()
+  macro <- run$macro
+  if (!identical(run$entry, "macro") || is.null(macro)) {
+    return(NULL)
+  }
+  re <- paste0("%macro\\s+\\Q", macro, "\\E\\s*\\(([^)]*)\\)")
+  m <- regexpr(re, program_text, perl = TRUE, ignore.case = TRUE)
+  if (m == -1L) {
+    return(NULL)
+  }
+  cs <- attr(m, "capture.start")[1, 1]
+  cl <- attr(m, "capture.length")[1, 1]
+  plist <- strsplit(substr(program_text, cs, cs + cl - 1L), ",", fixed = TRUE)[[1]]
+  params <- toupper(trimws(sub("=.*$", "", plist)))
+  params <- params[nzchar(params)]
+  open_end <- m + attr(m, "match.length")
+  rest <- substr(program_text, open_end, nchar(program_text))
+  mend <- regexpr("%mend\\b", rest, perl = TRUE, ignore.case = TRUE)
+  end <- if (mend == -1L) nchar(program_text) + 1L else open_end + mend - 1L
+  list(start = as.integer(m), end = end, params = params)
+}
+
 # Upper-cased WORK member names that dataset inputs target.
 .sashiny_dataset_targets <- function(data) {
   targets <- character()
@@ -130,6 +156,9 @@ sashiny_lint <- function(data, program_text) {
     # a later assignment to the same macro outside any guard is still L001.
     positions <- .sashiny_assignment_positions(text)
     guards <- .sashiny_guard_ranges(text)
+    # Under entry: macro, assigning one of the entry macro's own parameters
+    # inside its definition is parameter self-normalisation and is exempt.
+    scope <- .sashiny_entry_macro_scope(data, text)
   for (name in injected) {
       if (!(name %in% assigned)) {
         next
@@ -145,6 +174,10 @@ sashiny_lint <- function(data, program_text) {
             inside <- TRUE
             break
           }
+        }
+        if (!is.null(scope) && name %in% scope$params &&
+          a$pos >= scope$start && a$pos < scope$end) {
+          inside <- TRUE
         }
         if (!inside) {
           flagged <- TRUE

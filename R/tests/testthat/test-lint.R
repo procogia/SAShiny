@@ -184,3 +184,14 @@ test_that("L001 dedupes a daterange's two macro names", {
   expect_length(l001, 1L)
   expect_identical(l001[[1]]$path, "/inputs/period")
 })
+test_that("lint fixtures match expected findings (spec section 10)", {
+  dirs <- list.dirs(file.path(.sashiny_fixtures(), "lint"), recursive = FALSE)
+  expect_true(length(dirs) > 0L)
+  for (d in dirs) {
+    data <- yaml::read_yaml(file.path(d, "contract.sashiny.yml"))
+    program <- paste(readLines(file.path(d, data$program), warn = FALSE), collapse = "\n")
+    want <- jsonlite::fromJSON(file.path(d, "expected.json"), simplifyVector = FALSE)$findings
+    got <- lapply(sashiny_lint(data, program), function(i) list(code = i$code, path = i$path))
+    expect_identical(got, want, label = basename(d))
+  }
+})

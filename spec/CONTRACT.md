@@ -582,7 +582,7 @@ Python), following the same "render callback" pattern as `shiny::renderPlot` and
 
 | Code | Finding |
 |---|---|
-| `L001` | Program assigns an injected macro variable outside a `%symexist` guard (section 9). The guard exemption applies only to assignments inside the guard; a later assignment to the same macro outside any guard is still `L001`. |
+| `L001` | Program assigns an injected macro variable outside a `%symexist` guard (section 9). The guard exemption applies only to assignments inside the guard; a later assignment to the same macro outside any guard is still `L001`. Under `run.entry: macro`, an assignment to `NAME` is also exempt when it lies inside the definition of the entry macro itself (from `%macro <MACRO>(` to the next `%mend`) and `NAME` is one of that macro's parameters (a name in the parenthesised parameter list, matched case-insensitively): this is parameter self-normalisation and the value is local to the macro. The same assignment outside that definition, or to a name that is not a parameter, is still `L001`. |
 | `L002` | Injected macro variable never referenced in the program (`&NAME` not found, case-insensitive). |
 | `L003` | `table`/`download` `from` dataset never created in the program and not a dataset input target or a permanent library. |
 | `L004` | More than one `rtf`/`pdf` download: each receives the same output; usually unintended. |

@@ -137,6 +137,17 @@ def check_collect(r: Report) -> None:
     r.check(ref.recording_key(k["contract_sha256"], macros, uploads) == k["key"], "collect/recording_key sha256")
 
 
+def check_lint(r: Report, today: date) -> None:
+    # The oracle does not implement lint; check each fixture's contract is valid and well formed.
+    for yml in sorted((FIX / "lint").glob("*/contract.sashiny.yml")):
+        contract = ref.load(yml)
+        issues = ref.validate(contract, today)
+        r.check(not issues, f"lint/{yml.parent.name} contract valid", str([i.key() for i in issues]))
+        expected = json.loads((yml.parent / "expected.json").read_text(encoding="utf-8"))
+        ok = all(set(f) == {"code", "path"} and f["code"].startswith("L") for f in expected["findings"])
+        r.check(ok and (yml.parent / contract.data["program"]).exists(), f"lint/{yml.parent.name} layout")
+
+
 def check_expected_sas_format(r: Report) -> None:
     for f in sorted(FIX.glob("wrapper/*/expected_*.sas")):
         raw = f.read_bytes()
@@ -166,6 +177,7 @@ def main() -> int:
     check_values(r)
     check_wrappers(r)
     check_collect(r)
+    check_lint(r, today)
     check_expected_sas_format(r)
     check_examples(r, date.today())
     for f in r.failures:

@@ -9,6 +9,7 @@ with each other and with [CONTRACT.md](../CONTRACT.md). It never generates them.
 | `contracts/valid/<name>/` | Contracts that MUST validate | No `E`/`S` errors |
 | `contracts/invalid/<name>/` | Contracts that MUST fail; `expected.json` lists `{code, path}` | Semantic (`S`) errors: exact set. Schema (`E000`): at least the listed paths |
 | `values/<name>.json` | Value validation and rendering for a valid contract | `ok`: macro names, values **and order** match. `invalid`: exact `{code, input}` set |
+| `lint/<name>/` | Advisory lint findings (§10) for a contract and its program | `expected.json` `findings` (`{code, path}`) match exactly, in order |
 | `wrapper/<name>/` | Byte-exact generated SAS | `expected_reset.sas` (absent when `reset_work: false`) and `expected_main.sas` match byte-for-byte, with `run_id = fixture` |
 
 Conventions:

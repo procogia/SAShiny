@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import json
+
+import yaml
+
 import sashiny
 from _repo import repo_root
 
@@ -235,3 +239,16 @@ def test_lint_dedupes_daterange_macro_names() -> None:
     l001 = [i for i in issues if i.code == "L001"]
     assert len(l001) == 1
     assert l001[0].path == "/inputs/period"
+
+
+def test_lint_fixtures() -> None:
+    # spec/fixtures/lint/<name>/: findings must match expected.json exactly (§10).
+
+    dirs = sorted((FIX / "lint").iterdir())
+    assert dirs
+    for d in dirs:
+        data = yaml.safe_load((d / "contract.sashiny.yml").read_text(encoding="utf-8"))
+        program = (d / data["program"]).read_text(encoding="utf-8")
+        want = json.loads((d / "expected.json").read_text(encoding="utf-8"))["findings"]
+        got = [{"code": i.code, "path": i.path} for i in sashiny.lint(data, program)]
+        assert got == want, d.name
