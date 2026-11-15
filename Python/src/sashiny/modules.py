@@ -12,6 +12,7 @@ import asyncio
 import base64
 import io
 import logging
+import uuid
 from collections.abc import Callable, Iterator
 from datetime import date
 from pathlib import Path
@@ -486,10 +487,10 @@ def program_server(  # noqa: PLR0913, PLR0917 - Shiny module signature + overrid
             return None
 
     @reactive.extended_task
-    async def run_task(values: dict[str, Any], uploads: dict[str, Any]) -> Result:
+    async def run_task(snapshot: tuple[dict[str, Any], dict[str, Any]] | Result) -> Result:
         # Run the engine off the event loop so a slow SAS run never blocks other
         # sessions (spec §5.1 / PLAN.md). Inputs are snapshotted in _trigger.
-        return await asyncio.to_thread(engine.run, contract, values, uploads=uploads)
+        return await _run_snapshot(engine, contract, snapshot)
 
     @reactive.effect
     @reactive.event(input.run, ignore_none=not settings.get("auto_run", False))
@@ -498,8 +499,7 @@ def program_server(  # noqa: PLR0913, PLR0917 - Shiny module signature + overrid
         # burst of clicks does not queue one engine run per click (issue #49).
         if run_task.status() == "running":
             return
-        values, uploads = shiny_values(contract, _read)
-        run_task(values, uploads)
+        run_task(_snapshot_inputs(contract, _read))
 
     # Cancel any in-flight or queued run when the session ends, so a slow SAS
     # run does not keep executing after the browser disconnects (issue #50).
@@ -552,6 +552,38 @@ def program_server(  # noqa: PLR0913, PLR0917 - Shiny module signature + overrid
         "status": reactive.calc(lambda: (result() or _empty_result()).status),
         "log": reactive.calc(lambda: (result() or _empty_result()).log),
     }
+
+
+def _snapshot_inputs(
+    contract: Contract, read: Callable[[str], Any]
+) -> tuple[dict[str, Any], dict[str, Any]] | Result:
+    """Return :func:`shiny_values`, or a V014 error :class:`Result` for a refused upload."""
+    try:
+        return shiny_values(contract, read)
+    except UploadError as exc:
+        return _upload_error_result(exc)
+
+
+async def _run_snapshot(
+    engine: Engine, contract: Contract, snapshot: tuple[dict[str, Any], dict[str, Any]] | Result
+) -> Result:
+    """Run a snapshot of the inputs on ``engine`` in a worker thread.
+
+    A run refused before reaching the engine (an upload over ``max_size_mb``,
+    spec §7) is already a V014 error :class:`Result` and is returned as is, so
+    it is shown in the status card like R (issue #101).
+    """
+    if isinstance(snapshot, Result):
+        return snapshot
+    values, uploads = snapshot
+    return await asyncio.to_thread(engine.run, contract, values, uploads=uploads)
+
+
+def _upload_error_result(exc: UploadError) -> Result:
+    """Return the V014 error :class:`Result` for an upload refused on receipt (spec §7)."""
+    result = Result.new(str(uuid.uuid4()), "error")
+    result.metadata["issues"] = [{"code": "V014", "message": str(exc)}]
+    return result
 
 
 def _empty_result() -> Result:

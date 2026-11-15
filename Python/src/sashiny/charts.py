@@ -269,12 +269,12 @@ def _draw_matplotlib(  # noqa: PLR0912, PLR0913, PLR0917 - one branch per chart 
     elif ys is None:
         ax.boxplot([v for v in xs if not _missing(v)])
     elif color is not None:
-        for label, idx in groups(color):
-            ax.boxplot(
-                [ys[i] for i in idx if not _missing(ys[i])],
-                positions=[len(ax.get_xticks()) + 1],
-                labels=[str(label)],
-            )
+        # One box per colour group. Tick labels are set separately because the
+        # boxplot ``labels=`` keyword was renamed in matplotlib 3.9 and later removed.
+        boxes = groups(color)
+        ax.boxplot([[ys[i] for i in idx if not _missing(ys[i])] for _, idx in boxes])
+        ax.set_xticks(range(1, len(boxes) + 1))
+        ax.set_xticklabels([str(label) for label, _ in boxes])
     else:
         groups_ = sorted({str(v) for v in xs})
         ax.boxplot(

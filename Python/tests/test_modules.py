@@ -15,6 +15,7 @@ from sashiny import modules
 from sashiny.upload import UploadError
 
 ROOT = repo_root()
+FIX = ROOT / "spec" / "fixtures"
 
 
 def test_program_ui_has_one_card_per_output() -> None:
@@ -103,3 +104,22 @@ def test_upload_size_uses_declared_size() -> None:
     upload = modules.UploadFile(path=Path("does-not-exist.csv"), name="big.csv")
     with pytest.raises(UploadError, match="limit"):
         modules._check_upload_size(upload, {"max_size_mb": 0.0001}, declared_size=200_000)
+
+
+def test_oversized_upload_becomes_v014_result() -> None:
+    # Issue #101: an upload refused on receipt is shown as V014 in the status
+    # card (like R), not raised out of the Run effect.
+    contract = sashiny.load(FIX / "contracts" / "valid" / "dataset" / "contract.sashiny.yml")
+    info = {"name": "big.csv", "size": 51 * 1024 * 1024, "datapath": "missing.csv"}
+
+    def read(iid: str) -> object:
+        return [info] if iid == "adsl" else None
+
+    with pytest.raises(UploadError) as caught:
+        modules.shiny_values(contract, read)
+    result = modules._upload_error_result(caught.value)
+    assert result.status == "error"
+    text = modules._status_text(result)
+    assert "status: error" in text
+    assert "invalid input V014" in text
+    assert "big.csv is 51.0 MB (limit 20 MB)" in text

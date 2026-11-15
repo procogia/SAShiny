@@ -203,6 +203,16 @@ def test_matplotlib_color_fill_facet() -> None:
         assert len(_plot_to_png(plot)) > 1000
 
 
+def test_matplotlib_box_with_color() -> None:
+    # Issue #100: a coloured box chart must not pass ``labels=`` to boxplot
+    # (removed in matplotlib 3.11); one labelled box per colour group.
+    pytest.importorskip("matplotlib")
+    plot = render_chart(_class_value(), _spec("box", color="sex"), backend="matplotlib")
+    ax = plot.axes[0]
+    labels = [t.get_text() for t in ax.get_xticklabels()]
+    assert sorted(labels) == sorted({str(r[2]) for r in _class_value()["rows"]})
+
+
 def test_plotly_fill_maps_to_color() -> None:
     pytest.importorskip("plotly")
     fig = render_chart(_class_value(), _spec("bar", fill="sex"), backend="plotly")

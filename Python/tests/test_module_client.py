@@ -92,6 +92,18 @@ def test_module_reports_invalid_values() -> None:
         assert "status: error" in status
 
 
+def test_module_reports_oversized_upload_as_v014() -> None:
+    # Issue #101: the Run effect turns an oversized upload into a V014 status.
+    contract = sashiny.load(FIX / "contracts" / "valid" / "dataset" / "contract.sashiny.yml")
+    app = _make_app(contract)
+    info = {"name": "big.csv", "size": 51 * 1024 * 1024, "type": "text/csv", "datapath": "x.csv"}
+    with test_server(app) as session:
+        session.set_inputs(**{"mod-adsl": [info], "mod-run": 1})
+        status = _wait_for_run(session)
+        assert "status: error" in status
+        assert "V014" in status
+
+
 def _recorded_app(tmp_path: Path) -> tuple[App, sashiny.Contract]:
     """An app whose mock engine replays a recording made by a (fake) live run."""
     pytest.importorskip("pandas")
