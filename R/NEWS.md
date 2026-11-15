@@ -1,6 +1,22 @@
 # SAShiny (development version)
 
+## New features
+
+* `sas_json_values()` parses a JSON object of input values. An escaped
+  `\u0000`, which an R string cannot hold, is rejected as V007 instead of
+  silently truncating the value (spec section 4, #102).
+
 ## Fixes
+
+* `sas_program_server()` no longer blocks other browser sessions during a run:
+  in a running app a mock or saspy run executes in a 'callr' background process
+  polled with 'later'. A `sas_pool()` or custom engine still runs in-process
+  (#44).
+* The plotly chart backend draws one subplot per `facet` level instead of
+  ignoring the mapping (spec section 8.5, #72).
+* A multichoice or daterange element that is a character vector of length other
+  than one is V002, not flattened (spec section 2.1, #60).
+* `sas_pool()` rejects a non-finite `min_size`/`max_size` such as `Inf` (#94).
 
 * Live saspy runs work with pandas 3. Every table output was reported as
   "dataset not found", because reticulate before 1.45.0 does not convert

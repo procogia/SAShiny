@@ -419,6 +419,14 @@ sas_program_ui <- function(id, contract, ui_override = NULL, today = Sys.Date())
 #' @param render An optional named list of chart render callbacks, keyed by
 #'   output id. Each is `function(value, spec, ...)` returning a plot object
 #'   (spec section 8.5). Takes precedence over a declarative `spec`.
+#' @details In a running app (with 'callr' and 'later' installed) a run of a
+#'   [sas_engine_mock()] or [sas_connect()] engine executes in a background R
+#'   process that loads the installed 'SAShiny', so a slow 'SAS' run does not
+#'   block other browser sessions. That process starts its own 'SAS' session
+#'   and ends it after the run, and is killed when `run.timeout_seconds`
+#'   passes or the browser session ends. A [sas_pool()] or a custom engine
+#'   cannot be sent to another process, so it runs in the app process and
+#'   blocks it for the duration of the run.
 #' @return A list of reactives: `result`, `status`, `log`.
 #' @export
 sas_program_server <- function(id, contract, engine, server_override = NULL, render = NULL) {
@@ -451,16 +459,27 @@ sas_program_server <- function(id, contract, engine, server_override = NULL, ren
     # (which raises a shiny.silent.error under ignoreNULL=TRUE).
     result <- shiny::reactiveVal(NULL)
     # Run the engine off the event loop (issue #44): a slow SAS run must not
-    # block unrelated browser sessions. ExtendedTask runs its function in a
-    # background process and reads the result back on the main thread. The
-    # function must return a promise, so wrap the synchronous engine call in
-    # promises::promise_resolve() (promises is a hard dependency of shiny).
+    # block unrelated browser sessions. In a running app the ExtendedTask runs
+    # the engine in a callr background process polled by later, so the main
+    # process keeps serving other sessions. A pool or custom engine cannot be
+    # sent to another process, so it still runs in-process (and blocks).
     # testServer cannot await a background process, so it runs synchronously.
-    use_extended <- shiny::isRunning() && requireNamespace("callr", quietly = TRUE)
+    use_extended <- shiny::isRunning() && requireNamespace("callr", quietly = TRUE) &&
+      requireNamespace("later", quietly = TRUE)
     if (use_extended) {
+      portable <- .sashiny_portable_engine(engine)
       run_task <- shiny::ExtendedTask$new(function(contract, values, uploads) {
-        promises::promise_resolve(
-          sas_engine_run(engine, contract, values, uploads = uploads)
+        if (is.null(portable)) {
+          return(promises::promise_resolve(
+            sas_engine_run(engine, contract, values, uploads = uploads)
+          ))
+        }
+        run_id <- .sashiny_run_id()
+        promises::catch(
+          .sashiny_run_bg_promise(portable, contract, values, uploads,
+            run_id = run_id, session = session
+          ),
+          function(e) .sashiny_engine_error(run_id, list(), e)
         )
       })
       shiny::observeEvent(input$run,

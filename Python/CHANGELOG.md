@@ -4,6 +4,18 @@ All notable changes to the Python library are documented here. The format follow
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- `sashiny.json_values()` parses a JSON object of input values, the counterpart
+  of R's `sas_json_values()` (spec §4, #102).
+
+### Fixed
+- A matplotlib `box` chart with `color` no longer passes the removed
+  `Axes.boxplot(labels=)` keyword, so it works on matplotlib 3.9 and later (#100).
+- In the Shiny module, an upload over `max_size_mb` is shown as a V014 error in
+  the status card instead of raising in the Run effect (spec §7, #101).
+
 ## [0.1.6]
 
 ### Added

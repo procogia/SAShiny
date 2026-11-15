@@ -27,3 +27,13 @@ A list of reactives: \code{result}, \code{status}, \code{log}.
 \description{
 The server for a SAS program module
 }
+\details{
+In a running app (with 'callr' and 'later' installed) a run of a
+\code{\link[=sas_engine_mock]{sas_engine_mock()}} or \code{\link[=sas_connect]{sas_connect()}} engine executes in a background R
+process that loads the installed 'SAShiny', so a slow 'SAS' run does not
+block other browser sessions. That process starts its own 'SAS' session
+and ends it after the run, and is killed when \code{run.timeout_seconds}
+passes or the browser session ends. A \code{\link[=sas_pool]{sas_pool()}} or a custom engine
+cannot be sent to another process, so it runs in the app process and
+blocks it for the duration of the run.
+}
