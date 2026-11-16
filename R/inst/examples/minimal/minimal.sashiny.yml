@@ -1,0 +1,14 @@
+sashiny: 1
+program: minimal.sas
+title: Minimal example
+inputs:
+  n_rows:
+    type: numeric
+    label: Rows to print
+    default: 5
+    min: 1
+    max: 19
+    integer: true
+outputs:
+  log:
+    type: log

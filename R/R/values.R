@@ -191,17 +191,17 @@ sas_render_values <- function(data, values, today = Sys.Date(), only = NULL,
       next
     }
     if (kind %in% c("multichoice", "daterange") && is.list(raw)) {
-          # A JSON object (named list) is not an array (spec §2.1): V002.
+          # A JSON object (named list) is not an array (spec section 2.1): V002.
           if (!is.null(names(raw))) {
             add("V002", iid)
             next
           }
-          # A daterange must be exactly two elements (spec §2.1): V002 otherwise.
+          # A daterange must be exactly two elements (spec section 2.1): V002 otherwise.
           if (identical(kind, "daterange") && length(raw) != 2L) {
             add("V002", iid)
             next
           }
-          # Every element must be a single string (spec §2.1). A nested list, NULL,
+          # Every element must be a single string (spec section 2.1). A nested list, NULL,
           # character vector or non-string element is a type error (V002), not flattened.
           is_str <- vapply(raw, function(e) is.character(e) && length(e) == 1L, logical(1))
           if (length(raw) > 0L && !all(is_str)) {
@@ -230,7 +230,7 @@ sas_render_values <- function(data, values, today = Sys.Date(), only = NULL,
 
     if (identical(kind, "multichoice")) {
           if (is.null(raw)) {
-            # Missing/null: a required input is always V001 (spec §4 V001).
+            # Missing/null: a required input is always V001 (spec section 4 V001).
             if (!optional) {
               add("V001", iid)
               next
@@ -355,7 +355,7 @@ sas_render_values <- function(data, values, today = Sys.Date(), only = NULL,
     ordered <- if (!is.null(allowed)) allowed[allowed %in% raw] else raw
     mode <- spec$render %||% "quoted"
       if (identical(mode, "bare")) {
-        # Bare values are emitted unquoted (spec §6.3), so every selected value
+        # Bare values are emitted unquoted (spec section 6.3), so every selected value
         # must be a SAS name or numeric literal. Static choices are checked by
         # S007; dynamic choices_from values are checked here at render time.
         bad <- !grepl(.sashiny_sas_name, ordered) & !grepl(.sashiny_numeric_literal, ordered)

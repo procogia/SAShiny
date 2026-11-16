@@ -14,10 +14,10 @@ sas_pool(
 )
 }
 \arguments{
-\item{engine}{An engine factory (a function with no arguments, such as
-\code{function() sas_connect("oda")}), giving each pooled session its own SAS
-session; or a single engine shared by all pooled sessions (suitable for
-\code{\link[=sas_engine_mock]{sas_engine_mock()}}).}
+\item{engine}{An engine factory: a function with no arguments returning a
+\code{\link[=sas_connect]{sas_connect()}} engine, such as \code{function() sas_connect("oda")}. Each
+pooled session gets its own 'SAS' session. A single engine is also
+accepted and is then shared by all pooled sessions.}
 
 \item{min_size}{Minimum number of sessions kept warm.}
 
@@ -37,6 +37,7 @@ A \code{sashiny_pool} object (an environment).
 Create a bounded session pool
 }
 \examples{
-pool <- sas_pool(sas_engine_mock(), max_size = 2L)
+# With min_size = 0 creating a pool starts no 'SAS' session.
+pool <- sas_pool(function() sas_connect("oda", region = "us1"), max_size = 2L)
 sas_pool_close(pool)
 }

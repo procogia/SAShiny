@@ -2,7 +2,7 @@
 % Please edit documentation in R/engine-saspy.R
 \name{sas_connect}
 \alias{sas_connect}
-\title{Build a SAS engine for one of three connection types}
+\title{Build a SAS engine for one of the three supported 'SAS' systems}
 \usage{
 sas_connect(
   profile,
@@ -15,7 +15,7 @@ sas_connect(
   saspath = NULL,
   ssh_user = NULL,
   java = NULL,
-  record_to = NULL
+  license_ack = NULL
 )
 }
 \arguments{
@@ -42,21 +42,50 @@ used instead of IOM).}
 \item{java}{Path to the Java executable for IOM (optional; auto-detected when
 omitted).}
 
-\item{record_to}{Directory where every run is also saved as a recording
-(spec section 8.3) for offline replay with \code{\link[=sas_engine_mock]{sas_engine_mock()}}.}
+\item{license_ack}{\code{TRUE} to acknowledge that you are licensed to use the
+'SAS' system you connect to (see the "Licence responsibility" section).
+\code{NULL} (the default) defers to the \code{SAShiny.license_ack} option and the
+\code{SASHINY_LICENSE_ACK} environment variable.}
 }
 \value{
 A \code{sashiny_engine_saspy} object configured for the chosen backend.
+No 'SAS' session is started until the first run.
 }
 \description{
-The consumer chooses the backend explicitly and supplies its connection
-details. SAShiny does not auto-detect or validate the SAS version: the
-responsibility for pointing at the correct endpoint/version rests with the
-caller. Credentials are never passed here — they come from \verb{~/.authinfo}
-keyed by the profile's \code{authkey}.
+SAShiny runs programs only on a live 'SAS' system: 'SAS' 9.4 (IOM or SSH),
+'SAS Viya' (HTTP) or 'SAS OnDemand for Academics' (ODA). There is no
+offline mode. You choose the backend explicitly and supply its connection
+details; SAShiny does not auto-detect the 'SAS' version.
 }
+\section{Licence responsibility}{
+
+'SAS' is commercial software. \strong{You are responsible for holding a valid
+licence} (or, for ODA, for accepting its terms of use) for the system you
+connect to. SAShiny cannot verify a licence, so it asks you to acknowledge
+this explicitly: a run fails with "SAS licence not acknowledged" unless
+\code{license_ack = TRUE}, \code{options(SAShiny.license_ack = TRUE)} or the
+environment variable \code{SASHINY_LICENSE_ACK=true} is set.
+}
+
+\section{Credentials}{
+
+Credentials are never passed as arguments. They come from \verb{~/.authinfo}
+(\verb{_authinfo} in \code{USERPROFILE} on Windows), keyed by the profile's
+\code{authkey} (\code{oda}, \code{viya} or \code{iom}), or, on hosted platforms such as Posit
+Connect, from the environment variables \code{SASHINY_SAS_USER} and
+\code{SASHINY_SAS_PASSWORD} (see \code{\link[=sas_publish]{sas_publish()}}). SSH uses key-based login.
+}
+
 \examples{
-# Build the config for an ODA connection (no live SAS session is started).
+# Builds the configuration only: no 'SAS' session is started and nothing
+# is sent over the network.
 engine <- sas_connect("oda", region = "us1")
+engine$backend
 engine$cfg$authkey
+\dontrun{
+# Needs an ODA account, Java, Python with saspy and credentials in
+# ~/.authinfo; not run during checks.
+engine <- sas_connect("oda", region = "us1", license_ack = TRUE)
+sas_engine_close(engine)
+}
 }

@@ -1,10 +1,9 @@
 # saspy engine with selectable connection profiles (issue #6).
 #
-# Implements the run protocol (spec section 6.1), dataset upload conversion
-# (section 7), result collection (section 8) and run status (section 6.5)
-# against live SAS 9.4 / Viya via saspy, reached through reticulate. Connection
-# profiles are chosen per app or session; credentials come only from
-# ~/.authinfo or environment variables, never from the contract.
+# Connections are limited to 'SAS' 9.4, 'SAS Viya' and 'SAS OnDemand for
+# Academics' (spec section 6.6), reached through saspy and reticulate.
+# Credentials come only from ~/.authinfo or environment variables, never from
+# the contract or function arguments.
 #
 # This file holds profile loading, run status and the connection builder; the
 # engine itself is in engine-saspy-run.R.
@@ -24,7 +23,7 @@ sas_load_profiles <- function(path = NULL) {
   }
   path <- normalizePath(path, mustWork = FALSE)
   if (!file.exists(path)) {
-    return(list(default = "offline", profiles = list()))
+    return(list(default = NULL, profiles = list()))
   }
   yaml::read_yaml(path)
 }
@@ -50,7 +49,7 @@ sas_load_profiles <- function(path = NULL) {
 #' @noRd
 .sashiny_run_status <- function(log, run_id = "fixture") {
   # Anchor to an executed NOTE sentinel line, not a numbered source echo
-  # (spec §6.5): the line must start with "NOTE: SASHINY-END run=<id> syscc=<n>".
+  # (spec section 6.5): the line must start with "NOTE: SASHINY-END run=<id> syscc=<n>".
   lines <- .sashiny_split_log(log)
   end <- grep(paste0("^NOTE: SASHINY-END run=", run_id, " syscc=([0-9]+)$"), lines)
   if (length(end) == 0L) {
@@ -79,13 +78,27 @@ sas_load_profiles <- function(path = NULL) {
   ap2 = c("odaws01-apse1-2.oda.sas.com", "odaws02-apse1-2.oda.sas.com")
 )
 
-#' Build a SAS engine for one of three connection types
+#' Build a SAS engine for one of the three supported 'SAS' systems
 #'
-#' The consumer chooses the backend explicitly and supplies its connection
-#' details. SAShiny does not auto-detect or validate the SAS version: the
-#' responsibility for pointing at the correct endpoint/version rests with the
-#' caller. Credentials are never passed here — they come from `~/.authinfo`
-#' keyed by the profile's `authkey`.
+#' SAShiny runs programs only on a live 'SAS' system: 'SAS' 9.4 (IOM or SSH),
+#' 'SAS Viya' (HTTP) or 'SAS OnDemand for Academics' (ODA). There is no
+#' offline mode. You choose the backend explicitly and supply its connection
+#' details; SAShiny does not auto-detect the 'SAS' version.
+#'
+#' @section Licence responsibility:
+#' 'SAS' is commercial software. **You are responsible for holding a valid
+#' licence** (or, for ODA, for accepting its terms of use) for the system you
+#' connect to. SAShiny cannot verify a licence, so it asks you to acknowledge
+#' this explicitly: a run fails with "SAS licence not acknowledged" unless
+#' `license_ack = TRUE`, `options(SAShiny.license_ack = TRUE)` or the
+#' environment variable `SASHINY_LICENSE_ACK=true` is set.
+#'
+#' @section Credentials:
+#' Credentials are never passed as arguments. They come from `~/.authinfo`
+#' (`_authinfo` in `USERPROFILE` on Windows), keyed by the profile's
+#' `authkey` (`oda`, `viya` or `iom`), or, on hosted platforms such as Posit
+#' Connect, from the environment variables `SASHINY_SAS_USER` and
+#' `SASHINY_SAS_PASSWORD` (see [sas_publish()]). SSH uses key-based login.
 #'
 #' @param profile One of `"oda"`, `"viya"` or `"sas94"`. Required; there is no
 #'   default.
@@ -100,18 +113,29 @@ sas_load_profiles <- function(path = NULL) {
 #' @param ssh_user SSH login user (optional).
 #' @param java Path to the Java executable for IOM (optional; auto-detected when
 #'   omitted).
-#' @param record_to Directory where every run is also saved as a recording
-#'   (spec section 8.3) for offline replay with [sas_engine_mock()].
+#' @param license_ack `TRUE` to acknowledge that you are licensed to use the
+#'   'SAS' system you connect to (see the "Licence responsibility" section).
+#'   `NULL` (the default) defers to the `SAShiny.license_ack` option and the
+#'   `SASHINY_LICENSE_ACK` environment variable.
 #' @return A `sashiny_engine_saspy` object configured for the chosen backend.
+#'   No 'SAS' session is started until the first run.
 #' @examples
-#' # Build the config for an ODA connection (no live SAS session is started).
+#' # Builds the configuration only: no 'SAS' session is started and nothing
+#' # is sent over the network.
 #' engine <- sas_connect("oda", region = "us1")
+#' engine$backend
 #' engine$cfg$authkey
+#' \dontrun{
+#' # Needs an ODA account, Java, Python with saspy and credentials in
+#' # ~/.authinfo; not run during checks.
+#' engine <- sas_connect("oda", region = "us1", license_ack = TRUE)
+#' sas_engine_close(engine)
+#' }
 #' @export
 sas_connect <- function(profile, region = "us1", url = NULL, context = NULL,
                         verify = TRUE, host = NULL, port = 8591L,
                         saspath = NULL, ssh_user = NULL, java = NULL,
-                        record_to = NULL) {
+                        license_ack = NULL) {
   if (identical(profile, "oda")) {
     if (!(region %in% names(.sashiny_oda_hosts))) {
       stop(
@@ -165,10 +189,12 @@ sas_connect <- function(profile, region = "us1", url = NULL, context = NULL,
     stop("unknown profile '", profile, "'; expected 'oda', 'viya' or 'sas94'")
   }
 
-  sas_engine_saspy(cfg, record_to = record_to)
+  sas_engine_saspy(cfg, license_ack = license_ack)
 }
 
 #' Locate the Java executable, or NULL when not found.
+#'
+#' CRAN: only looks the path up (`JAVA_HOME`, `Sys.which()`); nothing is run.
 #' @noRd
 .sashiny_find_java <- function() {
   java_home <- Sys.getenv("JAVA_HOME", unset = "")
@@ -182,6 +208,8 @@ sas_connect <- function(profile, region = "us1", url = NULL, context = NULL,
 }
 
 #' Locate the SSH executable.
+#'
+#' CRAN: only looks the path up with `Sys.which()`; nothing is run.
 #' @noRd
 .sashiny_find_ssh <- function() {
   ssh <- Sys.which("ssh")

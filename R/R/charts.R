@@ -244,7 +244,7 @@ sas_chart_backends <- function() {
     )
   }
   if (!is.null(spec$facet)) {
-    # One panel per facet level (spec §8.5): split the frame and draw each in a
+    # One panel per facet level (spec section 8.5): split the frame and draw each in a
     # grid, so groups are not silently collapsed into a single plot.
     levels <- unique(data[[spec$facet]])
     n <- length(levels)

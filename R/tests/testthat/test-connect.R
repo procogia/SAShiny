@@ -46,3 +46,34 @@ test_that("sas_connect sas94 requires host", {
 test_that("sas_connect rejects an unknown profile", {
   expect_error(sas_connect("bogus"), "unknown profile")
 })
+
+test_that("each profile maps to a supported backend (spec section 6.6)", {
+  expect_identical(sas_connect("oda")$backend, "oda")
+  expect_identical(sas_connect("viya", url = "https://v.example.com")$backend, "viya")
+  expect_identical(sas_connect("sas94", host = "h.example.com")$backend, "sas94-iom")
+  expect_identical(
+    sas_connect("sas94", host = "h.example.com", saspath = "/opt/sas")$backend, "sas94-ssh"
+  )
+  expect_true(sas_connect("oda", license_ack = TRUE)$license_ack)
+})
+
+test_that("sas_engine_saspy accepts only SAS 9.4, Viya and ODA configurations", {
+  expect_identical(sas_engine_saspy("/path/to/sascfg_personal.py")$backend, "cfgfile")
+  expect_error(sas_engine_saspy(list(provider = "sas.iomprovider")), "COM")
+  expect_error(sas_engine_saspy(list(saspath = "/opt/sas/sas")), "STDIO")
+  expect_error(sas_engine_saspy(list()), "named list")
+  expect_error(sas_engine_saspy(list(java = "java")), "exactly one connection")
+  expect_error(sas_engine_saspy(list(url = "viya.example.com")), "https://")
+  expect_error(sas_engine_saspy(list(url = "https://v", iomhost = "h")), "exactly one")
+  expect_error(sas_engine_saspy(list(iomhost = c("a", "b"))), "exactly one iomhost")
+  expect_false("session_factory" %in% names(formals(sas_engine_saspy)))
+})
+
+test_that("SAS credentials from the environment become saspy keyword arguments (spec 6.7)", {
+  withr::local_envvar(SASHINY_SAS_USER = "me", SASHINY_SAS_PASSWORD = "pw")
+  expect_identical(.sashiny_env_credentials(list(iomhost = "h")), list(omruser = "me", omrpw = "pw"))
+  expect_identical(.sashiny_env_credentials(list(url = "https://v")), list(user = "me", pw = "pw"))
+  expect_identical(.sashiny_env_credentials(list(saspath = "/s", host = "h")), list())
+  withr::local_envvar(SASHINY_SAS_PASSWORD = NA)
+  expect_identical(.sashiny_env_credentials(list(iomhost = "h")), list())
+})

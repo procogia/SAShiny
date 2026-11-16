@@ -152,7 +152,7 @@ sashiny_lint <- function(data, program_text) {
   assigned <- .sashiny_assigned_names(text)
 
     # L001: program assigns an injected macro outside a %symexist guard. The
-    # guard exemption applies only to assignments inside the guard (spec §10);
+    # guard exemption applies only to assignments inside the guard (spec section 10);
     # a later assignment to the same macro outside any guard is still L001.
     positions <- .sashiny_assignment_positions(text)
     guards <- .sashiny_guard_ranges(text)

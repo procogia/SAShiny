@@ -1,8 +1,29 @@
 # End-to-end tests of the saspy engine against a fake session (spec 6-8).
 
 fake_engine <- function(fake = fake_session(), ...) {
-  sas_engine_saspy(list(java = "java"), session_factory = function() fake, ...)
+  test_saspy_engine(list(java = "java"), session_factory = function() fake, ...)
 }
+
+test_that("a run without a licence acknowledgement never reaches SAS (spec section 6.6)", {
+  opened <- FALSE
+  engine <- test_saspy_engine(session_factory = function() {
+    opened <<- TRUE
+    fake_session()
+  }, license_ack = NULL)
+  withr::local_options(SAShiny.license_ack = NULL)
+  withr::local_envvar(SASHINY_LICENSE_ACK = NA)
+  result <- sas_engine_run(engine, fake_contract(), list(min_age = 30), today = .sashiny_today)
+  expect_identical(result$status, "error")
+  expect_match(result$metadata$engine_error, "^SAS licence not acknowledged")
+  expect_false(opened)
+  withr::local_envvar(SASHINY_LICENSE_ACK = "TRUE")
+  expect_true(.sashiny_license_ok(engine))
+  withr::local_envvar(SASHINY_LICENSE_ACK = NA)
+  withr::local_options(SAShiny.license_ack = TRUE)
+  expect_true(.sashiny_license_ok(engine))
+  # An explicit FALSE wins over the option.
+  expect_false(.sashiny_license_ok(test_saspy_engine(license_ack = FALSE)))
+})
 
 test_that("a new session turns notes on first (ODA starts with NONOTES)", {
   fake <- fake_session()
@@ -118,7 +139,7 @@ test_that("a broken session is reported and replaced on the next run", {
     }
     fake
   }
-  engine <- sas_engine_saspy(list(), session_factory = factory)
+  engine <- test_saspy_engine(list(), session_factory = factory)
   contract <- fake_contract()
   result <- sas_engine_run(engine, contract, list(min_age = 1), today = .sashiny_today)
   expect_identical(result$status, "error")
@@ -140,29 +161,25 @@ test_that("a failed session is ended before it is replaced", {
     ended <<- ended + 1L
     endsas()
   }
-  engine <- sas_engine_saspy(list(), session_factory = function() fake)
+  engine <- test_saspy_engine(list(), session_factory = function() fake)
   result <- sas_engine_run(engine, fake_contract(), list(min_age = 1), today = .sashiny_today)
   expect_identical(result$status, "error")
   expect_identical(ended, 1L)
 })
 
-test_that("live runs are recorded and replayed by the mock engine", {
+test_that("a live run's result replays identically through the test mock", {
   rec <- tempfile("sashiny-rec-")
   contract <- fake_contract()
-  live <- sas_engine_run(fake_engine(record_to = rec), contract,
+  live <- sas_engine_run(fake_engine(), contract,
     list(min_age = 30, make = "BMW"),
     today = .sashiny_today, uploads = list(adsl = TRUE)
   )
-  files <- list.files(rec, pattern = "[.]json$", full.names = TRUE)
-  expect_length(files, 1L)
-  key <- .sashiny_recording_key(contract, live$metadata$macros,
-    list(adsl = file.path(contract$base_dir, "adsl.csv"))
+  expect_null(live$metadata$recording)
+  test_save_recording(rec, contract, live,
+    files = list(adsl = file.path(contract$base_dir, "adsl.csv"))
   )
-  expect_identical(basename(files), paste0(key, ".json"))
-  payload <- jsonlite::fromJSON(files, simplifyVector = FALSE)
-  expect_identical(payload$sashiny_recording, 1L)
 
-  mock <- sas_engine_mock(rec, choices = list(make = c("BMW", "Audi")))
+  mock <- .sashiny_engine_mock(rec, choices = list(make = c("BMW", "Audi")))
   replay <- sas_engine_run(mock, contract, list(min_age = 30, make = "BMW"),
     today = .sashiny_today, uploads = list(adsl = TRUE)
   )
@@ -243,7 +260,8 @@ test_that("a missing Java is reported on the result, before saspy is imported", 
   skip_if_not_installed("callr")
   skip_if(length(find.package("SAShiny", lib.loc = .libPaths(), quiet = TRUE)) == 0L,
     "SAShiny is not installed")
-  engine <- sas_engine_saspy(list(iomhost = "h", java = "", authkey = "oda"))
+  engine <- test_saspy_engine(list(iomhost = "h", java = "", authkey = "oda"))
+  engine$session_factory <- NULL
   result <- sas_engine_run(engine, fake_contract(), list(min_age = 30, make = "BMW"),
     today = .sashiny_today, uploads = list(adsl = TRUE)
   )
@@ -315,7 +333,7 @@ test_that("run.timeout_seconds is enforced in a background process (issue #34)",
     "run:", "  timeout_seconds: 1"
   ), file.path(dir, "contract.sashiny.yml"))
   contract <- sas_contract(file.path(dir, "contract.sashiny.yml"))
-  engine <- sas_engine_saspy(list(java = "java"), session_factory = .sashiny_slow_factory)
+  engine <- test_saspy_engine(list(java = "java"), session_factory = .sashiny_slow_factory)
   started <- proc.time()[["elapsed"]]
   result <- sas_engine_run(engine, contract, list(), today = .sashiny_today)
   elapsed <- proc.time()[["elapsed"]] - started

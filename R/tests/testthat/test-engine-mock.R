@@ -1,7 +1,8 @@
-# Tests for the mock engine (issue #5).
+# Tests for the internal offline mock engine (issue #5). It is a test fixture,
+# not public API (spec section 6.6).
 
 test_that("mock engine returns empty success without recordings", {
-  engine <- sas_engine_mock()
+  engine <- .sashiny_engine_mock()
   contract <- sas_contract(file.path(.sashiny_fixtures(), "contracts", "valid",
                                      "minimal", "contract.sashiny.yml"))
   result <- sas_engine_run(engine, contract, list(), today = .sashiny_today)
@@ -11,7 +12,7 @@ test_that("mock engine returns empty success without recordings", {
 })
 
 test_that("mock engine reports error for invalid values", {
-  engine <- sas_engine_mock()
+  engine <- .sashiny_engine_mock()
   contract <- sas_contract(file.path(.sashiny_fixtures(), "contracts", "valid",
                                      "numeric", "contract.sashiny.yml"))
   result <- sas_engine_run(engine, contract, list(min_msrp = "not-a-number"),
@@ -23,7 +24,7 @@ test_that("mock engine replays a recording", {
   dir <- tempfile("sashiny-mock-")
   dir.create(dir)
   on.exit(unlink(dir, recursive = TRUE), add = TRUE)
-  engine <- sas_engine_mock(recordings_dir = dir)
+  engine <- .sashiny_engine_mock(recordings_dir = dir)
   contract <- sas_contract(file.path(.sashiny_fixtures(), "contracts", "valid",
                                      "minimal", "contract.sashiny.yml"))
   macros <- list()
@@ -47,18 +48,18 @@ test_that("mock engine saves a recording", {
   dir <- tempfile("sashiny-mock-")
   dir.create(dir)
   on.exit(unlink(dir, recursive = TRUE), add = TRUE)
-  engine <- sas_engine_mock(recordings_dir = dir)
+  engine <- .sashiny_engine_mock(recordings_dir = dir)
   contract <- sas_contract(file.path(.sashiny_fixtures(), "contracts", "valid",
                                      "minimal", "contract.sashiny.yml"))
   macros <- list()
-  sas_engine_record(engine, contract, macros, list(status = "success", log = ""))
+  .sashiny_write_recording(engine, contract, macros, list(status = "success", log = ""))
   key <- .sashiny_recording_key(contract, macros)
   expect_true(file.exists(file.path(dir, paste0(key, ".json"))))
 })
 test_that("contract_sha256 hashes the YAML bytes and program_sha256 the program (spec section 8)", {
   path <- file.path(.sashiny_fixtures(), "contracts", "valid", "minimal", "contract.sashiny.yml")
   contract <- sas_contract(path)
-  res <- sas_engine_run(sas_engine_mock(), contract, list(), today = as.Date("2026-11-11"))
+  res <- sas_engine_run(.sashiny_engine_mock(), contract, list(), today = as.Date("2026-11-11"))
   yaml_bytes <- readBin(path, "raw", n = file.info(path)$size)
   prog <- file.path(dirname(path), "program.sas")
   prog_bytes <- readBin(prog, "raw", n = file.info(prog)$size)
@@ -70,7 +71,7 @@ test_that("contract_sha256 hashes the YAML bytes and program_sha256 the program 
 test_that("mock engine reports V014 for a missing upload (spec section 7)", {
   contract <- sas_contract(file.path(.sashiny_fixtures(), "contracts", "valid",
                                      "dataset", "contract.sashiny.yml"))
-  result <- sas_engine_run(sas_engine_mock(), contract, list(),
+  result <- sas_engine_run(.sashiny_engine_mock(), contract, list(),
                            uploads = list(adsl = "/nonexistent/path.csv"))
   expect_identical(result$status, "error")
   expect_identical(result$metadata$issues[[1]]$code, "V014")
@@ -80,7 +81,7 @@ test_that("mock engine reports V014 for a missing upload (spec section 7)", {
 test_that("mock engine reports V014 for a bad extension (spec section 7)", {
   contract <- sas_contract(file.path(.sashiny_fixtures(), "contracts", "valid",
                                      "dataset", "contract.sashiny.yml"))
-  result <- sas_engine_run(sas_engine_mock(), contract, list(),
+  result <- sas_engine_run(.sashiny_engine_mock(), contract, list(),
                            uploads = list(adsl = "sample.txt"))
   expect_identical(result$status, "error")
   expect_identical(result$metadata$issues[[1]]$code, "V014")
@@ -91,15 +92,29 @@ test_that("recordings round-trip full-precision numbers (spec section 8.3)", {
   dir <- tempfile("sashiny-mock-")
   dir.create(dir)
   on.exit(unlink(dir, recursive = TRUE), add = TRUE)
-  engine <- sas_engine_mock(recordings_dir = dir)
+  engine <- .sashiny_engine_mock(recordings_dir = dir)
   contract <- sas_contract(file.path(.sashiny_fixtures(), "contracts", "valid",
                                      "minimal", "contract.sashiny.yml"))
   big <- 2^53 + 2  # not representable in 15 significant digits
-  sas_engine_record(engine, contract, list(), list(
+  .sashiny_write_recording(engine, contract, list(), list(
     status = "success", log = "",
     outputs = list(log = list(list(text = "x", level = "text", value = big)))
   ))
   key <- .sashiny_recording_key(contract, list())
   raw <- jsonlite::fromJSON(file.path(dir, paste0(key, ".json")), simplifyVector = FALSE)
   expect_identical(raw$outputs$log[[1]]$value, big)
+})
+
+test_that("the mock engine is refused outside the test suite (spec section 6.6)", {
+  engine <- .sashiny_engine_mock()
+  contract <- sas_contract(file.path(.sashiny_fixtures(), "contracts", "valid",
+                                     "minimal", "contract.sashiny.yml"))
+  outside_tests({
+    expect_error(.sashiny_engine_mock(), "internal test fixture")
+    expect_error(sas_engine_run(engine, contract, list()), "internal test fixture")
+    expect_error(sas_run(contract, list(), engine), "must come from sas_connect")
+    expect_error(sas_pool(engine), "must come from sas_connect")
+  })
+  expect_false("sas_engine_mock" %in% getNamespaceExports("SAShiny"))
+  expect_false("sas_engine_record" %in% getNamespaceExports("SAShiny"))
 })

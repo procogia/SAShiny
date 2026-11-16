@@ -4,10 +4,27 @@
 \name{SAShiny-package}
 \alias{SAShiny}
 \alias{SAShiny-package}
-\title{SAShiny: Use Unchanged 'SAS' Programs as the Server of 'Shiny' Applications}
+\title{SAShiny: use unchanged SAS programs as the server of Shiny applications}
 \description{
-Pairs an unmodified 'SAS' program with a declarative 'YAML' sidecar contract so that 'SAS' performs the analysis while 'Shiny' renders the user interface. The contract declares typed inputs, which are validated and safely passed to 'SAS' as macro variables, and outputs such as datasets, 'ODS' graphics, listings, logs and downloads. Connections to 'SAS' 9.4 and 'SAS Viya' are made through 'SASPy'. 'SAS' is a registered trademark of SAS Institute Inc. and 'Shiny' is a registered trademark of Posit Software, PBC; this package is not affiliated with or endorsed by either company.
+A SAShiny app pairs an unmodified 'SAS' program with a YAML contract
+(\code{\link[=sas_contract]{sas_contract()}}) and runs it on a live 'SAS' system (\code{\link[=sas_connect]{sas_connect()}}).
 }
+\section{Supported systems and licensing}{
+
+Programs run only on 'SAS' 9.4, 'SAS Viya' or 'SAS OnDemand for Academics'.
+Users are responsible for holding a valid licence for the system they
+connect to, and must acknowledge this before a run (\code{license_ack = TRUE},
+\code{options(SAShiny.license_ack = TRUE)} or \code{SASHINY_LICENSE_ACK=true}).
+}
+
+\section{Options}{
+
+\itemize{
+\item \code{SAShiny.license_ack}: \code{TRUE} acknowledges licence responsibility for
+every engine in the session that does not set \code{license_ack} itself.
+}
+}
+
 \seealso{
 Useful links:
 \itemize{

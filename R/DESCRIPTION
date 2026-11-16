@@ -1,6 +1,6 @@
 Package: SAShiny
 Title: Use Unchanged 'SAS' Programs as the Server of 'Shiny' Applications
-Version: 0.1.6
+Version: 0.2.0
 Authors@R: c(
     person("Mehar Pratap", "Singh", , "meharpsingh@gmail.com",
            role = c("aut", "cre", "cph")),
@@ -15,7 +15,10 @@ Description: Pairs an unmodified 'SAS' program with a declarative 'YAML'
     renders the user interface. The contract declares typed inputs, which
     are validated and safely passed to 'SAS' as macro variables, and outputs
     such as datasets, 'ODS' graphics, listings, logs and downloads.
-    Connections to 'SAS' 9.4 and 'SAS Viya' are made through 'SASPy'.
+    Programs run only on a live 'SAS' 9.4, 'SAS Viya' or 'SAS OnDemand for
+    Academics' system, reached through 'SASPy'; users must hold a valid
+    licence for that system and acknowledge this before a run. Apps can be
+    published to 'Posit Connect' with 'rsconnect'.
     'SAS' is a registered trademark of SAS Institute Inc. and 'Shiny' is a
     registered trademark of Posit Software, PBC; this package is not
     affiliated with or endorsed by either company.
@@ -45,13 +48,18 @@ Suggests:
     reticulate (>= 1.45.0),
     rlang,
     rmarkdown,
+    rsconnect,
+    rstudioapi,
     shiny,
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    withr
 Config/testthat/edition: 3
 VignetteBuilder: knitr
 Encoding: UTF-8
 Language: en-GB
 Roxygen: list(markdown = TRUE)
-SystemRequirements: Optional: 'SAS' 9.4 or 'SAS Viya', and 'Python' (>= 3.10)
-    with 'saspy' (live connections only).
+SystemRequirements: Licensed 'SAS' 9.4, 'SAS Viya' or 'SAS OnDemand for
+    Academics' access, and 'Python' (>= 3.10) with 'saspy', to run programs
+    (not needed to install the package or run its checks); Java (>= 8) for
+    IOM connections.
 Config/roxygen2/version: 8.1.1

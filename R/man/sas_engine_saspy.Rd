@@ -4,27 +4,24 @@
 \alias{sas_engine_saspy}
 \title{Create a saspy engine}
 \usage{
-sas_engine_saspy(
-  cfg,
-  cfgname = "sashiny",
-  record_to = NULL,
-  session_factory = NULL
-)
+sas_engine_saspy(cfg, cfgname = "sashiny", license_ack = NULL)
 }
 \arguments{
 \item{cfg}{A saspy configuration (a named list, written to a temporary
-\code{sascfg} file) or the path of an existing saspy configuration file.}
+\code{sascfg} file) or the path of an existing saspy configuration file. A
+configuration file cannot be inspected; you are responsible for it
+pointing at a supported, licensed 'SAS' system.}
 
 \item{cfgname}{The configuration name inside that file.}
 
-\item{record_to}{Directory where every run is also saved as a recording
-(spec section 8.3) for offline replay with \code{\link[=sas_engine_mock]{sas_engine_mock()}}.}
-
-\item{session_factory}{Advanced/testing hook: a function returning a
-saspy-like session object.}
+\item{license_ack}{\code{TRUE} to acknowledge that you hold a valid licence for
+the 'SAS' system this engine connects to. \code{NULL} (the default) defers to
+the \code{SAShiny.license_ack} option and the \code{SASHINY_LICENSE_ACK}
+environment variable.}
 }
 \value{
-A \code{sashiny_engine_saspy} object (an environment).
+A \code{sashiny_engine_saspy} object (an environment). No 'SAS' session
+is started until the first run.
 }
 \description{
 A live SAS engine backed by saspy, reached through reticulate. The SAS
@@ -33,7 +30,14 @@ resets WORK, spec section 6.2); it is restarted automatically after a
 failure. Use \code{\link[=sas_pool]{sas_pool()}} to serve several users. Most apps build the engine
 with \code{\link[=sas_connect]{sas_connect()}}.
 }
+\details{
+Only 'SAS' 9.4 (IOM or SSH), 'SAS Viya' (HTTP) and 'SAS OnDemand for
+Academics' (IOM) configurations are accepted (spec section 6.6). Running a
+program also requires the licence acknowledgement described in
+\code{\link[=sas_connect]{sas_connect()}}.
+}
 \examples{
-engine <- sas_engine_saspy(list(java = "java", iomhost = "sas.example.com"))
-engine$cfg$iomhost
+# Builds the configuration only; no 'SAS' session is started.
+engine <- sas_engine_saspy(list(java = "java", iomhost = "sas.example.com", iomport = 8591))
+engine$backend
 }

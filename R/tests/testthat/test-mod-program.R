@@ -14,7 +14,7 @@ test_that("sas_program_server runs a contract and returns reactives", {
   skip_if_not_installed("shiny")
   contract <- sas_contract(file.path(.sashiny_fixtures(), "contracts", "valid",
                                      "minimal", "contract.sashiny.yml"))
-  engine <- sas_engine_mock()
+  engine <- .sashiny_engine_mock()
   shiny::testServer(
     sas_program_server, args = list(contract = contract, engine = engine), {
       session$setInputs(run = 1)
@@ -29,7 +29,7 @@ test_that("sas_program_server collects inputs from a numeric contract", {
   skip_if_not_installed("shiny")
   contract <- sas_contract(file.path(.sashiny_fixtures(), "contracts", "valid",
                                      "numeric", "contract.sashiny.yml"))
-  engine <- sas_engine_mock()
+  engine <- .sashiny_engine_mock()
   shiny::testServer(
     sas_program_server, args = list(contract = contract, engine = engine), {
       session$setInputs(min_msrp = 20000, ratio = 0.5, big = 1)
@@ -44,7 +44,7 @@ test_that("sas_program_server reports invalid values", {
   skip_if_not_installed("shiny")
   contract <- sas_contract(file.path(.sashiny_fixtures(), "contracts", "valid",
                                      "numeric", "contract.sashiny.yml"))
-  engine <- sas_engine_mock()
+  engine <- .sashiny_engine_mock()
   shiny::testServer(
     sas_program_server, args = list(contract = contract, engine = engine), {
       session$setInputs(min_msrp = "not-a-number", ratio = 0.5, big = 1)
@@ -82,17 +82,17 @@ test_that("Shiny values convert to the contract's JSON form", {
   expect_true(converted$uploads$s)
 })
 
-test_that("status text reports recordings, issues and errors", {
-  r <- sashiny_result("run-1", "success", metadata = list())
+test_that("status text reports issues and errors", {
+  r <- .sashiny_result("run-1", "success", metadata = list())
   expect_identical(.sashiny_status_text(r), "status: success\nrun_id: run-1")
   r$metadata <- list(
-    sas_version = "9.04.01M8", recording = "missing",
+    sas_version = "9.04.01M8",
     issues = list(list(code = "V002", input = "n")), notice = "fallback",
     engine_error = "boom", collect_errors = list("t: gone")
   )
   text <- .sashiny_status_text(r)
   parts <- c(
-    "SAS: 9.04.01M8", "no recording", "V002 n", "fallback", "engine error: boom", "t: gone"
+    "SAS: 9.04.01M8", "V002 n", "fallback", "engine error: boom", "t: gone"
   )
   for (part in parts) {
     expect_match(text, part, fixed = TRUE)
@@ -142,21 +142,22 @@ test_that("the module replays a recording into its output cards", {
   skip_if_not_installed("shiny")
   rec <- tempfile("sashiny-rec-")
   contract <- fake_contract()
-  live <- sas_engine_saspy(list(), session_factory = function() fake_session(), record_to = rec)
-  sas_engine_run(live, contract, list(min_age = 18), uploads = list(adsl = TRUE))
-  engine <- sas_engine_mock(rec)
+  live <- test_saspy_engine(list(), session_factory = function() fake_session())
+  result <- sas_engine_run(live, contract, list(min_age = 18), uploads = list(adsl = TRUE))
+  test_save_recording(rec, contract, result,
+    files = list(adsl = file.path(contract$base_dir, "adsl.csv"))
+  )
+  engine <- .sashiny_engine_mock(rec)
   shiny::testServer(
     sas_program_server,
     args = list(contract = contract, engine = engine),
     {
       session$setInputs(min_age = 18, adsl__sample = TRUE, run = 1)
-      expect_match(output$status, "replayed recording", fixed = TRUE)
+      expect_match(output$status, "status: success", fixed = TRUE)
       expect_match(output$out_stats$html, "Age (y)", fixed = TRUE)
       expect_match(output$out_missing$html, "dataset WORK.NOPE not found", fixed = TRUE)
       expect_match(output$out_graphs$html, "data:image/png;base64", fixed = TRUE)
       expect_false(grepl("SASHINY", output$out_log$html, fixed = TRUE))
-      session$setInputs(min_age = 99, run = 2)
-      expect_match(output$status, "no recording matches", fixed = TRUE)
     }
   )
 })
@@ -197,7 +198,7 @@ test_that("each chart output gets its own render callback", {
                 rows = list(list(1)), total_rows = 1L, truncated = FALSE, formatted = FALSE)
   engine <- structure(list(), class = c("sashiny_test_engine", "sashiny_engine"))
   registerS3method("sas_engine_run", "sashiny_test_engine", function(engine, contract, values, ...) {
-    sashiny_result("r1", "success", outputs = list(first = value, second = value, log = list()))
+    .sashiny_result("r1", "success", outputs = list(first = value, second = value, log = list()))
   }, envir = asNamespace("SAShiny"))
   # Each callback names itself in its error, which the chart card shows.
   render <- list(

@@ -19,7 +19,8 @@ file (loaded automatically).}
 
 \item{values}{A named list of input values.}
 
-\item{engine}{An engine object (e.g. from \code{\link[=sas_engine_mock]{sas_engine_mock()}}).}
+\item{engine}{An engine from \code{\link[=sas_connect]{sas_connect()}}, \code{\link[=sas_engine_saspy]{sas_engine_saspy()}} or
+\code{\link[=sas_pool]{sas_pool()}}.}
 
 \item{today}{A \code{Date} used to resolve \code{"today"}.}
 
@@ -29,23 +30,18 @@ Shiny \code{fileInput} value, or \code{TRUE} for the input's \code{sample}.}
 \item{run_id}{The run identifier.}
 }
 \value{
-A \code{sashiny_result} object.
+A \code{sashiny_result} object (see \code{\link[=sas_engine_run]{sas_engine_run()}}).
 }
 \description{
 Run a contract with the given inputs on an engine
 }
 \examples{
-dir <- tempfile("sashiny-")
-dir.create(dir)
-writeLines(c(
-  "sashiny: 1",
-  "program: program.sas",
-  "title: Minimal",
-  "outputs:",
-  "  log:",
-  "    type: log"
-), file.path(dir, "contract.sashiny.yml"))
-writeLines("proc print data=sashelp.class; run;", file.path(dir, "program.sas"))
-result <- sas_run(file.path(dir, "contract.sashiny.yml"), list(), sas_engine_mock())
+path <- system.file("examples", "minimal", "minimal.sashiny.yml", package = "SAShiny")
+\dontrun{
+# Needs a licensed 'SAS' system and saspy; not run during checks.
+engine <- sas_connect("sas94", host = "sas.example.com", license_ack = TRUE)
+result <- sas_run(path, list(), engine)
 result$status
+sas_engine_close(engine)
+}
 }

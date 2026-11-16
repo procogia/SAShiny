@@ -32,24 +32,25 @@
   )
 }
 
-test_that("only mock and saspy engines are sent to a background process", {
-  expect_identical(.sashiny_portable_engine(sas_engine_mock()), sas_engine_mock())
-  live <- sas_engine_saspy(list(java = "java"))
+test_that("only the saspy engine and the test mock are sent to a background process", {
+  expect_identical(.sashiny_portable_engine(.sashiny_engine_mock()), .sashiny_engine_mock())
+  live <- test_saspy_engine(list(java = "java"))
   live$sas <- "a live session"
   copy <- .sashiny_portable_engine(live)
   expect_s3_class(copy, "sashiny_engine_saspy")
   expect_null(copy$sas)
   expect_identical(copy$cfg, live$cfg)
-  expect_null(.sashiny_portable_engine(sas_pool(sas_engine_mock())))
+  expect_true(copy$license_ack)
+  expect_null(.sashiny_portable_engine(sas_pool(.sashiny_engine_mock())))
   custom <- structure(list(), class = c("my_engine", "sashiny_engine_mock"))
   expect_null(.sashiny_portable_engine(custom))
 })
 
 test_that("the run deadline matches the saspy engine's rule", {
   contract <- list(data = list(run = list()))
-  expect_identical(.sashiny_run_deadline(sas_engine_mock(), contract), Inf)
-  expect_identical(.sashiny_run_deadline(sas_engine_saspy(list()), contract), 300)
-  hook <- sas_engine_saspy(list(), session_factory = function() NULL)
+  expect_identical(.sashiny_run_deadline(.sashiny_engine_mock(), contract), Inf)
+  expect_identical(.sashiny_run_deadline(test_saspy_engine(list()), contract), 300)
+  hook <- test_saspy_engine(list(), session_factory = function() NULL)
   expect_identical(.sashiny_run_deadline(hook, contract), Inf)
   contract$data$run$timeout_seconds <- 2
   expect_identical(.sashiny_run_deadline(hook, contract), 2)
@@ -68,7 +69,7 @@ test_that("a background run resolves without blocking the event loop", {
   later::later(tick, 0)
   # Stop the ticker even on failure, so it cannot keep the global loop busy.
   on.exit(ticking <- FALSE, add = TRUE)
-  p <- .sashiny_run_bg_promise(sas_engine_mock(), contract, list(),
+  p <- .sashiny_run_bg_promise(.sashiny_engine_mock(), contract, list(),
     today = .sashiny_today, run_id = "bg-1"
   )
   expect_true(promises::is.promise(p))
@@ -99,7 +100,7 @@ test_that("a background saspy run past timeout_seconds resolves to an error (iss
     Sys.sleep(30)
     NULL
   }
-  engine <- sas_engine_saspy(list(java = "java"), session_factory = slow)
+  engine <- test_saspy_engine(list(java = "java"), session_factory = slow)
   started <- proc.time()[["elapsed"]]
   state <- .sashiny_await(.sashiny_run_bg_promise(engine, contract, list(), today = .sashiny_today))
   elapsed <- proc.time()[["elapsed"]] - started
@@ -114,7 +115,7 @@ test_that("a failing background run rejects the promise", {
   contract <- structure(list(data = list(), base_dir = tempdir(), path = "missing"),
     class = "sashiny_contract"
   )
-  state <- .sashiny_await(.sashiny_run_bg_promise(sas_engine_mock(), contract, list()))
+  state <- .sashiny_await(.sashiny_run_bg_promise(.sashiny_engine_mock(), contract, list()))
   expect_true(state$done)
   expect_s3_class(state$error, "error")
 })
