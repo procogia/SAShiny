@@ -7,19 +7,16 @@ the real example programs and checks it is demo-ready:
 2. each scenario runs with status ``success`` and every output is collected
    (tables with rows, graphs, HTML, a clean log, valid download files);
 3. the program on disk is the one that ran (``program_sha256``), unchanged;
-4. the run is recorded, and the recording replays offline with identical
-   outputs (the demo fallback);
-5. WORK is reset between runs: re-running a scenario after another one gives
+4. WORK is reset between runs: re-running a scenario after another one gives
    the same tables;
-6. invalid inputs are rejected before SAS and leave the session usable;
-7. a user-uploaded file (xlsx copy of the AML sample) gives the same results
+5. invalid inputs are rejected before SAS and leave the session usable;
+6. a user-uploaded file (xlsx copy of the AML sample) gives the same results
    as the sample;
-8. a run on a second session matches the first (no hidden session state).
+7. a run on a second session matches the first (no hidden session state).
 
 Run it from ``Python/``:
 
     SASHINY_LIVE=1 SASHINY_PROFILE=oda SASHINY_ODA_REGION=eu1 \\
-    SASHINY_RECORD_TO=../examples/recordings \\
     uv run --extra saspy --extra upload pytest tests/live -v
 """
 
@@ -33,7 +30,6 @@ import pytest
 
 import sashiny
 from demo_scenarios import check_result, load_scenarios
-from sashiny.recording import key_for
 
 pytestmark = pytest.mark.live
 
@@ -48,7 +44,7 @@ def _tables(result: sashiny.Result) -> dict[str, object]:
 
 @pytest.fixture(scope="module")
 def runs(live_engine: sashiny.SaspyEngine) -> dict[str, sashiny.Result]:
-    """Run every scenario once, in file order, on the recorded session."""
+    """Run every scenario once, in file order, on the shared session."""
     return {
         s.id: live_engine.run(s.load(), s.values, today=TODAY, uploads=s.uploads) for s in SCENARIOS
     }
@@ -74,24 +70,6 @@ def test_program_ran_unchanged(scenario, runs) -> None:  # type: ignore[no-untyp
         (contract.base_dir / contract.data["program"]).read_bytes()
     ).hexdigest()
     assert runs[scenario.id].metadata["program_sha256"] == on_disk
-
-
-@pytest.mark.parametrize("scenario", SCENARIOS, ids=[s.id for s in SCENARIOS])
-def test_recording_replays_offline(scenario, runs, record_dir: Path) -> None:  # type: ignore[no-untyped-def]
-    contract = scenario.load()
-    live = runs[scenario.id]
-    files = {
-        iid: contract.base_dir / contract.data["inputs"][iid]["sample"]
-        for iid in scenario.upload_ids
-    }
-    key = key_for(contract, live.metadata["macros"], files)
-    assert (record_dir / f"{key}.json").is_file()
-    replay = sashiny.MockEngine(record_dir).run(
-        contract, scenario.values, today=TODAY, uploads=scenario.uploads
-    )
-    assert replay.metadata["recording"] == "replayed"
-    assert replay.status == live.status
-    assert replay.outputs == live.outputs
 
 
 def test_work_is_reset_between_runs(live_engine: sashiny.SaspyEngine, runs) -> None:  # type: ignore[no-untyped-def]

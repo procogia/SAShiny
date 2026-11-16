@@ -6,6 +6,28 @@ All notable changes to the Python library are documented here. The format follow
 
 ## [Unreleased]
 
+## [0.2.0]
+
+### Changed (breaking)
+
+- Programs run only on a live SAS 9.4, SAS Viya or SAS OnDemand for Academics system (spec
+  §6.6). `SaspyEngine` rejects other saspy configurations (local COM, local STDIO, unknown
+  methods).
+- A run returns an error ("SAS licence not acknowledged") unless `license_ack=True` or
+  `SASHINY_LICENSE_ACK=true` is set. You are responsible for your SAS licence.
+- `MockEngine`, `save_recording`, `load_recording` and the `record_to` /
+  `session_factory` arguments were removed from the public API. The mock is now an internal
+  test fixture, so logs and results cannot be supplied by hand.
+- `sashiny.app`, `program_server`, `sashiny.run` and `Pool` accept only `connect()` /
+  `SaspyEngine` engines and pools.
+
+### Added
+
+- `sashiny.publish()` deploys an app to Posit Connect with `rsconnect-python` (extra
+  `sashiny[connect]`, spec §6.7). Credential files are never bundled.
+- `sashiny.app(..., publish=True)` adds an opt-in "Publish" tab, which is hidden on Connect.
+- Live engines pass `SASHINY_SAS_USER` / `SASHINY_SAS_PASSWORD` to saspy when both are set.
+
 ## [0.1.7] - 2026-11-14
 
 ### Added

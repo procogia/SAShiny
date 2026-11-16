@@ -25,6 +25,7 @@ from shiny.ui import TagChild
 
 from .contract import Contract
 from .engines import Engine
+from .engines.base import check_engine
 from .result import Result
 from .upload import UploadError, UploadFile
 
@@ -203,10 +204,6 @@ def _status_text(result: Result) -> str:
     meta = result.metadata
     if meta.get("sas_version"):
         lines.append(f"SAS: {meta['sas_version']}")
-    if meta.get("recording") == "missing":
-        lines.append("offline: no recording matches these inputs")
-    elif meta.get("recording") == "replayed":
-        lines.append(f"offline: replayed recording from {meta.get('recorded_at', '')}")
     for issue in meta.get("issues", []):
         where = issue.get("input") or ""
         lines.append(f"invalid input {issue['code']} {where} {issue.get('message', '')}".rstrip())
@@ -441,7 +438,7 @@ def program_server(  # noqa: PLR0913, PLR0917 - Shiny module signature + overrid
         output: Shiny outputs.
         session: Shiny session.
         contract: The loaded contract.
-        engine: The engine to run on (mock, saspy or a :class:sashiny.Pool).
+        engine: A :func:`sashiny.connect` engine or a :class:`sashiny.Pool`.
         server_override: An optional callable `(input, output, session,
             contract, engine)` that replaces the auto-generated server.
         chart_render: An optional mapping of chart render callbacks keyed by
@@ -452,6 +449,7 @@ def program_server(  # noqa: PLR0913, PLR0917 - Shiny module signature + overrid
         `{"result", "status", "log"}` reactive calcs for custom extensions.
 
     """
+    check_engine(engine)
     if server_override is not None:
         return server_override(input, output, session, contract, engine)  # type: ignore[no-any-return]
     inputs: dict[str, Any] = contract.data.get("inputs") or {}

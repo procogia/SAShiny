@@ -40,6 +40,7 @@ dependencies = [
 
 [project.optional-dependencies]
 saspy = ["saspy>=5.100"]
+connect = ["rsconnect-python>=1.20"]
 shiny = ["shiny>=1.0"]
 upload = ["pandas>=2.0", "openpyxl>=3.1", "pyreadstat>=1.2"]
 plotnine = ["plotnine>=0.13"]

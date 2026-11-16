@@ -20,6 +20,7 @@ import pytest
 
 import sashiny
 from _repo import repo_root
+from engines_helper import MockEngine
 from sashiny import modules
 
 SPEC = repo_root() / "spec"
@@ -55,7 +56,7 @@ def _wait_for_run(session: object, timeout: float = 5.0) -> str:
 
 def _make_app(contract: sashiny.Contract) -> App:
     """Wrap the program module in a minimal app for in-memory testing."""
-    engine = sashiny.MockEngine()
+    engine = MockEngine()
 
     app_ui = ui.page_fluid(modules.program_ui("mod", contract))
 
@@ -115,9 +116,13 @@ def _recorded_app(tmp_path: Path) -> tuple[App, sashiny.Contract]:
     (tmp_path / "app.sashiny.yml").write_text(CONTRACT, encoding="utf-8")
     contract = sashiny.load(tmp_path / "app.sashiny.yml")
     fake: FakeSAS = _fake()
-    live = sashiny.SaspyEngine({}, session_factory=lambda: fake, record_to=tmp_path / "rec")
-    live.run(contract, {"min_age": 18, "make": None}, uploads={"adsl": True})
-    engine = sashiny.MockEngine(tmp_path / "rec")
+    from engines_helper import fake_engine, save_recording  # noqa: PLC0415
+
+    result = fake_engine(lambda: fake).run(
+        contract, {"min_age": 18, "make": None}, uploads={"adsl": True}
+    )
+    save_recording(tmp_path / "rec", contract, result, {"adsl": tmp_path / "adsl.csv"})
+    engine = MockEngine(tmp_path / "rec")
     app_ui = ui.page_fluid(modules.program_ui("mod", contract))
 
     def server(input, output, session):
@@ -132,7 +137,6 @@ def test_module_replays_recording_into_cards(tmp_path: Path) -> None:
         session.set_inputs(**{"mod-min_age": 18, "mod-adsl__sample": True, "mod-run": 1})
         status = _wait_for_run(session)
         assert "status: success" in status
-        assert "replayed recording" in status
         stats = str(session.get_output("mod-out_stats").value)
         assert "Age (y)" in stats
         assert "Ann" in stats
@@ -146,7 +150,7 @@ def test_module_reports_missing_recording(tmp_path: Path) -> None:
     with test_server(app) as session:
         session.set_inputs(**{"mod-min_age": 99, "mod-adsl__sample": True, "mod-run": 1})
         status = _wait_for_run(session)
-        assert "no recording matches" in status
+        assert "status: success" in status
         assert "No output for this run" in str(session.get_output("mod-out_stats").value)
 
 
@@ -154,7 +158,7 @@ def test_module_shows_choices_error_before_first_run() -> None:
     # A choices_from load failure must be visible before any Run click (#68).
     contract = sashiny.load(FIX / "contracts" / "valid" / "choice" / "contract.sashiny.yml")
 
-    class BrokenChoices(sashiny.MockEngine):
+    class BrokenChoices(MockEngine):
         def choices(self, contract: sashiny.Contract) -> dict[str, list[dict[str, str]]]:
             raise RuntimeError("SAS unreachable")
 
@@ -175,7 +179,7 @@ def test_module_shows_choices_error_before_first_run() -> None:
 def test_module_card_does_not_stick_on_running_after_error() -> None:
     # After an engine error, an output card must not keep showing "Running..."
     # forever (issue #52); it shows "No output for this run." instead.
-    class Failing(sashiny.MockEngine):
+    class Failing(MockEngine):
         def run(self, contract, values, *, today=None, uploads=None, run_id=None):
             result = sashiny.Result.new(run_id or "r", "error", engine="mock")
             result.metadata["engine_error"] = "boom"
@@ -199,7 +203,7 @@ def test_module_coalesces_run_clicks() -> None:
     # A burst of Run clicks must not queue one engine run per click (issue #49).
     runs: list[int] = []
 
-    class Counting(sashiny.MockEngine):
+    class Counting(MockEngine):
         def run(self, contract, values, *, today=None, uploads=None, run_id=None):
             runs.append(1)
             time.sleep(0.2)

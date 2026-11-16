@@ -1,11 +1,12 @@
-"""Mock engine with record/replay for SAShiny.
+"""Internal offline mock engine: a TEST FIXTURE, not part of the public API.
 
-Implements the engine interface without SAS. It replays recordings (spec
-``CONTRACT.md`` §8.3) keyed by the contract bytes, the rendered macros and the
-uploaded files. Recordings are written by a live engine
-(``SaspyEngine(record_to=...)``) or with :meth:`MockEngine.save_recording`.
-This powers CRAN/PyPI checks, examples, vignettes and the demo's offline
-fallback (issue #5).
+PyPI and CI checks have no SAS, so the test suite needs a way to exercise the
+Shiny module, the pool and result handling without one. This engine replays
+hand-written recordings (spec ``CONTRACT.md`` §8.3) for that purpose only. It is
+not exported, it refuses to run outside pytest, and the public entry points
+accept only live engines outside tests (:func:`check_engine`), so users cannot
+feed logs or results that did not come from a licensed SAS system into an app
+(spec §6.6).
 """
 
 from __future__ import annotations
@@ -21,9 +22,16 @@ from ..recording import contract_sha256, key_for, load_recording, program_sha256
 from ..result import Result
 from ..upload import UploadError, UploadFile, _check_file, read_upload, resolve_upload
 from ..values import render_values
-from .base import Engine
+from .base import Engine, testing
 
 __all__ = ["MockEngine"]
+
+
+def _require_testing() -> None:
+    if not testing():
+        raise RuntimeError(
+            "the mock engine is an internal test fixture; connect to SAS with sashiny.connect()"
+        )
 
 
 def _recording_key(
@@ -51,14 +59,12 @@ def resolve_files(contract: Contract, uploads: dict[str, Any] | None) -> dict[st
 
 
 class MockEngine(Engine):
-    """A mock engine that replays recorded results.
+    """The internal mock engine (tests only); replays recorded results.
 
     Args:
         recordings_dir: Directory holding recording files (``<key>.json``).
             When ``None`` or when no recording matches, the engine returns an
             empty successful result with ``metadata["recording"] == "missing"``.
-        record: Kept for backward compatibility; use
-            ``SaspyEngine(record_to=...)`` to record live runs.
         choices: Choices for ``choices_from`` inputs, keyed by input id
             (strings or ``{"value", "label"}`` dicts), standing in for the
             SAS query of spec §6.4.
@@ -71,18 +77,17 @@ class MockEngine(Engine):
     def __init__(
         self,
         recordings_dir: str | Path | None = None,
-        record: bool = False,
         choices: dict[str, list[Any]] | None = None,
     ) -> None:
         """Create a mock engine (see the class docstring for arguments)."""
+        _require_testing()
         self.recordings_dir = Path(recordings_dir) if recordings_dir else None
-        self.record = record
         self._choices = {
             iid: [c if isinstance(c, dict) else {"value": str(c), "label": str(c)} for c in items]
             for iid, items in (choices or {}).items()
         }
 
-    def choices(self, contract: Contract) -> dict[str, list[dict[str, str]]]:  # noqa: D102
+    def choices(self, contract: Contract) -> dict[str, list[dict[str, str]]]:
         inputs = contract.data.get("inputs") or {}
         return {
             iid: items
@@ -90,7 +95,7 @@ class MockEngine(Engine):
             if "choices_from" in inputs.get(iid, {})
         }
 
-    def run(  # noqa: D102 - documented on the base class
+    def run(
         self,
         contract: Contract,
         values: dict[str, Any],
@@ -99,6 +104,7 @@ class MockEngine(Engine):
         uploads: dict[str, Any] | None = None,
         run_id: str | None = None,
     ) -> Result:
+        _require_testing()
         today = today or date.today()
         run_id = run_id or str(uuid.uuid4())
         flags = {k: bool(v) for k, v in (uploads or {}).items()}

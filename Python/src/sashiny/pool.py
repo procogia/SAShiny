@@ -2,8 +2,8 @@
 
 Implements a bounded pool of engine sessions (issue #7). The pool reuses
 sessions up to ``max_runs_per_session``, discards sessions that error or time
-out, and enforces ``min``/``max``/``idle_timeout`` bounds. It works against any
-:class:`sashiny.engines.Engine` (mock or saspy).
+out, and enforces ``min``/``max``/``idle_timeout`` bounds over live
+:class:`sashiny.SaspyEngine` sessions.
 """
 
 from __future__ import annotations
@@ -49,7 +49,7 @@ class Pool(Engine):
         engine: An engine factory (a zero-argument callable such as
             ``lambda: sashiny.connect("oda")``), giving each pooled session its
             own SAS session, or a single engine instance shared by all pooled
-            sessions (suitable for :class:`MockEngine`).
+            sessions.
         min_size: Minimum number of sessions kept warm.
         max_size: Maximum number of concurrent sessions.
         idle_timeout: Seconds after which an idle session is discarded.
@@ -83,7 +83,9 @@ class Pool(Engine):
 
         """
         if isinstance(engine, Engine):
-            self.engine: Engine | None = engine
+            from .engines.base import check_engine  # noqa: PLC0415 - avoid an import cycle
+
+            self.engine: Engine | None = check_engine(engine)
             self._factory: Callable[[], Engine] | None = None
         else:
             self.engine = None
@@ -109,7 +111,9 @@ class Pool(Engine):
         self._top_up()
 
     def _new_session(self) -> PoolSession:
-        engine = self.engine if self._factory is None else self._factory()
+        from .engines.base import check_engine  # noqa: PLC0415 - avoid an import cycle
+
+        engine = self.engine if self._factory is None else check_engine(self._factory())
         assert engine is not None  # noqa: S101 - set in __init__
         return PoolSession(engine=engine)
 

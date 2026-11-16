@@ -12,9 +12,9 @@ from pathlib import Path
 import pytest
 
 import sashiny
+from engines_helper import MockEngine, fake_engine, save_recording
 from sashiny.engines import saspy as saspy_mod
 from sashiny.engines.saspy import SaspyEngine, _sas_number, _write_cfgfile
-from sashiny.recording import key_for
 
 pd = pytest.importorskip("pandas")
 from fakesas import FakeSAS  # noqa: E402
@@ -108,8 +108,24 @@ def _fake() -> FakeSAS:
     )
 
 
-def _engine(fake: FakeSAS, **kwargs: object) -> SaspyEngine:
-    return SaspyEngine({"java": "java"}, session_factory=lambda: fake, **kwargs)  # type: ignore[arg-type]
+def _engine(fake: FakeSAS) -> SaspyEngine:
+    return fake_engine(lambda: fake)
+
+
+def test_run_without_licence_ack_never_reaches_sas(
+    contract: sashiny.Contract, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Spec §6.6: no acknowledgement, no SAS session.
+    opened: list[bool] = []
+    engine = fake_engine(lambda: opened.append(True) or _fake(), license_ack=None)  # type: ignore[func-returns-value]
+    monkeypatch.delenv("SASHINY_LICENSE_ACK", raising=False)
+    result = engine.run(contract, {"min_age": 30}, today=TODAY)
+    assert result.status == "error"
+    assert result.metadata["engine_error"].startswith("SAS licence not acknowledged")
+    assert opened == []
+    monkeypatch.setenv("SASHINY_LICENSE_ACK", "TRUE")
+    assert saspy_mod.license_acknowledged(None)
+    assert not saspy_mod.license_acknowledged(False)
 
 
 def test_new_session_turns_notes_on_first(contract: sashiny.Contract) -> None:
@@ -227,7 +243,7 @@ def test_broken_session_is_reported_and_replaced(contract: sashiny.Contract) -> 
         calls.append(1)
         return Dead(_fake().datasets)
 
-    engine = SaspyEngine({}, session_factory=factory)
+    engine = fake_engine(factory)
     result = engine.run(contract, {"min_age": 1}, today=TODAY)
     assert result.status == "error"
     assert "lost connection" in result.metadata["engine_error"]
@@ -250,7 +266,7 @@ def test_failed_session_is_closed_before_replacement(contract: sashiny.Contract)
             super().endsas()
 
     fake = Dead(_fake().datasets)
-    engine = SaspyEngine({}, session_factory=lambda: fake)
+    engine = fake_engine(lambda: fake)
     result = engine.run(contract, {"min_age": 1}, today=TODAY)
     assert result.status == "error"
     assert ended == [True]
@@ -264,7 +280,7 @@ def test_run_enforces_timeout_seconds(contract: sashiny.Contract) -> None:
             return super().submit(code, results)
 
     fake = Slow(_fake().datasets)
-    engine = SaspyEngine({}, session_factory=lambda: fake)
+    engine = fake_engine(lambda: fake)
     contract.data["run"] = {"timeout_seconds": 1}
     result = engine.run(contract, {"min_age": 1}, today=TODAY)
     assert result.status == "error"
@@ -279,15 +295,12 @@ def test_run_within_timeout_succeeds(contract: sashiny.Contract) -> None:
     assert result.status == "success"
 
 
-def test_recording_write_failure_keeps_result(contract: sashiny.Contract, tmp_path: Path) -> None:
-    # A recording write failure must not discard a completed run (issue #67).
-    blocker = tmp_path / "notadir"
-    blocker.write_text("x")  # a file, not a directory
-    engine = _engine(_fake(), record_to=blocker / "rec")
-    result = engine.run(contract, {"min_age": 1}, today=TODAY)
+def test_live_runs_are_never_recorded(contract: sashiny.Contract) -> None:
+    # Spec §6.6: live engines never write recordings.
+    result = _engine(_fake()).run(contract, {"min_age": 1}, today=TODAY)
     assert result.status == "success"
-    assert "recording_error" in result.metadata
     assert "recording" not in result.metadata
+    assert result.metadata["backend"] == "sas94-iom"
 
 
 def test_timeout_worker_does_not_reopen_session(contract: sashiny.Contract) -> None:
@@ -304,7 +317,7 @@ def test_timeout_worker_does_not_reopen_session(contract: sashiny.Contract) -> N
         calls.append(1)
         return Slow(_fake().datasets)
 
-    engine = SaspyEngine({}, session_factory=factory)
+    engine = fake_engine(factory)
     contract.data["run"] = {"timeout_seconds": 1}
     result = engine.run(contract, {"min_age": 1}, today=TODAY)
     assert result.status == "error"
@@ -316,20 +329,15 @@ def test_timeout_worker_does_not_reopen_session(contract: sashiny.Contract) -> N
     assert len(calls) == 1
 
 
-def test_record_and_replay_round_trip(contract: sashiny.Contract, tmp_path: Path) -> None:
+def test_live_result_replays_through_test_mock(contract: sashiny.Contract, tmp_path: Path) -> None:
     rec = tmp_path / "recordings"
-    live = _engine(_fake(), record_to=rec).run(
+    live = _engine(_fake()).run(
         contract, {"min_age": 30, "make": "BMW"}, today=TODAY, uploads={"adsl": True}
     )
-    files = list(rec.glob("*.json"))
-    assert len(files) == 1
-    payload = json.loads(files[0].read_text(encoding="utf-8"))
-    assert payload["sashiny_recording"] == 1
-    assert files[0].stem == key_for(
-        contract, live.metadata["macros"], {"adsl": contract.base_dir / "adsl.csv"}
-    )
+    path = save_recording(rec, contract, live, {"adsl": contract.base_dir / "adsl.csv"})
+    assert json.loads(path.read_text(encoding="utf-8"))["sashiny_recording"] == 1
 
-    mock = sashiny.MockEngine(rec, choices={"make": ["BMW", "Audi"]})
+    mock = MockEngine(rec, choices={"make": ["BMW", "Audi"]})
     replay = mock.run(contract, {"min_age": 30, "make": "BMW"}, today=TODAY, uploads={"adsl": True})
     assert replay.metadata["recording"] == "replayed"
     assert replay.outputs == live.outputs
@@ -384,7 +392,9 @@ def test_preflight_requires_an_authinfo_entry(
 
 
 def test_missing_java_is_reported_on_the_result(contract: sashiny.Contract) -> None:
-    engine = sashiny.SaspyEngine({"iomhost": ["h"], "java": None, "authkey": "oda"})
+    engine = sashiny.SaspyEngine(
+        {"iomhost": ["h"], "java": None, "authkey": "oda"}, license_ack=True
+    )
     result = engine.run(contract, {"min_age": 1}, today=TODAY)
     assert result.status == "error"
     assert "Java was not found" in result.metadata["engine_error"]

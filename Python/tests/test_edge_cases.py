@@ -8,6 +8,7 @@ import pytest
 
 import sashiny
 from _repo import repo_root
+from engines_helper import MockEngine
 
 SPEC = repo_root() / "spec"
 FIX = SPEC / "fixtures"
@@ -20,8 +21,8 @@ def test_render_values_v005_pattern_mismatch() -> None:
     assert any(i.code == "V005" for i in issues)
 
 
-def test_mock_engine_save_recording_requires_dir() -> None:
-    engine = sashiny.MockEngine()  # no recordings_dir
+def test_mock_engine_save_recording_requires_dir() -> None:  # internal test fixture
+    engine = MockEngine()  # no recordings_dir
     contract = sashiny.load(FIX / "contracts" / "valid" / "minimal" / "contract.sashiny.yml")
     with pytest.raises(ValueError, match="recordings_dir"):
         engine.save_recording(contract, {}, {"status": "success"})

@@ -58,3 +58,42 @@ def test_connect_sas94_requires_host() -> None:
 def test_connect_unknown_profile() -> None:
     with pytest.raises(ValueError, match="unknown profile"):
         connect("bogus")
+
+
+def test_each_profile_maps_to_a_supported_backend() -> None:
+    assert connect("oda").backend == "oda"
+    assert connect("viya", url="https://v.example.com").backend == "viya"
+    assert connect("sas94", host="h.example.com").backend == "sas94-iom"
+    assert connect("sas94", host="h.example.com", saspath="/opt/sas").backend == "sas94-ssh"
+    assert connect("oda", license_ack=True).license_ack is True
+
+
+def test_saspy_engine_accepts_only_supported_backends() -> None:
+    from sashiny import SaspyEngine  # noqa: PLC0415
+
+    assert SaspyEngine("/path/to/sascfg_personal.py").backend == "cfgfile"
+    cases = [
+        ({"provider": "sas.iomprovider"}, "COM"),
+        ({"saspath": "/opt/sas/sas"}, "STDIO"),
+        ({"java": "java"}, "exactly one connection"),
+        ({"url": "viya.example.com"}, "https://"),
+        ({"url": "https://v", "iomhost": "h"}, "exactly one"),
+        ({"iomhost": ["a", "b"]}, "exactly one iomhost"),
+    ]
+    for cfg, message in cases:
+        with pytest.raises(ValueError, match=message):
+            SaspyEngine(cfg)
+    with pytest.raises(TypeError):
+        SaspyEngine({"url": "https://v"}, session_factory=lambda: None)  # type: ignore[call-arg]
+
+
+def test_env_credentials_become_saspy_keywords(monkeypatch: pytest.MonkeyPatch) -> None:
+    from sashiny.engines.saspy import env_credentials  # noqa: PLC0415
+
+    monkeypatch.setenv("SASHINY_SAS_USER", "me")
+    monkeypatch.setenv("SASHINY_SAS_PASSWORD", "pw")
+    assert env_credentials({"iomhost": "h"}) == {"omruser": "me", "omrpw": "pw"}
+    assert env_credentials({"url": "https://v"}) == {"user": "me", "pw": "pw"}
+    assert env_credentials({"saspath": "/s", "host": "h"}) == {}
+    monkeypatch.delenv("SASHINY_SAS_PASSWORD")
+    assert env_credentials({"iomhost": "h"}) == {}

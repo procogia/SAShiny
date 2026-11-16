@@ -1,9 +1,8 @@
-"""Engines for SAShiny: mock (record/replay) and saspy (live SAS)."""
+"""Engines for SAShiny: live SAS 9.4, SAS Viya and SAS OnDemand for Academics."""
 
 from __future__ import annotations
 
 from .base import Engine
-from .mock import MockEngine
 from .saspy import SaspyEngine, connect, load_profiles
 
-__all__ = ["Engine", "MockEngine", "SaspyEngine", "connect", "load_profiles"]
+__all__ = ["Engine", "SaspyEngine", "connect", "load_profiles"]
