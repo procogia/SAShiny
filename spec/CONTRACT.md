@@ -85,13 +85,20 @@ only (see 6.4).
 | `type` | Source | Key fields |
 |---|---|---|
 | `table` | dataset after the run | `from` (`lib.member`), `columns`, `max_rows` (10000), `formatted` (false) |
-| `plot` | ODS graphics of the run | `select` (1-based position; omit for all) |
-| `chart` | dataset after the run, rendered client-side | `from` (`lib.member`), `columns`, `max_rows` (10000), `spec` or `render` |
+| `plot` | ODS graphics of the run | `select` (1-based position; omit for all), `chart` (pairing, 8.6) |
+| `chart` | dataset after the run, rendered client-side | `from` (`lib.member`), `columns`, `max_rows` (10000), `spec` or `render`, `sas_plot` (pairing, 8.6) |
 | `html` | full ODS HTML listing | — |
 | `log` | SAS log | `scope`: `program` (default) or `full` |
 | `download` | file | `format`: `csv`, `xlsx`, `xpt`, `sas7bdat` (need `from`); `rtf`, `pdf` (ODS, no `from`); `filename` |
 
 Every output has optional `label` and `help`.
+
+A **paired output** shows both the original SAS graph and the SAShiny chart, with a toggle (8.6).
+Either form declares one:
+- a `chart` output with `sas_plot: <k>` (the 1-based ODS graph position, as in `plot.select`), or
+- a `plot` output with a `chart` mapping. The mapping takes the `chart` output fields `from`
+  (required), `columns`, `max_rows` and `spec`. A `plot` with a `chart` mapping MUST also have
+  `select`, so that exactly one SAS graph is paired.
 
 ### 2.3 `run`
 
@@ -361,6 +368,57 @@ When every pooled session is busy, a pool MUST wait for a free session up to a c
 within the timeout, the run returns an error `Result` with `metadata.engine_error` set to
 `pool exhausted: all N sessions busy` (it MUST NOT raise).
 
+### 6.6 Supported backends and licence acknowledgement
+
+A run that users can reach through the public API MUST be executed by a live, licensed SAS system.
+Exactly three backends are supported:
+
+| Backend | saspy access method | Configuration that identifies it |
+|---|---|---|
+| SAS OnDemand for Academics (ODA) | IOM | `iomhost` is a list of `*.oda.sas.com` hosts, `authkey: oda` |
+| SAS Viya | HTTP | `url` starting with `https://` (or `http://`) |
+| SAS 9.4 | IOM or SSH | IOM: `iomhost` (one host) and `iomport`; SSH: `saspath` and `host` |
+
+Rules:
+- An engine configuration (a saspy configuration mapping) that matches none of the rows is rejected when the engine is
+  created, with an error naming the three supported backends. In particular, local Windows COM
+  (`provider`), local STDIO (`saspath` without `host`) and unknown methods are rejected. A path to an
+  existing saspy configuration file is accepted as is. SAShiny cannot inspect it, and the user is
+  responsible for it pointing at one of the supported backends.
+- The user is responsible for holding a valid SAS licence (or ODA terms of use) for the backend.
+  SAShiny cannot verify a licence. Instead, a live engine MUST refuse to start a SAS session unless the
+  user has explicitly acknowledged this responsibility. An acknowledgement is one of: an explicit
+  `license_ack = TRUE`/`license_ack=True` argument, the R option `SAShiny.license_ack = TRUE`, or the
+  environment variable `SASHINY_LICENSE_ACK` set to `true` or `1` (case-insensitive; for deployed apps).
+  Without an acknowledgement the run returns an error `Result` whose `metadata.engine_error` starts with
+  `SAS licence not acknowledged`. Building an engine without an acknowledgement is allowed, so
+  configuration can be inspected offline.
+- SAS logs come only from SAS. The public API MUST NOT offer a way to supply a log, a result or a
+  recording that did not come from a live SAS run, and live engines MUST NOT write recordings.
+- The offline mock engine (8.3) is an internal test fixture. It is not part of the public API.
+
+### 6.7 Publishing to Posit Connect
+
+Both languages provide a `publish` helper that deploys an app directory to Posit Connect. It uses the
+language's official Connect client (`rsconnect` for R, `rsconnect-python` for Python). Rules:
+
+- **Authentication** is either a Connect account the user has already registered with the client, or the
+  environment variables `CONNECT_SERVER` and `CONNECT_API_KEY`. An API key is never written to the bundle,
+  the contract or a log.
+- **Bundle contents.** The bundle MUST NOT contain credential files. A file named `.authinfo`,
+  `_authinfo`, `.netrc`, `_netrc`, `.Renviron` or `.env`, or matching `*.pem` or `*.key`, is always
+  excluded, and the helper reports which files it excluded.
+- **SAS credentials on Connect** come from the Connect content's environment variables
+  `SASHINY_SAS_USER` and `SASHINY_SAS_PASSWORD`, or from an `~/.authinfo` the server administrator
+  manages for the content's run-as user. When both variables are set, a live engine passes them to
+  saspy as session keyword arguments: `omruser`/`omrpw` for IOM, `user`/`pw` for HTTP (Viya). They are
+  never written to a file. The authinfo check is skipped in that case. SSH uses key-based login and
+  ignores them. The helper can set these variables on the content, but their values are sent only to Connect.
+- **Licence.** Publishing sets `SASHINY_LICENSE_ACK=true` on the content only when the publisher has
+  acknowledged the licence (6.6).
+- The in-app "Publish" control is opt-in. It MUST be hidden when the app itself runs on Posit Connect
+  (environment variable `RSTUDIO_PRODUCT` equal to `CONNECT`, or `CONNECT_SERVER_URL`/`CONNECT_CONTENT_GUID` set).
+
 ---
 
 ## 7. Dataset upload conversion
@@ -403,8 +461,8 @@ outputs. The failed output's value is `{"error": "<message>"}`, and the message 
 
 ### 8.1 Output values
 
-Each output has a **language-neutral JSON value**. Engines return it, the mock engine replays it, and
-recordings store it (8.3), so R and Python see identical data.
+Each output has a **language-neutral JSON value**. Engines return it, and the internal test mock replays it
+from recordings (8.3), so R and Python see identical data.
 
 | Output | Value |
 |---|---|
@@ -414,6 +472,7 @@ recordings store it (8.3), so R and Python see identical data.
 | `html` | The ODS HTML document of the main submission, as a string |
 | `log` | `[{"level": "error" \| "warning" \| "note" \| "text", "text": "<line>"}, ...]` |
 | `download` | `{"filename": "<name>.<ext>", "mime": "<type>", "data": "<base64>"}` |
+| paired `plot` or `chart` (2.2) | `{"sas": <plot value>, "sashiny": <chart value>}` |
 
 Table details:
 - `type` is `"numeric"` or `"character"`. `label` and `format` are `""` when SAS has none.
@@ -472,6 +531,12 @@ and return the same value shape. The chart is rendered client-side by the Shiny 
 SAS produces no image. `spec` (declarative) or `render` (a per-language callback) describes the chart
 (see 8.5).
 
+**paired** (2.2): Collect `sas` like a `plot` with `select` = `sas_plot` (chart form) or the plot's
+own `select` (plot form). Collect `sashiny` like a `chart` from the chart fields (chart form) or the
+`chart` mapping (plot form). The two parts are independent: if one part fails, its value is
+`{"error": "<message>"}`, the message is appended to `metadata.collect_errors` as
+`<output_id>.<part>: <message>`, and the other part is still collected.
+
 **html**: The ODS HTML listing returned by the main submission.
 
 **log**: Split the main-submission log on line breaks (`CRLF`, `CR` or `LF`). If the log ends with a line
@@ -495,8 +560,10 @@ Numeric formatting in client-produced files may differ slightly between implemen
 
 ### 8.3 Recordings
 
-A recording replays a run without SAS. It is the offline fallback and the source of examples and
-tests. It is a UTF-8 JSON file `<key>.json`:
+A recording replays a run without SAS. Recordings are **internal test fixtures only** (6.6). They let the
+automated checks (CRAN, PyPI, CI) exercise the module and collection code without SAS. They are
+not reachable through the public API. Users cannot create them from a live engine or feed them into an app.
+A recording is a UTF-8 JSON file `<key>.json`:
 
 ```json
 {"sashiny_recording": 1, "status": "...", "log": "<full main-submission log>",
@@ -515,7 +582,7 @@ upload <input_id> <sha256>    one line per supplied dataset input, contract orde
 ```
 
 The key depends only on the contract bytes, the rendered values and the uploaded files. A recording
-made by either language therefore replays in both. A mock engine with no matching recording returns
+written by either language's test suite therefore replays in both. The internal mock engine with no matching recording returns
 status `success` with empty outputs and sets `metadata.recording` to `"missing"`.
 
 ### 8.4 Run metadata
