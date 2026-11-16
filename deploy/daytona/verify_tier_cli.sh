@@ -8,7 +8,7 @@
 #   bash deploy/daytona/verify_tier_cli.sh
 #
 # Result: prints "ODA reachable" (hosted demo can offer ODA) or "ODA NOT
-# reachable" (offline fallback). No credentials are stored or printed.
+# reachable" (the hosted demo cannot run SAS). No credentials are stored or printed.
 
 set -euo pipefail
 
@@ -39,5 +39,5 @@ echo
 if [ "$reachable" -eq 1 ]; then
   echo "TIER RESULT: ODA reachable — the hosted demo can offer the ODA profile."
 else
-  echo "TIER RESULT: ODA NOT reachable — the hosted demo relies on offline fallback."
+  echo "TIER RESULT: ODA NOT reachable — the hosted demo cannot run SAS."
 fi

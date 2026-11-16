@@ -45,13 +45,12 @@ cd Python && uv run --extra shiny --extra saspy --extra upload shiny run example
 
 1. Confirm live SAS connectivity for the profiles you plan to demonstrate (see
    `docs/live-sas-run-sheet.md`).
-2. Populate `examples/recordings/` with synthetic demo runs for every set of
-   input values you will show. A live run records automatically; R and Python
-   share recordings. Offline matching is exact, so changed inputs need a new
-   recording.
-3. Check recording replay with the offline tests described in
-   `docs/live-demo-tests.md`. A live connection failure also falls back to a
-   matching recording; if none exists, the run reports that no recording matches.
+2. Acknowledge the SAS licence for the system you will use
+   (`SASHINY_LICENSE_ACK=true`, or `options(SAShiny.license_ack = TRUE)` in R).
+   Since 0.2.0 SAShiny runs only on live, licensed SAS, so there is no offline
+   fallback (spec §6.6, PLAN.md D30).
+3. Run the live demo tests (`docs/live-demo-tests.md`) against each profile you
+   will show.
 4. Confirm the hosted Daytona sandbox is up and defaults to ODA (see
    `deploy/daytona/README.md`).
 
@@ -81,17 +80,18 @@ both apps:
   hosts was verified reachable from the ProCogia Daytona tier on 2026-11-14;
   details are in `deploy/daytona/README.md`.
 
-Show the profile picker; switch profiles live to
-demonstrate the same app on different backends.
+Choose the profile with `SASHINY_PROFILE` (`oda`, `viya` or `sas94`) when you
+start each app. To show the same app on different backends, start one app per
+profile.
 
 ## Fallback plan
 
 | Risk | Mitigation |
 |---|---|
-| VPN drops in the venue | Switch the profile to ODA; failed live runs fall back to matching recordings. |
-| Daytona ODA connection or credentials unavailable | Failed live runs fall back to matching preloaded recordings. |
-| ODA account not created | Failed live runs fall back to matching recordings. |
-| Live SAS slow/unavailable | Failed live runs fall back to matching recordings. |
+| VPN drops in the venue | Restart the app with `SASHINY_PROFILE=oda`. |
+| Daytona ODA connection or credentials unavailable | Use the local app on VPN (Viya or SAS 9.4). |
+| ODA account not created | Demo Viya or SAS 9.4 locally on VPN. |
+| Live SAS slow/unavailable | Show the contract, validation and generated wrapper, which need no SAS. There is no offline replay. |
 
 ## After the demo
 
