@@ -310,7 +310,7 @@ indentation inside `data _null_`. `<...>` are placeholders. Bracketed lines are 
 [ods <fmt>(id=<output_id>) file="%sysfunc(pathname(work))/sashiny_<output_id>.<fmt>";] one per rtf/pdf download, contract order
 %put NOTE: SASHINY-BEGIN-PROGRAM;
 <PROGRAM TEXT, verbatim>
-[%<MACRO>(<NAME1>=%bquote(&<NAME1>), <NAME2>=%bquote(&<NAME2>), ...);] only if run.entry is macro; all input macro names, order of 5.7
+[%<MACRO>(<NAME1>=<ARG1>, <NAME2>=<ARG2>, ...);] only if run.entry is macro; all input macro names, order of 5.7
 %put NOTE: SASHINY-END-PROGRAM;
 [ods <fmt>(id=<output_id>) close;               ] one per rtf/pdf download, contract order
 %put NOTE: SASHINY-END run=<run_id> syscc=&syscc;
@@ -330,11 +330,21 @@ Rules:
   converted to LF. Nothing else changes. A newline is inserted after the program text if it does not end
   with one. The file on disk is never changed.
 - With `entry: macro`, if the contract sets no macro variables the call is `%<MACRO>();`. Dataset-input
-  macros are included in the call only when declared. Each argument is passed as
-  `NAME=%bquote(&NAME)`: `%bquote` resolves `&NAME` and then macro-quotes the result, so a rendered
-  value containing a comma or parenthesis (for example a `multichoice` with `separator: comma`, which
-  renders as `'A', 'B'`) is not split by the macro processor. `%superq` is not used here because it
-  would keep the value macro-quoted and break `WHERE` clauses (see §9).
+  macros are included in the call only when declared. Each argument `<ARG>` is the rendered value with
+  only the characters that would split the call or trigger macro execution masked, each one wrapped
+  as `%nrstr(...)`. The value is scanned left to right:
+  - A single-quoted string (`'...'`, with doubled quotes inside) is copied as written.
+  - A double-quoted string (`"..."`, with doubled quotes inside) is copied with each `&` written
+    `%nrstr(&)` and each `%` written `%nrstr(%%)`.
+  - Outside strings, `,` `;` `&` are written `%nrstr(,)` `%nrstr(;)` `%nrstr(&)`, `%` is written
+    `%nrstr(%%)`, an unmatched `'` or `"` is written `%nrstr(%')` or `%nrstr(%")`, and an unmatched
+    `(` or `)` is written `%nrstr(%()` or `%nrstr(%))`. Parentheses are matched outside strings only.
+  - Every other character is copied as written. An empty value gives an empty argument.
+
+  For example, a `multichoice` with `separator: comma` that renders as `'A', 'B'` is passed as
+  `'A'%nrstr(,) 'B'`, and `95` is passed as `95`. Masking the whole value (`%bquote(&NAME)`,
+  `%superq(NAME)` or `%nrstr(<value>)`) is not used: SAS then treats the value as separate tokens, which
+  breaks `WHERE` clauses and names built from it such as `l&level` (see §9).
 - Each `rtf`/`pdf` download opens its own ODS destination instance, `id=` set to the output id, so several
   downloads of the same format can coexist. `<fmt>` is `rtf` or `pdf`.
 
@@ -666,8 +676,10 @@ original SAS graph, rendered like a `plot`) and `sashiny` (the client-side chart
   drops the `NOTE:` sentinels.
 - Macro-quoted values are **not** automatically unquoted when passed to the compiler. In particular,
   `WHERE` clauses do not unquote them, so a macro-quoted value such as `'Asia' 'Europe' 'USA'` causes a
-  syntax error in `where origin in (&NAME)`. For this reason SAS-literal values are emitted without
-  `%superq` (see §6.3), and only `raw` text/choice values are macro-quoted. A program may use
+  syntax error in `where origin in (&NAME)`. A macro-quoted value is also kept as a separate token, so
+  a name built from it (`l&NAME`) splits in two. For this reason SAS-literal values are emitted without
+  `%superq`, `entry: macro` call arguments mask only single characters (see §6.3), and only `raw`
+  text/choice values are macro-quoted. A program may use
   `%unquote(&NAME)` where a quoted token must be resolved, but it MUST NOT be required for ordinary
   `WHERE` clauses.
 

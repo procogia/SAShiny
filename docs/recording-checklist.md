@@ -16,7 +16,7 @@ scenarios themselves are defined in `examples/demo-scenarios.yml`.
 - [ ] `~/.authinfo` holds the credentials; the connection variable is set (`SASHINY_ODA_REGION`, `SASHINY_VIYA_URL` or `SASHINY_SAS94_HOST`).
 - [ ] VPN is on if you use ProCogia Viya or SAS 9.4.
 - [ ] Start one demo app from the repository root:
-      `cd Python && uv run --extra shiny --extra saspy --extra upload shiny run examples/demo/app.py`
+      `cd Python && uv run --extra shiny --extra saspy --extra upload --extra plotnine shiny run examples/demo/app.py`
 - [ ] In the sidebar, set **SAS connection** to the desired live profile.
 
 ## Rules that keep recordings matching

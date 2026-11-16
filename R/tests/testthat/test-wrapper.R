@@ -41,3 +41,21 @@ test_that("wrapper fixtures match byte-for-byte", {
         expect_identical(got, want, info = basename(d))
   }
 })
+test_that("macro call arguments keep string literals as written", {
+  cases <- list(
+    c("", ""),
+    c("95", "95"),
+    c("'Placebo', 'Drug A'", "'Placebo'%nrstr(,) 'Drug A'"),
+    c("'It''s, 50%'", "'It''s, 50%'"),
+    c('"R&D ""x"" 5%"', '"R%nrstr(&)D ""x"" 5%nrstr(%%)"'),
+    c("&x %put", "%nrstr(&)x %nrstr(%%)put"),
+    c("(1, 2)", "(1%nrstr(,) 2)"),
+    c("f(x", "f%nrstr(%()x"),
+    c("x); %put hi", "x%nrstr(%))%nrstr(;) %nrstr(%%)put hi"),
+    c("it's", "it%nrstr(%')s"),
+    c('a "b', 'a %nrstr(%")b')
+  )
+  for (cs in cases) {
+    expect_identical(.sashiny_macro_arg(cs[[1]]), cs[[2]], info = cs[[1]])
+  }
+})

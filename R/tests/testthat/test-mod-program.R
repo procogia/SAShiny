@@ -400,3 +400,31 @@ test_that("sas_app passes chart settings to every module and validates them", {
   expect_s3_class(sas_app(list(paired), engine, chart_view = list(bars = "sas")), "shiny.appobj")
   expect_error(sas_app(list(paired), engine, chart_view = list(missing = "sas")), "not paired")
 })
+test_that("the download button is namespaced and the placeholder has no id", {
+  skip_on_cran()
+  skip_if_not_installed("shiny")
+  dir <- tempfile("sashiny-dl-")
+  dir.create(dir)
+  writeLines("data a; x = 1; run;", file.path(dir, "p.sas"))
+  writeLines(c(
+    "sashiny: 1", "program: p.sas", "outputs:",
+    "  rep:", "    type: download", "    format: csv", "    from: work.a",
+    "  log:", "    type: log"
+  ), file.path(dir, "p.sashiny.yml"))
+  contract <- sas_contract(file.path(dir, "p.sashiny.yml"))
+  engine <- structure(list(), class = c("sashiny_dl_engine", "sashiny_engine"))
+  registerS3method("sas_engine_run", "sashiny_dl_engine", function(engine, contract, values, ...) {
+    file <- list(filename = "rep.csv", data = openssl::base64_encode(charToRaw("x\n1\n")))
+    .sashiny_result("r1", "success", outputs = list(rep = file, log = list()))
+  }, envir = asNamespace("SAShiny"))
+  shiny::testServer(
+    sas_program_server, args = list(contract = contract, engine = engine), {
+      # Before a run: a disabled placeholder that does not reuse the output id.
+      expect_match(output$dl_btn_rep$html, "disabled", fixed = TRUE)
+      expect_false(grepl("id=", output$dl_btn_rep$html, fixed = TRUE))
+      session$setInputs(run = 1)
+      # After a run: the real button carries the module-namespaced handler id.
+      expect_match(output$dl_btn_rep$html, paste0('id="', session$ns("dl_rep"), '"'), fixed = TRUE)
+    }
+  )
+})

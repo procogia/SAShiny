@@ -43,3 +43,26 @@ def test_wrapper(d: Path) -> None:
     got = sashiny.wrapper_code(contract.data, macros, program)
     want = (d / "expected_main.sas").read_text(encoding="utf-8")
     assert got == want
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("", ""),
+        ("95", "95"),
+        ("'Placebo', 'Drug A'", "'Placebo'%nrstr(,) 'Drug A'"),
+        ("'It''s, 50%'", "'It''s, 50%'"),
+        ('"R&D ""x"" 5%"', '"R%nrstr(&)D ""x"" 5%nrstr(%%)"'),
+        ("&x %put", "%nrstr(&)x %nrstr(%%)put"),
+        ("(1, 2)", "(1%nrstr(,) 2)"),
+        ("f(x", "f%nrstr(%()x"),
+        ("x); %put hi", "x%nrstr(%))%nrstr(;) %nrstr(%%)put hi"),
+        ("it's", "it%nrstr(%')s"),
+        ('a "b', 'a %nrstr(%")b'),
+    ],
+)
+def test_macro_arg(value: str, expected: str) -> None:
+    """Macro call arguments keep string literals as written (spec §6.3)."""
+    from sashiny.wrapper import macro_arg  # noqa: PLC0415
+
+    assert macro_arg(value) == expected

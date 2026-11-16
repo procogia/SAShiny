@@ -16,6 +16,19 @@ All notable changes to the Python library are documented here. The format follow
   or a dict per output) and `chart_toggle` (`True` by default; `False` hides the toggles).
 - Each part of a paired output is collected on its own, so one failing does not hide the other.
 
+### Fixed
+
+- With `entry: macro`, each value is now written into the macro call with only commas,
+  semicolons, `&`, `%` and unmatched quotes or parentheses masked (spec §6.3), instead of
+  `NAME=%bquote(&NAME)`. The fully macro-quoted values broke `WHERE` clauses such as
+  `where product = &product` and names built from a value such as `l&conf_level`, so the
+  Pharma and Forecasting demos failed on live SAS.
+- The disabled download placeholder shown before a run no longer reuses the output's id, which
+  made Shiny report a shared input/output id.
+- The demo Docker image defaults to the `oda` profile (the removed `offline` profile stopped the
+  app from starting) and installs the `upload` and `plotnine` extras the demo needs (plotnine
+  is the default chart backend). The documented demo run commands add `--extra plotnine`.
+
 ## [0.2.0]
 
 ### Changed (breaking)

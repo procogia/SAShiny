@@ -3,7 +3,8 @@
 # Implements spec/CONTRACT.md section 6: the reset submission and the
 # byte-exact main wrapper. The wrapper embeds the user's program text verbatim
 # and injects macro values only through single-quoted `call symputx` literals
-# followed by `%superq` (spec section 6.3).
+# followed by `%superq`, and (`entry: macro`) call arguments with `%nrstr`
+# masking where needed (spec section 6.3).
 
 #' Generate the reset submission (spec section 6.2)
 #'
@@ -87,13 +88,15 @@ sas_wrapper_code <- function(data, macros, program_bytes, run_id = "fixture") {
   tail <- character()
   run <- data$run %||% list()
   if (identical(run$entry, "macro")) {
-      # With no macro variables the call is `%<MACRO>();` (spec section 6.3). paste0 would
-      # otherwise recycle the constant fragments and emit `%<MACRO>(=%bquote(&));`.
-      args <- if (length(macros) == 0L) {
-        ""
-      } else {
-        paste0(names(macros), "=%bquote(&", names(macros), ")", collapse = ", ")
-      }
+    # With no macro variables the call is `%<MACRO>();` (spec section 6.3).
+    args <- if (length(macros) == 0L) {
+      ""
+    } else {
+      args_each <- vapply(names(macros), function(n) {
+        paste0(n, "=", .sashiny_macro_arg(macros[[n]]))
+      }, character(1), USE.NAMES = FALSE)
+      paste(args_each, collapse = ", ")
+    }
     tail <- c(tail, paste0("%", run$macro, "(", args, ");"))
   }
   tail <- c(tail, "%put NOTE: SASHINY-END-PROGRAM;")
@@ -102,4 +105,79 @@ sas_wrapper_code <- function(data, macros, program_bytes, run_id = "fixture") {
   }
   tail <- c(tail, paste0("%put NOTE: SASHINY-END run=", run_id, " syscc=&syscc;"))
   paste0(body, paste(tail, collapse = "\n"), "\n")
+}
+
+# Macro-quote one character outside a string literal (spec section 6.3).
+.sashiny_mask <- function(c) {
+  if (c == "%") {
+    "%nrstr(%%)"
+  } else if (c %in% c("'", '"', "(", ")")) {
+    paste0("%nrstr(%", c, ")")
+  } else {
+    paste0("%nrstr(", c, ")")
+  }
+}
+
+# Write a rendered value as a macro call argument (spec section 6.3).
+#
+# Only the characters that would split the call or trigger macro execution are
+# wrapped in `%nrstr`: outside string literals `,`, `;`, `&`, `%` and unmatched
+# quotes or parentheses; inside double-quoted literals `&` and `%`. Everything
+# else, including whole single-quoted literals, is written as is, so SAS reads
+# the value as ordinary program text (a macro-quoted value breaks `WHERE`
+# clauses and names such as `l&level`, see section 9).
+.sashiny_macro_arg <- function(value) {
+  ch <- strsplit(enc2utf8(value), "", fixed = TRUE)[[1]]
+  n <- length(ch)
+  out <- character()
+  parens <- integer()
+  i <- 1L
+  while (i <= n) {
+    c <- ch[[i]]
+    if (c == "'" || c == '"') {
+      j <- i + 1L
+      end <- NA_integer_
+      while (j <= n) {
+        if (ch[[j]] == c) {
+          if (j < n && ch[[j + 1L]] == c) {
+            j <- j + 2L
+            next
+          }
+          end <- j
+          break
+        }
+        j <- j + 1L
+      }
+      if (!is.na(end)) {
+        seg <- paste(ch[i:end], collapse = "")
+        if (c == '"') {
+          seg <- gsub("%", .sashiny_mask("%"), seg, fixed = TRUE)
+          seg <- gsub("&", .sashiny_mask("&"), seg, fixed = TRUE)
+        }
+        out <- c(out, seg)
+        i <- end + 1L
+        next
+      }
+    }
+    if (c == "(" || c == ")") {
+      parens <- c(parens, length(out) + 1L)
+    }
+    out <- c(out, if (c %in% c(",", ";", "&", "%", "'", '"')) .sashiny_mask(c) else c)
+    i <- i + 1L
+  }
+  stack <- integer()
+  unmatched <- integer()
+  for (idx in parens) {
+    if (out[[idx]] == "(") {
+      stack <- c(stack, idx)
+    } else if (length(stack) > 0L) {
+      stack <- stack[-length(stack)]
+    } else {
+      unmatched <- c(unmatched, idx)
+    }
+  }
+  for (idx in c(unmatched, stack)) {
+    out[[idx]] <- .sashiny_mask(out[[idx]])
+  }
+  paste(out, collapse = "")
 }

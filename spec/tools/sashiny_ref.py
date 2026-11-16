@@ -538,6 +538,69 @@ def _render_one(
 # --------------------------------------------------------------------------- wrapper (section 6)
 
 
+
+def _quote_end(value: str, i: int) -> int:
+    """Index of the quote closing the string that opens at ``value[i]``, or -1."""
+    c, j = value[i], i + 1
+    while (k := value.find(c, j)) != -1:
+        if k + 1 < len(value) and value[k + 1] == c:
+            j = k + 2
+            continue
+        return k
+    return -1
+
+
+def _mask(c: str) -> str:
+    """Macro-quote one character outside a string literal (spec §6.3)."""
+    if c == "%":
+        return "%nrstr(%%)"
+    if c in "'\"()":
+        return f"%nrstr(%{c})"
+    return f"%nrstr({c})"
+
+
+def macro_arg(value: str) -> str:
+    """Write a rendered value as a macro call argument (spec §6.3).
+
+    Only the characters that would split the call or trigger macro execution
+    are wrapped in ``%nrstr``: outside string literals ``,``, ``;``, ``&``,
+    ``%`` and unmatched quotes or parentheses; inside double-quoted literals
+    ``&`` and ``%``. Everything else, including whole single-quoted literals,
+    is written as is, so SAS reads the value as ordinary program text (a
+    macro-quoted value breaks ``WHERE`` clauses and names such as
+    ``l&level``, see §9).
+    """
+    out: list[str] = []
+    parens: list[int] = []
+    i = 0
+    while i < len(value):
+        c = value[i]
+        end = _quote_end(value, i) if c in "'\"" else -1
+        if end != -1:
+            seg = value[i : end + 1]
+            if c == '"':
+                seg = seg.replace("%", _mask("%")).replace("&", _mask("&"))
+            out.append(seg)
+            i = end + 1
+            continue
+        if c in "()":
+            parens.append(len(out))
+        out.append(_mask(c) if c in ",;&%'\"" else c)
+        i += 1
+    stack: list[int] = []
+    unmatched: list[int] = []
+    for idx in parens:
+        if out[idx] == "(":
+            stack.append(idx)
+        elif stack:
+            stack.pop()
+        else:
+            unmatched.append(idx)
+    for idx in unmatched + stack:
+        out[idx] = _mask(out[idx])
+    return "".join(out)
+
+
 def reset_code(data: dict[str, Any]) -> str:
     lines = ["/* SAShiny 1 reset */", "proc datasets library=work kill nolist nowarn;", "quit;"]
     names = all_macro_names(data)
@@ -571,7 +634,7 @@ def wrapper_code(data: dict[str, Any], macros: dict[str, str], program_bytes: by
     tail: list[str] = []
     run = data.get("run") or {}
     if run.get("entry") == "macro":
-        args = ", ".join(f"{n}=%bquote(&{n})" for n in macros)
+        args = ", ".join(f"{n}={macro_arg(v)}" for n, v in macros.items())
         tail.append(f"%{run['macro']}({args});")
     tail.append("%put NOTE: SASHINY-END-PROGRAM;")
     tail.extend(f"ods {fmt}(id={oid}) close;" for oid, fmt in ods)

@@ -17,8 +17,8 @@ Connection details come from environment variables; credentials come only from
 
 Run from the repository root:
 
-    cd Python && SASHINY_LICENSE_ACK=true uv run --extra shiny --extra saspy --extra upload \\
-        shiny run examples/demo/app.py --host 0.0.0.0 --port 8000
+    cd Python && SASHINY_LICENSE_ACK=true uv run --extra shiny --extra saspy \\
+        --extra upload --extra plotnine shiny run examples/demo/app.py --host 0.0.0.0 --port 8000
 """
 
 from __future__ import annotations

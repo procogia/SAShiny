@@ -868,4 +868,8 @@ def _register_download(
         value = res.outputs.get(oid) if res is not None else None
         if isinstance(value, dict) and "data" in value:
             return ui.download_button(f"dl_{oid}", f"Download {label}")
-        return ui.input_action_button(f"dl_btn_{oid}", f"Download {label}", disabled=True)
+        # A plain button with no id: an input with id `dl_btn_{oid}` would share
+        # the id of this output.
+        return ui.tags.button(
+            f"Download {label}", type="button", class_="btn btn-default", disabled=True
+        )

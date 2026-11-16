@@ -1,0 +1,22 @@
+sashiny: 1
+program: program.sas
+title: Macro entry with special characters in values
+inputs:
+  who:
+    type: text
+    label: Who
+    render: quoted
+  note:
+    type: text
+    label: Note
+  tag:
+    type: text
+    label: Tag
+    render: dquoted
+outputs:
+  log:
+    type: log
+run:
+  entry: macro
+  macro: special
+  reset_work: false
