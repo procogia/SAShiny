@@ -18,3 +18,10 @@ The sample data are entirely synthetic. They are regenerated deterministically b
 `data/` folder (`make_data.py`, or `generate_rx_data.py` for Forecasting).
 
 `connections.example.yml` shows the draft connection-profile format with placeholders (ODA, ProCogia Viya, ProCogia SAS 9.4 IOM/SSH).
+
+## Paired SAS graphs and SAShiny charts
+
+[general/cars_explorer.sashiny.yml](general/cars_explorer.sashiny.yml) and
+[forecasting/arima_forecast.sashiny.yml](forecasting/arima_forecast.sashiny.yml) pair some of their `plot` outputs with
+a SAShiny `chart` (spec section 8.6). In the app, each card has a toggle to switch between the original SAS graph
+and the SAShiny chart, and the module has one that switches them all. The SAS programs are unchanged.

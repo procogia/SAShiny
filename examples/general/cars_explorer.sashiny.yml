@@ -37,10 +37,29 @@ outputs:
     type: plot
     label: MSRP versus city MPG
     select: 1
+    chart:
+      from: work.cars_filtered
+      columns: [mpg_city, msrp, origin]
+      spec:
+        kind: scatter
+        x: mpg_city
+        y: msrp
+        color: origin
+        xlab: City MPG
+        ylab: MSRP (USD)
   price_by_type:
     type: plot
     label: Mean MSRP by type
     select: 2
+    chart:
+      from: work.cars_stats
+      columns: [type, origin, mean_msrp]
+      spec:
+        kind: bar
+        x: type
+        y: mean_msrp
+        fill: origin
+        ylab: Mean MSRP (USD)
   report:
     type: html
     label: Full SAS output
