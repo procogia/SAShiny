@@ -1,12 +1,15 @@
 # SAShiny demo image (issue #12).
 #
 # Builds a container with R, Python, Java 17, saspy and both demo apps. The
-# image defaults to the Offline profile (recorded results); live SAS (ODA/Viya/
-# 9.4) is enabled only when credentials are supplied at runtime via the
-# platform's secret/env store — never baked into the image.
+# apps run only on live SAS (ODA by default; set SASHINY_PROFILE to viya or
+# sas94). Credentials are supplied at runtime via ~/.authinfo or the platform's
+# secret/env store, never baked into the image, and the licence must be
+# acknowledged with SASHINY_LICENSE_ACK=true.
 #
-# Build from the repository root:
+# Build and run from the repository root:
 #   docker build -t sashiny-demo .
+#   docker run -p 8080:8000 -v ~/.authinfo:/root/.authinfo:ro \
+#     -e SASHINY_LICENSE_ACK=true sashiny-demo
 
 # --- R + Python + Java base -------------------------------------------------
 FROM rocker/r-ver:4.4.3 AS base
@@ -41,8 +44,9 @@ COPY Python/pyproject.toml Python/uv.lock Python/README.md ./Python/
 COPY Python/src ./Python/src
 COPY Python/examples ./Python/examples
 
-# Install the Python library with the shiny + saspy extras.
-RUN cd Python && uv sync --extra shiny --extra saspy
+# Install the Python library with the extras the demo needs (Shiny, saspy,
+# uploads and a chart backend).
+RUN cd Python && uv sync --extra shiny --extra saspy --extra upload --extra matplotlib
 
 # --- R package + demo app ---------------------------------------------------
 COPY R/DESCRIPTION R/NAMESPACE R/LICENSE R/LICENSE.md R/NEWS.md ./R/
@@ -62,12 +66,12 @@ COPY spec ./spec
 COPY examples ./examples
 
 # --- Runtime ----------------------------------------------------------------
-# The demo app defaults to Offline. Credentials are injected at runtime from the
-# platform secret store (never in the image).
+# The demo app runs on live SAS ODA by default (there is no offline mode).
+# Credentials are injected at runtime (never in the image).
 ENV SASHINY_CONNECTIONS=/app/examples/connections.example.yml \
-    SASHINY_PROFILE=offline
+    SASHINY_PROFILE=oda
 
 EXPOSE 8000
 
 # Run the Python demo app (Shiny for Python) by default.
-CMD ["sh", "-c", "cd Python && uv run --with shiny shiny run examples/demo/app.py --host 0.0.0.0 --port 8000"]
+CMD ["sh", "-c", "cd Python && uv run --no-sync shiny run examples/demo/app.py --host 0.0.0.0 --port 8000"]

@@ -82,6 +82,9 @@ def test_download_button_gated_until_result() -> None:
     html = str(asyncio.run(button.fn()))
     assert "disabled" in html
     assert "Download" in html
+    # The placeholder must not reuse the output's id (Shiny reports a shared
+    # input/output id).
+    assert "id=" not in html
 
 
 def test_upload_size_checked_when_received() -> None:

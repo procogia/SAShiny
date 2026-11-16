@@ -705,7 +705,8 @@ sas_program_server <- function(id, contract, engine, server_override = NULL, ren
         list(group = group, view = views[[oid]], toggle = isTRUE(chart_toggle))
       }
       .sashiny_register_output(
-        output, oid, contract$data$outputs[[oid]], result, render[[oid]], pairing
+        output, oid, contract$data$outputs[[oid]], result, render[[oid]], pairing,
+        ns = session$ns
       )
     }
     if (length(views) > 0L) {
@@ -753,7 +754,8 @@ sas_program_server <- function(id, contract, engine, server_override = NULL, ren
 
 #' Register the renderer for one output id.
 #' @noRd
-.sashiny_register_output <- function(output, oid, spec, result, render = NULL, pairing = NULL) {
+.sashiny_register_output <- function(output, oid, spec, result, render = NULL, pairing = NULL,
+                                     ns = shiny::NS(NULL)) {
   # The caller passes render[[oid]] and pairing from a loop; force them now, or
   # the lazy promises would be evaluated inside renderUI with the loop's last oid.
   force(render)
@@ -772,14 +774,19 @@ sas_program_server <- function(id, contract, engine, server_override = NULL, ren
     )
     # Render the download button only once a result with this output exists, so
     # a disabled placeholder is shown before the first run and after a failed
-    # run (issue #51). The real button keeps the handler's id `dl_<oid>`.
+    # run (issue #51). The real button keeps the handler's id `dl_<oid>`,
+    # namespaced because renderUI does not add the module prefix. The
+    # placeholder has no id, so it does not reuse the output's id.
     label <- spec$label %||% oid
     output[[paste0("dl_btn_", oid)]] <- shiny::renderUI({
       v <- result()$outputs[[oid]]
       if (is.list(v) && !is.null(v$data)) {
-        shiny::downloadButton(paste0("dl_", oid), paste("Download", label))
+        shiny::downloadButton(ns(paste0("dl_", oid)), paste("Download", label))
       } else {
-        shiny::actionButton(paste0("dl_btn_", oid), paste("Download", label), disabled = TRUE)
+        shiny::tags$button(
+          type = "button", class = "btn btn-default", disabled = NA,
+          paste("Download", label)
+        )
       }
     })
     return(invisible(NULL))

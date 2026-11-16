@@ -8,6 +8,6 @@ run;
 %macro arms_table(arms=);
   %put NOTE: &arms;
 %mend arms_table;
-%arms_table(ARMS=%bquote(&ARMS));
+%arms_table(ARMS='Placebo'%nrstr(,) 'Drug A');
 %put NOTE: SASHINY-END-PROGRAM;
 %put NOTE: SASHINY-END run=fixture syscc=&syscc;

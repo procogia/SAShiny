@@ -39,6 +39,18 @@
   toggles). Each part is collected on its own, so one failing does not hide the
   other. 'htmltools' is now suggested.
 
+## Fixes
+
+* With `entry: macro`, each value is now written into the macro call with
+  only commas, semicolons, `&`, `%` and unmatched quotes or parentheses masked
+  (spec section 6.3), instead of `NAME=%bquote(&NAME)`. The fully macro-quoted
+  values broke `WHERE` clauses such as `where product = &product` and names
+  built from a value such as `l&conf_level`, so the Pharma and Forecasting
+  demos failed on live 'SAS'.
+* In the Shiny module, the download button rendered after a run now uses the
+  module-namespaced id, so downloads work again; before, the button stayed
+  disabled. The disabled placeholder shown before a run no longer has an id.
+
 # SAShiny 0.1.6
 
 ## New features
