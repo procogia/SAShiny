@@ -6,9 +6,10 @@ A sidecar YAML contract declares the program's inputs and outputs, and SAShiny d
 > Status: beta (R 0.1.6, Python 0.1.7). Core, saspy engine, Shiny modules and client-side charts
 > implemented. See [PLAN.md](PLAN.md).
 >
-> **Live SAS is not yet verified.** Every automated check uses the mock engine. The
-> saspy connection profiles (ODA, Viya, SAS 9.4) have not been run against real SAS
-> yet; that work is tracked in [#11](https://github.com/procogia/SAShiny/issues/11).
+> **Live SAS is not yet verified.** Automated checks use the mock engine.
+> SAShiny offers connections to SAS 9.4, SAS Viya and SAS ODA (OnDemand for
+> Academics). You are responsible for obtaining access to a compatible SAS
+> compiler for your chosen profile; SAShiny does not provide SAS.
 
 ```
 analysis.sas            # your SAS program — never modified

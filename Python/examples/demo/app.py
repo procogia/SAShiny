@@ -3,8 +3,7 @@ r"""SAShiny Lisbon demo app (Python).
 Four tabs (General / Pharma / AML / Forecasting) run the example contracts. The sidebar picks
 the SAS connection:
 
-- **Offline** replays recordings from ``examples/recordings`` (spec §8.3).
-- **ODA**, **ProCogia Viya** and **ProCogia SAS 9.4** run live through saspy.
+- **SAS ODA**, **SAS Viya** and **SAS 9.4** run live through saspy.
   Every live run is also saved as a recording, so running the demo inputs once
   live fills the offline fallback. If a live session cannot start, the run falls
   back to the matching recording and says so in the Run card.
@@ -56,10 +55,9 @@ TRACKS = {
     "forecasting": ("Forecasting", EXAMPLES / "forecasting" / "arima_forecast.sashiny.yml"),
 }
 PROFILES = {
-    "offline": "Offline (recordings)",
-    "oda": "SAS OnDemand for Academics",
-    "viya": "ProCogia SAS Viya (VPN)",
-    "sas94": "ProCogia SAS 9.4 (VPN)",
+    "oda": "SAS ODA (OnDemand for Academics)",
+    "viya": "SAS Viya",
+    "sas94": "SAS 9.4",
 }
 
 
@@ -166,10 +164,12 @@ app_ui = ui.page_navbar(
     ],
     title="SAShiny demo",
     sidebar=ui.sidebar(
-        ui.input_select("profile", "SAS connection", PROFILES, selected="offline"),
+        ui.input_select("profile", "SAS connection", PROFILES, selected="oda"),
         ui.markdown(
-            "Offline replays recorded runs. Live profiles need saspy, Java (IOM) and "
-            "credentials in `~/.authinfo`."
+            "You are responsible for obtaining access to a compatible SAS compiler "
+            "for your chosen profile; SAShiny does not provide SAS. Live profiles need "
+            "saspy, Java (IOM) and credentials in `~/.authinfo`. If live SAS is "
+            "unavailable, matching recordings are replayed when available."
         ),
         open="closed",
     ),
@@ -178,7 +178,7 @@ app_ui = ui.page_navbar(
 
 def server(input: Inputs, output: Outputs, session: Session) -> None:
     """Serve every track through one routing engine."""
-    profile: reactive.Value[str] = reactive.value("offline")
+    profile: reactive.Value[str] = reactive.value("oda")
 
     @reactive.effect
     def _track_profile() -> None:

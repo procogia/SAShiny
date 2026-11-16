@@ -4,7 +4,7 @@ Creates a sandbox, runs a hello-world check, smoke-tests the demo app in Offline
 mode, and — most importantly — tests whether the sandbox can make an outbound
 TCP 8591 connection to ``*.oda.sas.com`` (SAS OnDemand for Academics). That
 egress test is the "tier" verification: if it succeeds, the hosted demo can
-offer the ODA profile; if it fails, the demo is Offline-only.
+connect to ODA; if it fails, the demo relies on its offline fallback.
 
 Usage (from the repository root):
 
@@ -104,7 +104,7 @@ def main() -> int:
         if any_reachable:
             print("TIER RESULT: ODA reachable — the hosted demo can offer the ODA profile.")
         else:
-            print("TIER RESULT: ODA NOT reachable — the hosted demo is Offline-only.")
+            print("TIER RESULT: ODA NOT reachable — the hosted demo relies on offline fallback.")
             print("  (This is expected on Daytona Tier 1/2, which restricts outbound")
             print("   non-HTTP egress. Confirm the tier with ProCogia.)")
     finally:
