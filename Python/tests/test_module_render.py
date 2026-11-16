@@ -174,6 +174,7 @@ def _paired(**kwargs: object) -> str:
 
 
 def test_paired_tag_renders_both_views_and_toggle() -> None:
+    pytest.importorskip("matplotlib")  # the pair draws a real chart
     html = _paired()
     assert 'data-sashiny-paired=""' in html
     assert 'data-sashiny-default="sashiny"' in html
@@ -196,6 +197,7 @@ def test_paired_tag_default_view_sas() -> None:
 
 
 def test_paired_tag_without_toggle_shows_only_the_default_view() -> None:
+    pytest.importorskip("matplotlib")  # the pair draws a real chart
     sashiny_only = _paired(toggle=False)
     assert "data-sashiny-paired" not in sashiny_only
     assert "QUJD" not in sashiny_only
@@ -206,6 +208,7 @@ def test_paired_tag_without_toggle_shows_only_the_default_view() -> None:
 
 
 def test_paired_tag_reports_a_failed_part_without_hiding_the_other() -> None:
+    pytest.importorskip("matplotlib")  # the pair draws a real chart
     value = {"sas": {"error": "select=3 but the run produced 2 graph(s)"}, "sashiny": _CHART}
     html = str(modules.paired_tag(value, _PAIRED_CHART, output_id="p", group="g"))
     assert "select=3 but the run produced 2 graph(s)" in html
