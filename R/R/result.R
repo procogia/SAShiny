@@ -16,8 +16,8 @@
 #' @param log The full main-submission log text.
 #' @param metadata A named list of run metadata.
 #' @return A `sashiny_result` object (a named list).
-#' @export
-sashiny_result <- function(run_id, status, outputs = list(), log = "",
+#' @noRd
+.sashiny_result <- function(run_id, status, outputs = list(), log = "",
                            metadata = list()) {
   structure(
     list(

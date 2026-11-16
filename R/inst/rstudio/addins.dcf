@@ -1,0 +1,4 @@
+Name: Publish SAShiny app to Posit Connect
+Description: Deploy a SAShiny app directory to Posit Connect without bundling credential files.
+Binding: sas_publish_addin
+Interactive: true

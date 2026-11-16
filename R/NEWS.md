@@ -1,3 +1,35 @@
+# SAShiny 0.2.0
+
+## Breaking changes
+
+* Programs run only on a live 'SAS' 9.4, 'SAS Viya' or 'SAS OnDemand for
+  Academics' system (spec section 6.6). `sas_engine_saspy()` rejects other
+  saspy configurations (local COM, local STDIO, unknown methods).
+* Users are responsible for their 'SAS' licence. A run returns an error
+  ("SAS licence not acknowledged") unless `license_ack = TRUE`,
+  `options(SAShiny.license_ack = TRUE)` or `SASHINY_LICENSE_ACK=true` is set.
+* The offline mock engine and recordings are now internal test fixtures.
+  `sas_engine_mock()`, `sas_engine_record()` and the `record_to` argument of
+  `sas_connect()`/`sas_engine_saspy()` are removed, so logs and results can no
+  longer be supplied by hand. `sas_engine_saspy()` loses `session_factory`.
+* `sashiny_result()` and the backward-compatibility alias
+  `sas_engine_saspy_run()` are no longer exported; use `sas_engine_run()`.
+* `sas_app()`, `sas_program_server()`, `sas_run()` and `sas_pool()` accept
+  only `sas_connect()`/`sas_engine_saspy()` engines and pools.
+
+## New features
+
+* `sas_publish()` deploys an app to Posit Connect with 'rsconnect' (spec
+  section 6.7). It uses a registered account or `CONNECT_SERVER` +
+  `CONNECT_API_KEY`. Credential files are never bundled. 'SAS' credentials
+  reach the app as Connect environment variables (`SASHINY_SAS_USER`,
+  `SASHINY_SAS_PASSWORD`) or come from an administrator-managed authinfo.
+* An RStudio/Positron addin (`sas_publish_addin()`) and an opt-in "Publish"
+  tab in `sas_app(publish = TRUE)`. The tab is hidden when the app runs on
+  Connect.
+* Live engines read `SASHINY_SAS_USER`/`SASHINY_SAS_PASSWORD` when both are
+  set and pass them to saspy without writing them to a file.
+
 # SAShiny 0.1.6
 
 ## New features

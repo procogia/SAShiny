@@ -23,17 +23,13 @@ def test_status_text() -> None:
     assert modules._status_text(r) == "status: success\nrun_id: run-1"
     r.metadata.update(
         sas_version="9.04.01M8",
-        recording="missing",
         issues=[{"code": "V002", "input": "n"}],
         engine_error="boom",
         collect_errors=["t: gone"],
     )
     text = modules._status_text(r)
-    for part in ["SAS: 9.04.01M8", "no recording", "V002 n", "engine error: boom", "t: gone"]:
+    for part in ["SAS: 9.04.01M8", "V002 n", "engine error: boom", "t: gone"]:
         assert part in text
-    r.metadata["recording"] = "replayed"
-    r.metadata["recorded_at"] = "2026-11-01"
-    assert "replayed recording from 2026-11-01" in modules._status_text(r)
 
 
 def test_table_tag() -> None:

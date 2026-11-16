@@ -11,9 +11,9 @@ from pathlib import Path
 from sashiny.engines.saspy import classify_log, load_profiles, run_status
 
 
-def test_load_profiles_defaults_to_offline(tmp_path: Path) -> None:
+def test_load_profiles_has_no_default_without_a_file(tmp_path: Path) -> None:
     profiles = load_profiles(tmp_path / "missing.yml")
-    assert profiles["default"] == "offline"
+    assert profiles["default"] is None
     assert profiles["profiles"] == {}
 
 

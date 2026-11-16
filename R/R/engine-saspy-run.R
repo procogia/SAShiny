@@ -14,24 +14,47 @@
 #' failure. Use [sas_pool()] to serve several users. Most apps build the engine
 #' with [sas_connect()].
 #'
+#' Only 'SAS' 9.4 (IOM or SSH), 'SAS Viya' (HTTP) and 'SAS OnDemand for
+#' Academics' (IOM) configurations are accepted (spec section 6.6). Running a
+#' program also requires the licence acknowledgement described in
+#' [sas_connect()].
+#'
 #' @param cfg A saspy configuration (a named list, written to a temporary
-#'   `sascfg` file) or the path of an existing saspy configuration file.
+#'   `sascfg` file) or the path of an existing saspy configuration file. A
+#'   configuration file cannot be inspected; you are responsible for it
+#'   pointing at a supported, licensed 'SAS' system.
 #' @param cfgname The configuration name inside that file.
-#' @param record_to Directory where every run is also saved as a recording
-#'   (spec section 8.3) for offline replay with [sas_engine_mock()].
-#' @param session_factory Advanced/testing hook: a function returning a
-#'   saspy-like session object.
-#' @return A `sashiny_engine_saspy` object (an environment).
+#' @param license_ack `TRUE` to acknowledge that you hold a valid licence for
+#'   the 'SAS' system this engine connects to. `NULL` (the default) defers to
+#'   the `SAShiny.license_ack` option and the `SASHINY_LICENSE_ACK`
+#'   environment variable.
+#' @return A `sashiny_engine_saspy` object (an environment). No 'SAS' session
+#'   is started until the first run.
 #' @examples
-#' engine <- sas_engine_saspy(list(java = "java", iomhost = "sas.example.com"))
-#' engine$cfg$iomhost
+#' # Builds the configuration only; no 'SAS' session is started.
+#' engine <- sas_engine_saspy(list(java = "java", iomhost = "sas.example.com", iomport = 8591))
+#' engine$backend
 #' @export
-sas_engine_saspy <- function(cfg, cfgname = "sashiny", record_to = NULL,
-                             session_factory = NULL) {
+sas_engine_saspy <- function(cfg, cfgname = "sashiny", license_ack = NULL) {
+  backend <- .sashiny_backend(cfg)
+  .sashiny_new_saspy_engine(cfg, cfgname, license_ack = license_ack, backend = backend)
+}
+
+#' Build a saspy engine without validating its configuration.
+#'
+#' Internal constructor behind [sas_engine_saspy()]. `session_factory` is a
+#' testing hook (a function returning a fake saspy session) used by the test
+#' suite, which runs without 'SAS'. It is deliberately not exported: a public
+#' factory would let a caller supply 'SAS' logs that never came from 'SAS'
+#' (spec section 6.6).
+#' @noRd
+.sashiny_new_saspy_engine <- function(cfg, cfgname = "sashiny", session_factory = NULL,
+                                      license_ack = NULL, backend = NULL) {
   engine <- new.env(parent = emptyenv())
   engine$cfg <- cfg
   engine$cfgname <- cfgname
-  engine$record_to <- record_to
+  engine$backend <- backend %||% if (is.null(session_factory)) .sashiny_backend(cfg) else "test"
+  engine$license_ack <- license_ack
   engine$session_factory <- session_factory
   engine$sas <- NULL
   engine$sas_version <- NULL
@@ -44,9 +67,108 @@ sas_engine_saspy <- function(cfg, cfgname = "sashiny", record_to = NULL,
 #' @export
 print.sashiny_engine_saspy <- function(x, ...) {
   cat("<sashiny saspy engine>\n")
+  cat("  backend:", x$backend %||% "", "\n")
   cat("  session:", if (is.null(x$sas)) "not started" else "started", "\n")
-  cat("  recording to:", x$record_to %||% "(off)", "\n")
+  cat("  licence acknowledged:", if (.sashiny_license_ok(x)) "yes" else "no", "\n")
   invisible(x)
+}
+
+#' Identify the supported backend of a saspy configuration (spec section 6.6).
+#'
+#' Returns `"oda"`, `"viya"`, `"sas94-iom"`, `"sas94-ssh"` or `"cfgfile"`, and
+#' stops for anything else (local Windows COM, local STDIO, unknown methods).
+#' @noRd
+.sashiny_backend <- function(cfg) {
+  supported <- "supported backends are 'SAS' 9.4 (IOM or SSH), 'SAS Viya' and 'SAS OnDemand for Academics'"
+  if (is.character(cfg) && length(cfg) == 1L && nzchar(cfg)) {
+    return("cfgfile")
+  }
+  if (!is.list(cfg) || length(cfg) == 0L || is.null(names(cfg))) {
+    stop("cfg must be a named list or the path of a saspy configuration file; ", supported,
+      call. = FALSE
+    )
+  }
+  if (!is.null(cfg$provider) || !is.null(cfg$colocal)) {
+    stop("local 'SAS' (COM) connections are not supported; ", supported, call. = FALSE)
+  }
+  methods <- c(
+    http = !is.null(cfg$url),
+    iom = !is.null(cfg$iomhost),
+    ssh = !is.null(cfg$saspath) && !is.null(cfg$host)
+  )
+  if (sum(methods) != 1L) {
+    if (!is.null(cfg$saspath) && is.null(cfg$host)) {
+      stop("local 'SAS' (STDIO) connections are not supported; ", supported, call. = FALSE)
+    }
+    stop("cfg must describe exactly one connection (url, iomhost, or saspath + host); ",
+      supported,
+      call. = FALSE
+    )
+  }
+  if (methods[["http"]]) {
+    if (!grepl("^https?://", cfg$url)) {
+      stop("the 'SAS Viya' url must start with https:// or http://", call. = FALSE)
+    }
+    return("viya")
+  }
+  if (methods[["iom"]]) {
+    hosts <- unlist(cfg$iomhost)
+    if (length(hosts) > 0L && all(grepl("\\.oda\\.sas\\.com$", hosts))) {
+      return("oda")
+    }
+    if (length(hosts) != 1L) {
+      stop("a 'SAS' 9.4 IOM configuration needs exactly one iomhost", call. = FALSE)
+    }
+    return("sas94-iom")
+  }
+  "sas94-ssh"
+}
+
+#' Whether the user has acknowledged licence responsibility (spec section 6.6).
+#'
+#' An explicit `license_ack` on the engine wins; otherwise the
+#' `SAShiny.license_ack` option, then the `SASHINY_LICENSE_ACK` environment
+#' variable (`true` or `1`, used by deployed apps).
+#' @noRd
+.sashiny_license_ok <- function(engine = NULL) {
+  explicit <- if (is.null(engine)) NULL else engine$license_ack
+  if (!is.null(explicit)) {
+    return(isTRUE(explicit))
+  }
+  if (isTRUE(getOption("SAShiny.license_ack"))) {
+    return(TRUE)
+  }
+  tolower(Sys.getenv("SASHINY_LICENSE_ACK", unset = "")) %in% c("true", "1")
+}
+
+#' The error raised or reported when the licence is not acknowledged.
+#' @noRd
+.sashiny_license_message <- paste(
+  "SAS licence not acknowledged: SAShiny runs programs only on a 'SAS' system you are licensed",
+  "to use. Confirm this with license_ack = TRUE, options(SAShiny.license_ack = TRUE) or the",
+  "environment variable SASHINY_LICENSE_ACK=true."
+)
+
+#' Saspy session keyword arguments from `SASHINY_SAS_USER`/`SASHINY_SAS_PASSWORD`.
+#'
+#' Used on hosted platforms such as Posit Connect, where credentials live in
+#' the content's environment variables (spec section 6.7). The values go only
+#' to saspy; they are never written to a file or a log. Returns an empty list
+#' when either variable is unset or for SSH (key-based login).
+#' @noRd
+.sashiny_env_credentials <- function(cfg) {
+  user <- Sys.getenv("SASHINY_SAS_USER", unset = "")
+  password <- Sys.getenv("SASHINY_SAS_PASSWORD", unset = "")
+  if (!nzchar(user) || !nzchar(password) || !is.list(cfg)) {
+    return(list())
+  }
+  if (!is.null(cfg$iomhost)) {
+    return(list(omruser = user, omrpw = password))
+  }
+  if (!is.null(cfg$url)) {
+    return(list(user = user, pw = password))
+  }
+  list()
 }
 
 #' Write a saspy configuration file defining `cfgname` from a list.
@@ -79,7 +201,7 @@ print.sashiny_engine_saspy <- function(x, ...) {
   sas <- .sashiny_saspy_open(engine)
   # Session setup (spec 6.1): ODA starts with NONOTES, which hides the sentinels.
   # Retain the session before setup so a setup failure can still close it; a
-  # session lost here would otherwise leak (spec §6.5).
+  # session lost here would otherwise leak (spec section 6.5).
   engine$sas <- sas
   tryCatch(
     sas$submit(.sashiny_session_setup_code, results = "TEXT"),
@@ -98,22 +220,31 @@ print.sashiny_engine_saspy <- function(x, ...) {
 #' Open a new SAS session (saspy, or the testing factory).
 #' @noRd
 .sashiny_saspy_open <- function(engine) {
+  if (!.sashiny_license_ok(engine)) {
+    stop(.sashiny_license_message, call. = FALSE)
+  }
   if (!is.null(engine$session_factory)) {
     return(engine$session_factory())
   }
-  if (is.list(engine$cfg)) .sashiny_preflight(engine$cfg)
+  credentials <- .sashiny_env_credentials(engine$cfg)
+  if (is.list(engine$cfg)) .sashiny_preflight(engine$cfg, check_authinfo = length(credentials) == 0L)
   # reticulate 1.45.0 is the first release that converts pandas 3 data frames.
   .sashiny_need("reticulate", "to run live SAS via saspy", version = "1.45.0")
   saspy <- reticulate::import("saspy")
   cfgfile <- engine$cfg
   if (is.list(cfgfile)) {
+    # CRAN: the generated saspy configuration (no credentials) is written under
+    # tempdir() and removed by sas_engine_close().
     if (is.null(engine$tmpdir)) {
       engine$tmpdir <- tempfile("sashiny-cfg-")
       dir.create(engine$tmpdir)
     }
     cfgfile <- .sashiny_write_cfgfile(engine$cfg, engine$cfgname, engine$tmpdir)
   }
-  saspy$SASsession(cfgfile = cfgfile, cfgname = engine$cfgname, results = "HTML")
+  do.call(saspy$SASsession, c(
+    list(cfgfile = cfgfile, cfgname = engine$cfgname, results = "HTML"),
+    credentials
+  ))
 }
 
 #' The saspy credentials file: `~/.authinfo`, or `_authinfo` in `USERPROFILE`
@@ -133,7 +264,7 @@ print.sashiny_engine_saspy <- function(x, ...) {
 #' missing from the authinfo file, which would hang a Shiny app, and it reports
 #' a missing Java as an invalid configuration.
 #' @noRd
-.sashiny_preflight <- function(cfg, authinfo = .sashiny_authinfo_path()) {
+.sashiny_preflight <- function(cfg, authinfo = .sashiny_authinfo_path(), check_authinfo = TRUE) {
   java <- cfg$java
   if (!is.null(cfg$iomhost) && (is.null(java) || !nzchar(java))) {
     stop(
@@ -143,7 +274,7 @@ print.sashiny_engine_saspy <- function(x, ...) {
     )
   }
   key <- cfg$authkey
-  if (!is.null(key)) {
+  if (check_authinfo && !is.null(key)) {
     lines <- if (file.exists(authinfo)) readLines(authinfo, warn = FALSE) else character(0)
     first <- vapply(strsplit(trimws(lines), "[[:space:]]+"), function(w) w[1] %||% "", "")
     if (!key %in% first) {
@@ -204,7 +335,7 @@ sas_engine_close.sashiny_engine_saspy <- function(engine) {
 .sashiny_discard_session <- function(engine) {
   sas <- engine$sas
   engine$sas <- NULL
-  # Session-scoped caches are invalid once the session is gone (spec §6.4 reads
+  # Session-scoped caches are invalid once the session is gone (spec section 6.4 reads
   # choices once per session); a replacement session must re-query them.
   engine$choices <- list()
   engine$sas_version <- NULL
@@ -298,16 +429,20 @@ sas_engine_choices.sashiny_engine_saspy <- function(engine, contract) {
 sas_engine_run.sashiny_engine_saspy <- function(engine, contract, values, today = Sys.Date(),
                                                 uploads = NULL, run_id = NULL) {
   run_id <- run_id %||% .sashiny_run_id()
+  if (!.sashiny_license_ok(engine)) {
+    return(.sashiny_engine_error(run_id, list(engine = "saspy"),
+      simpleError(.sashiny_license_message)))
+  }
   started <- .sashiny_now()
   t0 <- Sys.time()
   data <- contract$data
   run <- data$run %||% list()
   timeout <- as.numeric(run$timeout_seconds %||% 300)
-  # Enforce the whole-run deadline (spec §2.3, §6.5). The blocking saspy
+  # Enforce the whole-run deadline (spec section 2.3, section 6.5). The blocking saspy
   # submission cannot be interrupted in-process, so a run with an explicit
   # timeout executes in a background R process that is killed on timeout. The
   # session is created in that process and is therefore discarded with it
-  # (spec §6.5). Runs without an explicit timeout (and testing hooks that use
+  # (spec section 6.5). Runs without an explicit timeout (and testing hooks that use
   # a closure factory) stay in-process to preserve session reuse.
   if (is.null(run$timeout_seconds) && !is.null(engine$session_factory)) {
     return(.sashiny_run_saspy(engine, contract, values, today, uploads, run_id, started, t0))
@@ -323,16 +458,24 @@ sas_engine_run.sashiny_engine_saspy <- function(engine, contract, values, today 
   result_file <- tempfile("sashiny-result-", fileext = ".rds")
   on.exit(unlink(result_file), add = TRUE)
   args <- list(
-    cfg = engine$cfg, cfgname = engine$cfgname, record_to = engine$record_to,
+    cfg = engine$cfg, cfgname = engine$cfgname, backend = engine$backend,
+    license_ack = .sashiny_license_ok(engine),
     session_factory = engine$session_factory,
     contract_path = contract$path, values = values, today = today,
     uploads = uploads, run_id = run_id, result_file = result_file,
     started = started, t0 = t0
   )
+  # CRAN: the background process is a child R session (callr) started only
+  # for a live SAS run; it is supervised and killed on timeout. It is never
+  # started during R CMD check, which has no SAS.
   proc <- callr::r_bg(
     function(args) {
-      engine <- SAShiny::sas_engine_saspy(args$cfg, cfgname = args$cfgname,
-        record_to = args$record_to, session_factory = args$session_factory)
+      new_engine <- utils::getFromNamespace(".sashiny_new_saspy_engine", "SAShiny")
+      engine <- new_engine(args$cfg,
+        cfgname = args$cfgname,
+        session_factory = args$session_factory, license_ack = args$license_ack,
+        backend = args$backend
+      )
       contract <- SAShiny::sas_contract(args$contract_path)
       # Call the synchronous run body directly. Re-entering sas_engine_run()
       # here would take the background branch again (a real engine has no
@@ -360,7 +503,7 @@ sas_engine_run.sashiny_engine_saspy <- function(engine, contract, values, today 
   readRDS(result_file)
 }
 
-#' The synchronous saspy run body (spec §6.1).
+#' The synchronous saspy run body (spec section 6.1).
 #' @noRd
 .sashiny_run_saspy <- function(engine, contract, values, today, uploads, run_id, started, t0) {
   data <- contract$data
@@ -414,22 +557,10 @@ sas_engine_run.sashiny_engine_saspy <- function(engine, contract, values, today 
   meta$collect_errors <- collected$errors
   meta$syscc <- status$syscc
   meta$seconds <- round(as.numeric(difftime(Sys.time(), t0, units = "secs")), 2)
-  result <- sashiny_result(run_id, status$status,
+  meta$backend <- engine$backend
+  .sashiny_result(run_id, status$status,
     outputs = collected$outputs, log = log, metadata = meta
   )
-  if (!is.null(engine$record_to)) {
-    key <- .sashiny_recording_key(contract, res$macros, submitted$files)
-    recording <- tryCatch(
-      .sashiny_save_recording(engine$record_to, key, result),
-      error = function(e) e
-    )
-    if (inherits(recording, "error")) {
-      result$metadata$recording_error <- conditionMessage(recording)
-    } else {
-      result$metadata$recording <- recording
-    }
-  }
-  result
 }
 
 #' A failed result after an engine/session failure.
@@ -437,7 +568,7 @@ sas_engine_run.sashiny_engine_saspy <- function(engine, contract, values, today 
 .sashiny_engine_error <- function(run_id, base, condition) {
   meta <- do.call(.sashiny_metadata, c(list(run_id = run_id, status = "error"), base))
   meta$engine_error <- conditionMessage(condition)
-  sashiny_result(run_id, "error", metadata = meta)
+  .sashiny_result(run_id, "error", metadata = meta)
 }
 
 #' Reset the session (section 6.2) and upload dataset inputs (section 7).
@@ -697,17 +828,4 @@ sas_engine_run.sashiny_engine_saspy <- function(engine, contract, values, today 
     stop("unsupported download format ", fmt, call. = FALSE)
   )
   .sashiny_download_value(name, fmt, payload)
-}
-
-#' Run a contract with the saspy engine
-#'
-#' Kept for backward compatibility; equivalent to [sas_engine_run()].
-#'
-#' @inheritParams sas_engine_run
-#' @param engine A `sashiny_engine_saspy` object.
-#' @return A `sashiny_result` object.
-#' @export
-sas_engine_saspy_run <- function(engine, contract, values, today = Sys.Date(),
-                                 uploads = NULL, run_id = NULL) {
-  sas_engine_run(engine, contract, values, today = today, uploads = uploads, run_id = run_id)
 }

@@ -16,7 +16,7 @@ test_that("sas_program_ui accepts a custom override", {
 test_that("sas_program_server accepts a custom override", {
   contract <- sas_contract(file.path(.sashiny_fixtures(), "contracts", "valid",
                                      "minimal", "contract.sashiny.yml"))
-  engine <- sas_engine_mock()
+  engine <- .sashiny_engine_mock()
   custom_server <- function(id, contract, engine) {
     list(custom = TRUE)
   }

@@ -61,7 +61,7 @@ demo_good_result <- function(contract) {
             }
     )
   })
-  sashiny_result("r", "success", outputs = stats::setNames(outputs, names(contract$data$outputs)))
+  .sashiny_result("r", "success", outputs = stats::setNames(outputs, names(contract$data$outputs)))
 }
 
 test_that("the checker accepts a complete result", {
@@ -130,7 +130,7 @@ test_that("drift from the contract defaults is detected", {
 
 test_that("committed recordings replay and are demo-ready", {
   skip_if_no_demo_scenarios()
-  engine <- sas_engine_mock(file.path(.demo_examples(), "recordings"))
+  engine <- .sashiny_engine_mock(file.path(.demo_examples(), "recordings"))
   missing <- character(0)
   for (s in demo_scenarios()) {
     contract <- sas_contract(s$contract_path)

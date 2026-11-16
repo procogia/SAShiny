@@ -1,9 +1,10 @@
-"""Recordings: replayable run results (spec ``CONTRACT.md`` section 8.3).
+"""Recording keys and run hashes (spec ``CONTRACT.md`` sections 8.3 and 8.4).
 
-A recording is written by a live engine (``SaspyEngine(record_to=...)``) and
-replayed by :class:`sashiny.MockEngine`. The key depends only on the contract
-bytes, the rendered macro values and the uploaded files, so recordings made in
-R and in Python are interchangeable.
+Recordings are internal test fixtures (spec §6.6): the test suite writes them
+and the internal mock engine replays them. Live engines never write them. The
+key depends only on the contract bytes, the rendered macro values and the
+uploaded files, so recordings written by the R and Python suites are
+interchangeable.
 """
 
 from __future__ import annotations

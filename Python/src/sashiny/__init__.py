@@ -9,10 +9,10 @@ from typing import Any
 
 from .charts import chart_backends, render_chart
 from .contract import Contract, Issue, default_module_id, load, validate
-from .engines import Engine, MockEngine, SaspyEngine, connect, load_profiles
+from .engines import Engine, SaspyEngine, connect, load_profiles
 from .lint import lint
 from .pool import Pool
-from .recording import load_recording, save_recording
+from .publish import publish
 from .result import LogLine, Result, TableResult
 from .run import run
 from .upload import UploadError, UploadFile
@@ -24,7 +24,6 @@ __all__ = [
     "Engine",
     "Issue",
     "LogLine",
-    "MockEngine",
     "Pool",
     "Result",
     "SaspyEngine",
@@ -40,17 +39,16 @@ __all__ = [
     "lint",
     "load",
     "load_profiles",
-    "load_recording",
+    "publish",
     "render_chart",
     "render_values",
     "reset_code",
     "run",
-    "save_recording",
     "validate",
     "wrapper_code",
 ]
 
-__version__ = "0.1.7"
+__version__ = "0.2.0"
 
 
 def __getattr__(name: str) -> Any:

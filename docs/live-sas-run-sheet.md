@@ -92,17 +92,14 @@ failed — read the `error` and `traceback` fields in the JSON report.
 2. Attach the four JSON files to issue #11, one per profile.
 3. Note any failed check and its `error`/`traceback` in the issue.
 
-## Record the demo runs (offline fallback)
+## Run the demo inputs once
 
-After a profile is green, record the demo inputs so the offline fallback can
-replay them. The quickest way is the live demo test suite, which records and
-checks every demo scenario (`docs/live-demo-tests.md`). Or start a demo app and
-pick that profile (it records into `examples/recordings/` automatically), or
-record from a console:
+After a profile is green, run a demo input from a console to confirm end-to-end
+collection. Since 0.2.0 runs are not recorded (spec §6.6):
 
 ```python
 import sashiny
-engine = sashiny.connect("oda", region="eu1", record_to="examples/recordings")
+engine = sashiny.connect("oda", region="eu1", license_ack=True)
 contract = sashiny.load("examples/general/cars_explorer.sashiny.yml")
 print(engine.run(contract, {"origins": ["Asia", "Europe", "USA"],
                             "types": ["Sedan", "SUV"], "min_msrp": 20000}).status)
@@ -111,7 +108,7 @@ engine.close()
 
 ```r
 library(SAShiny)
-engine <- sas_connect("oda", region = "eu1", record_to = "examples/recordings")
+engine <- sas_connect("oda", region = "eu1", license_ack = TRUE)
 contract <- sas_contract("examples/general/cars_explorer.sashiny.yml")
 sas_engine_run(engine, contract, list(
   origins = list("Asia", "Europe", "USA"), types = list("Sedan", "SUV"), min_msrp = 20000
@@ -119,8 +116,8 @@ sas_engine_run(engine, contract, list(
 sas_engine_close(engine)
 ```
 
-Check each run's `metadata.collect_errors` (Python) or `metadata$collect_errors`
-(R) is empty, then commit the new `examples/recordings/*.json` files.
+Check that each run's `metadata.collect_errors` (Python) or `metadata$collect_errors`
+(R) is empty.
 
 ## Troubleshooting
 
@@ -129,4 +126,4 @@ Check each run's `metadata.collect_errors` (Python) or `metadata$collect_errors`
 - **Java not found** → set `JAVA_HOME` or pass `--java /path/to/java`.
 - **Viya TLS error** → add `--no-verify-ssl` (only for self-signed test hosts).
 - **ODA account not created** → create it first; otherwise skip ODA and note it
-  in the issue (the demo falls back to Offline).
+  in the issue (that profile cannot be demonstrated).

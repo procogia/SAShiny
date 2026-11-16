@@ -7,7 +7,7 @@
 
 #' A copy of an engine that can be sent to a background R process, or NULL.
 #'
-#' Only the built-in mock and saspy engines are portable. A saspy engine's live
+#' Only the saspy engine (and the internal test mock) are portable. A saspy engine's live
 #' session is an external pointer that cannot be serialised, so the child gets
 #' a fresh engine with the same configuration; it starts its own session and
 #' ends it when the run finishes (as the deadline process already does). A
@@ -21,9 +21,11 @@
     return(engine)
   }
   if (identical(class(engine)[[1]], "sashiny_engine_saspy")) {
-    return(sas_engine_saspy(engine$cfg,
-      cfgname = engine$cfgname, record_to = engine$record_to,
-      session_factory = engine$session_factory
+    # The child has its own options, so the licence acknowledgement is
+    # resolved here and passed on explicitly.
+    return(.sashiny_new_saspy_engine(engine$cfg,
+      cfgname = engine$cfgname, session_factory = engine$session_factory,
+      license_ack = .sashiny_license_ok(engine), backend = engine$backend
     ))
   }
   NULL
@@ -99,6 +101,8 @@
     engine = engine, contract = contract, values = values, uploads = uploads,
     today = today, run_id = run_id
   )
+  # CRAN: a supervised child R session, started only from a running Shiny app;
+  # killed on timeout or when the browser session ends.
   proc <- callr::r_bg(.sashiny_bg_child, args = list(args), package = "SAShiny", supervise = TRUE)
   forget <- function() NULL
   if (!is.null(session)) {

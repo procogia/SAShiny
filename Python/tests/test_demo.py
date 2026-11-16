@@ -1,4 +1,4 @@
-"""Smoke tests for the Lisbon demo app (offline replay and live fallback)."""
+"""Smoke tests for the demo app (live SAS only; no SAS in CI)."""
 
 from __future__ import annotations
 
@@ -25,40 +25,26 @@ def _demo():  # type: ignore[no-untyped-def]
     return module
 
 
-def test_demo_connection_choices_and_prerequisite() -> None:
+def test_demo_connection_choices_and_prerequisite(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("SASHINY_PROFILE", raising=False)
     demo = _demo()
     assert demo.PROFILES == {
         "oda": "SAS ODA (OnDemand for Academics)",
         "viya": "SAS Viya",
         "sas94": "SAS 9.4",
     }
+    assert demo.PROFILE == "oda"
     html = str(demo.app_ui)
-    assert 'value="oda" selected' in html
     assert "responsible for obtaining access to a compatible SAS compiler" in html
     assert "SAShiny does not provide SAS" in html
 
 
-def test_demo_offline_runs_every_track() -> None:
+def test_demo_without_licence_ack_reports_it(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("SASHINY_LICENSE_ACK", raising=False)
+    monkeypatch.setenv("SASHINY_PROFILE", "viya")
+    monkeypatch.setenv("SASHINY_VIYA_URL", "https://viya.example.com")
     demo = _demo()
     with test_server(demo.app) as session:
-        session.set_inputs(profile="offline")
-        for tid in demo.TRACKS:
-            session.set_inputs(**{f"{tid}-run": 1})
-            # The module runs the engine via an extended task; flush until it settles.
-            for _ in range(50):
-                session.flush()
-                status = session.get_output(f"{tid}-status").value
-                if status != "running...":
-                    break
-                time.sleep(0.05)
-            assert "status:" in status, tid
-
-
-def test_demo_live_without_settings_falls_back(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("SASHINY_VIYA_URL", raising=False)
-    demo = _demo()
-    with test_server(demo.app) as session:
-        session.set_inputs(profile="viya")
         session.set_inputs(**{"general-run": 1})
         for _ in range(50):
             session.flush()
@@ -66,5 +52,10 @@ def test_demo_live_without_settings_falls_back(monkeypatch: pytest.MonkeyPatch) 
             if status != "running...":
                 break
             time.sleep(0.05)
-        assert "unavailable" in status
-        assert "url is required" in status
+        assert "SAS licence not acknowledged" in status
+
+
+def test_demo_rejects_unknown_profile(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("SASHINY_PROFILE", "offline")
+    with pytest.raises(ValueError, match="SASHINY_PROFILE"):
+        _demo()

@@ -11,7 +11,7 @@ sas_program_server(id, contract, engine, server_override = NULL, render = NULL)
 
 \item{contract}{A \code{sashiny_contract} object.}
 
-\item{engine}{An engine: \code{\link[=sas_engine_mock]{sas_engine_mock()}}, \code{\link[=sas_connect]{sas_connect()}} or
+\item{engine}{An engine: \code{\link[=sas_connect]{sas_connect()}}, \code{\link[=sas_engine_saspy]{sas_engine_saspy()}} or
 \code{\link[=sas_pool]{sas_pool()}}.}
 
 \item{server_override}{An optional function \verb{function(id, contract, engine)}
@@ -29,7 +29,7 @@ The server for a SAS program module
 }
 \details{
 In a running app (with 'callr' and 'later' installed) a run of a
-\code{\link[=sas_engine_mock]{sas_engine_mock()}} or \code{\link[=sas_connect]{sas_connect()}} engine executes in a background R
+\code{\link[=sas_connect]{sas_connect()}} engine executes in a background R
 process that loads the installed 'SAShiny', so a slow 'SAS' run does not
 block other browser sessions. That process starts its own 'SAS' session
 and ends it after the run, and is killed when \code{run.timeout_seconds}

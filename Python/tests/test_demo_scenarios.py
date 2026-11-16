@@ -17,6 +17,7 @@ import pytest
 
 import sashiny
 from demo_scenarios import MAGIC, RECORDINGS, check_result, default_problems, load_scenarios
+from engines_helper import MockEngine
 
 SCENARIOS = load_scenarios()
 IDS = [s.id for s in SCENARIOS]
@@ -150,7 +151,7 @@ def test_default_problems_detects_drift() -> None:
 @pytest.mark.parametrize("scenario", SCENARIOS, ids=IDS)
 def test_committed_recording_replays(scenario) -> None:  # type: ignore[no-untyped-def]
     contract = scenario.load()
-    result = sashiny.MockEngine(RECORDINGS).run(
+    result = MockEngine(RECORDINGS).run(
         contract, scenario.values, today=TODAY, uploads=scenario.uploads
     )
     if result.metadata.get("recording") == "missing":

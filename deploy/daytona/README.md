@@ -4,14 +4,14 @@ This directory holds the tooling to verify the Daytona sandbox for the hosted
 SAShiny demo. The key question (from issue #12) is whether the ProCogia Daytona
 tier allows **outbound TCP 8591** to `*.oda.sas.com` (SAS OnDemand for
 Academics). That determines whether the hosted demo can offer the **ODA**
-profile or must rely on the offline fallback.
+profile at all. SAShiny runs only on live, licensed SAS (spec §6.6), so there is
+no offline fallback.
 
 ## Result (verified 2026-11-14)
 
 **ODA is reachable.** A default Daytona sandbox on the ProCogia account
 connected to five ODA hosts over TCP 8591; `https://welcome.oda.sas.com` also
-returned HTTP 200. The hosted demo can therefore offer **ODA** in addition to
-the offline fallback. No login was attempted, so credentialed SAS execution remains to be
+returned HTTP 200. The hosted demo can therefore offer **ODA**. No login was attempted, so credentialed SAS execution remains to be
 confirmed. See the issue's 2026-11-14 reachability results for host/IP details.
 
 ## Prerequisites
@@ -47,9 +47,9 @@ image (`ubuntu:22.04`).
 | Result | Meaning | Demo behaviour |
 |---|---|---|
 | `ODA reachable` | The tier allows outbound TCP 8591 | Hosted demo can connect to ODA |
-| `ODA NOT reachable` | The tier blocks outbound non-HTTP egress | Hosted demo relies on offline fallback |
+| `ODA NOT reachable` | The tier blocks outbound non-HTTP egress | Hosted demo cannot run SAS; demo locally instead |
 
-`ODA NOT reachable` means live ODA runs fall back to matching recordings. Although Tier 1/2 may restrict egress,
+`ODA NOT reachable` means the hosted demo cannot run programs. Although Tier 1/2 may restrict egress,
 the ProCogia account's current default sandbox was verified to allow ODA egress.
 
 ## The full demo image
@@ -73,28 +73,17 @@ sandbox = daytona.create(CreateSandboxFromImageParams(image="<registry>/sashiny-
 
 The container serves the Python app on port 8000 by default; the image also
 includes the R package and R demo app. Set the sandbox's exposed port to 8000.
-The app's profile picker offers SAS ODA, SAS Viya and SAS 9.4 and starts with ODA selected.
-
-### Offline recordings
-
-The repository currently has no recordings: `examples/recordings/` contains
-only its README. Consequently, a fresh image cannot replay a demo if live SAS is
-unavailable until synthetic example runs have been recorded. Record the exact
-demo inputs against live SAS before building the image; `Dockerfile` copies
-`examples/`, so the recording JSON files are then included automatically.
-Alternatively, populate a persistent volume mounted at
-`/app/examples/recordings` before the audience session. Live runs inside the
-container write recordings there, but those files are lost when the sandbox is
-recreated unless the directory is persisted.
+Set `SASHINY_PROFILE` (`oda` by default, or `viya` / `sas94`) and
+`SASHINY_LICENSE_ACK=true` (after confirming the licence) on the sandbox.
 
 ### Preview URL and secrets
 
 1. Configure SAS credentials as a runtime secret file mounted at
-   `~/.authinfo`; do not use Docker build arguments, commit credentials, or bake
+   `~/.authinfo`, or as the secrets `SASHINY_SAS_USER` / `SASHINY_SAS_PASSWORD`; do not use Docker build arguments, commit credentials, or bake
    them into the image. Users must obtain access to a compatible SAS compiler;
    SAShiny does not provide SAS.
 2. Start the sandbox from the tagged image, expose port 8000, and verify the
-   app and at least one scenario, including its offline fallback.
+   app and at least one scenario on live SAS.
 3. Use Daytona's preview feature to generate a **signed URL with an expiry** for
    port 8000. Share that URL and its expiry with the audience; do not treat a
    permanent or unsigned preview address as the demo link.

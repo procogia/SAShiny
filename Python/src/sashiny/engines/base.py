@@ -1,12 +1,15 @@
 """Engine interface for SAShiny.
 
-An engine runs a contract against a SAS backend (or a mock) and returns a
-:class:`sashiny.result.Result`. The interface is shared by the mock engine
-(record/replay) and the saspy engine (live SAS 9.4 / Viya).
+An engine runs a contract against a live SAS system and returns a
+:class:`sashiny.result.Result`. The public engines are the saspy engine (SAS
+9.4, SAS Viya, SAS OnDemand for Academics) and pools of it; the offline mock is
+an internal test fixture (spec §6.6).
 """
 
 from __future__ import annotations
 
+import os
+import sys
 from abc import ABC, abstractmethod
 from datetime import date
 from typing import Any
@@ -14,7 +17,35 @@ from typing import Any
 from ..contract import Contract
 from ..result import Result
 
-__all__ = ["Engine"]
+__all__ = ["Engine", "check_engine", "testing"]
+
+
+def testing() -> bool:
+    """Whether the code runs inside the package's pytest suite."""
+    return "pytest" in sys.modules and "PYTEST_CURRENT_TEST" in os.environ
+
+
+def check_engine(engine: Engine) -> Engine:
+    """Return ``engine`` if it runs on a live SAS system (spec §6.6).
+
+    The public entry points accept only :class:`sashiny.SaspyEngine` and
+    :class:`sashiny.Pool`. Any other engine (the internal mock, or a custom
+    class that could return logs that never came from SAS) is accepted only
+    inside the test suite.
+
+    Raises:
+        TypeError: For any other engine outside the test suite.
+
+    """
+    from ..pool import Pool  # noqa: PLC0415 - avoid an import cycle
+    from .saspy import SaspyEngine  # noqa: PLC0415
+
+    if isinstance(engine, (SaspyEngine, Pool)) or testing():
+        return engine
+    raise TypeError(
+        "engine must come from sashiny.connect(), SaspyEngine or Pool: SAShiny runs "
+        "programs only on a live SAS 9.4, SAS Viya or SAS OnDemand for Academics system"
+    )
 
 
 class Engine(ABC):

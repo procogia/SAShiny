@@ -7,10 +7,10 @@
 
 #' Create a bounded session pool
 #'
-#' @param engine An engine factory (a function with no arguments, such as
-#'   `function() sas_connect("oda")`), giving each pooled session its own SAS
-#'   session; or a single engine shared by all pooled sessions (suitable for
-#'   [sas_engine_mock()]).
+#' @param engine An engine factory: a function with no arguments returning a
+#'   [sas_connect()] engine, such as `function() sas_connect("oda")`. Each
+#'   pooled session gets its own 'SAS' session. A single engine is also
+#'   accepted and is then shared by all pooled sessions.
 #' @param min_size Minimum number of sessions kept warm.
 #' @param max_size Maximum number of concurrent sessions.
 #' @param idle_timeout Seconds after which an idle session is discarded.
@@ -19,7 +19,8 @@
 #'   is busy before reporting `pool exhausted` (spec section 6.5).
 #' @return A `sashiny_pool` object (an environment).
 #' @examples
-#' pool <- sas_pool(sas_engine_mock(), max_size = 2L)
+#' # With min_size = 0 creating a pool starts no 'SAS' session.
+#' pool <- sas_pool(function() sas_connect("oda", region = "us1"), max_size = 2L)
 #' sas_pool_close(pool)
 #' @export
 sas_pool <- function(engine, min_size = 0L, max_size = 4L,
@@ -32,13 +33,14 @@ sas_pool <- function(engine, min_size = 0L, max_size = 4L,
     stop("min_size must not exceed max_size", call. = FALSE)
   }
   # Session counts are discrete: a fractional maximum would admit one more
-  # session than configured (spec §6.5 bounds the pool).
+  # session than configured (spec section 6.5 bounds the pool).
   if (!.sashiny_is_int(min_size) || !.sashiny_is_int(max_size)) {
     stop("min_size and max_size must be whole numbers", call. = FALSE)
   }
   if (!is.finite(acquire_timeout) || acquire_timeout < 0) {
     stop("acquire_timeout must be a non-negative finite number", call. = FALSE)
   }
+  if (!is.function(engine)) .sashiny_check_engine(engine)
   pool <- new.env(parent = emptyenv())
   if (is.function(engine)) {
     pool$engine <- NULL
@@ -76,7 +78,7 @@ sas_pool <- function(engine, min_size = 0L, max_size = 4L,
 #' @noRd
 .sashiny_new_session <- function(pool) {
   s <- new.env(parent = emptyenv())
-  s$engine <- if (is.null(pool$factory)) pool$engine else pool$factory()
+  s$engine <- if (is.null(pool$factory)) pool$engine else .sashiny_check_engine(pool$factory())
   s$session_id <- .sashiny_run_id()
   s$runs <- 0L
   s$last_used <- as.numeric(Sys.time())

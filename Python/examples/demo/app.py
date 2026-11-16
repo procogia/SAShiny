@@ -1,15 +1,14 @@
-r"""SAShiny Lisbon demo app (Python).
+r"""SAShiny demo app (Python).
 
-Four tabs (General / Pharma / AML / Forecasting) run the example contracts. The sidebar picks
-the SAS connection:
-
-- **SAS ODA**, **SAS Viya** and **SAS 9.4** run live through saspy.
-  Every live run is also saved as a recording, so running the demo inputs once
-  live fills the offline fallback. If a live session cannot start, the run falls
-  back to the matching recording and says so in the Run card.
+Four tabs (General / Pharma / AML / Forecasting) run the example contracts on a
+live SAS system chosen with ``SASHINY_PROFILE``: ``oda`` (SAS OnDemand for
+Academics, the default), ``viya`` or ``sas94``. There is no offline mode:
+SAShiny runs programs only on a SAS system you are licensed to use. Acknowledge
+this with ``SASHINY_LICENSE_ACK=true`` before starting the app.
 
 Connection details come from environment variables; credentials come only from
-``~/.authinfo`` (see ``docs/live-sas-run-sheet.md``):
+``~/.authinfo`` or ``SASHINY_SAS_USER`` / ``SASHINY_SAS_PASSWORD`` (see
+``docs/live-sas-run-sheet.md``):
 
     SASHINY_ODA_REGION   us1 | us2 | eu1 | ap1 | ap2   (default us1)
     SASHINY_VIYA_URL     https://viya.example.com
@@ -18,18 +17,16 @@ Connection details come from environment variables; credentials come only from
 
 Run from the repository root:
 
-    cd Python && uv run --extra shiny --extra saspy --extra upload \\
+    cd Python && SASHINY_LICENSE_ACK=true uv run --extra shiny --extra saspy --extra upload \\
         shiny run examples/demo/app.py --host 0.0.0.0 --port 8000
 """
 
 from __future__ import annotations
 
 import os
-from datetime import date
 from pathlib import Path
-from typing import Any
 
-from shiny import App, Inputs, Outputs, Session, reactive, ui
+from shiny import App, Inputs, Outputs, Session, ui
 
 import sashiny
 from sashiny import modules
@@ -46,7 +43,6 @@ def _examples_dir() -> Path:
 
 
 EXAMPLES = _examples_dir()
-RECORDINGS = EXAMPLES / "recordings"
 
 TRACKS = {
     "general": ("General", EXAMPLES / "general" / "cars_explorer.sashiny.yml"),
@@ -59,103 +55,37 @@ PROFILES = {
     "viya": "SAS Viya",
     "sas94": "SAS 9.4",
 }
+PROFILE = os.environ.get("SASHINY_PROFILE", "oda")
+if PROFILE not in PROFILES:
+    raise ValueError(f"SASHINY_PROFILE must be one of {sorted(PROFILES)}")
 
 
-def _live_engine(profile: str) -> sashiny.Engine:
+def _live_engine(profile: str) -> sashiny.Pool:
     """Build a pooled live engine for a profile from environment variables."""
     env = os.environ
 
     def factory() -> sashiny.Engine:
         if profile == "oda":
-            return sashiny.connect(
-                "oda", region=env.get("SASHINY_ODA_REGION", "us1"), record_to=RECORDINGS
-            )
+            return sashiny.connect("oda", region=env.get("SASHINY_ODA_REGION", "us1"))
         if profile == "viya":
             return sashiny.connect(
-                "viya",
-                url=env.get("SASHINY_VIYA_URL"),
-                context=env.get("SASHINY_VIYA_CONTEXT"),
-                record_to=RECORDINGS,
+                "viya", url=env.get("SASHINY_VIYA_URL"), context=env.get("SASHINY_VIYA_CONTEXT")
             )
-        return sashiny.connect("sas94", host=env.get("SASHINY_SAS94_HOST"), record_to=RECORDINGS)
+        return sashiny.connect("sas94", host=env.get("SASHINY_SAS94_HOST"))
 
     return sashiny.Pool(factory, max_size=2)
 
 
-# One shared live pool per profile, so `max_size` bounds live SAS sessions
-# across every browser session rather than per session (issue #62).
-_LIVE_ENGINES: dict[str, sashiny.Engine] = {}
-
-
-def _shared_live_engine(profile: str) -> sashiny.Engine:
-    if profile not in _LIVE_ENGINES:
-        _LIVE_ENGINES[profile] = _live_engine(profile)
-    return _LIVE_ENGINES[profile]
-
-
-class DemoEngine(sashiny.Engine):
-    """Routes runs to the selected profile and falls back to recordings."""
-
-    name = "demo"
-    version = sashiny.__version__
-
-    def __init__(self, profile: reactive.Value[str]) -> None:
-        """Route to ``profile``; live engines are shared across sessions."""
-        self.profile = profile
-        self.offline = sashiny.MockEngine(RECORDINGS)
-
-    def _current(self) -> tuple[str, sashiny.Engine]:
-        with reactive.isolate():
-            name = self.profile()
-        if name == "offline":
-            return name, self.offline
-        return name, _shared_live_engine(name)
-
-    def choices(self, contract: sashiny.Contract) -> dict[str, list[dict[str, str]]]:
-        """Read ``choices_from`` choices on the selected engine."""
-        _, engine = self._current()
-        return engine.choices(contract)
-
-    def run(
-        self,
-        contract: sashiny.Contract,
-        values: dict[str, Any],
-        *,
-        today: date | None = None,
-        uploads: dict[str, Any] | None = None,
-        run_id: str | None = None,
-    ) -> sashiny.Result:
-        """Run live on the selected profile, or replay a recording."""
-        name, engine = self._current()
-        kwargs: dict[str, Any] = {"today": today, "uploads": uploads, "run_id": run_id}
-        if name == "offline":
-            return engine.run(contract, values, **kwargs)
-        try:
-            result = engine.run(contract, values, **kwargs)
-        except ValueError as exc:  # missing connection settings
-            reason = str(exc)
-        else:
-            reason = result.metadata.get("engine_error", "")
-            if not reason:
-                return result
-        fallback = self.offline.run(contract, values, **kwargs)
-        fallback.metadata["notice"] = (
-            f"live {PROFILES[name]} unavailable ({reason}); showing the offline recording"
-        )
-        return fallback
-
-    def close(self) -> None:
-        """Close the offline engine (live pools are shared across sessions)."""
-        self.offline.close()
-
+# One shared live pool, so `max_size` bounds live SAS sessions across every
+# browser session rather than per session (issue #62).
+ENGINE = _live_engine(PROFILE)
 
 app_ui = ui.page_navbar(
     ui.nav_panel(
         "About",
         ui.markdown(
             "SAShiny turns unchanged SAS programs into Shiny apps. Each tab is one SAS "
-            "program plus a sidecar YAML contract. Choose a connection, set the inputs "
-            "and press Run."
+            "program plus a sidecar YAML contract. Set the inputs and press Run."
         ),
     ),
     *[
@@ -164,12 +94,11 @@ app_ui = ui.page_navbar(
     ],
     title="SAShiny demo",
     sidebar=ui.sidebar(
-        ui.input_select("profile", "SAS connection", PROFILES, selected="oda"),
         ui.markdown(
-            "You are responsible for obtaining access to a compatible SAS compiler "
-            "for your chosen profile; SAShiny does not provide SAS. Live profiles need "
-            "saspy, Java (IOM) and credentials in `~/.authinfo`. If live SAS is "
-            "unavailable, matching recordings are replayed when available."
+            f"Connected to **{PROFILES[PROFILE]}** (set `SASHINY_PROFILE`). You are "
+            "responsible for obtaining access to a compatible SAS compiler for your chosen "
+            "profile, and for its licence; SAShiny does not provide SAS. Runs need saspy, "
+            "Java (IOM) and credentials in `~/.authinfo`."
         ),
         open="closed",
     ),
@@ -177,17 +106,9 @@ app_ui = ui.page_navbar(
 
 
 def server(input: Inputs, output: Outputs, session: Session) -> None:
-    """Serve every track through one routing engine."""
-    profile: reactive.Value[str] = reactive.value("oda")
-
-    @reactive.effect
-    def _track_profile() -> None:
-        profile.set(input.profile())
-
-    engine = DemoEngine(profile)
+    """Serve every track on the shared live pool."""
     for tid, (_label, path) in TRACKS.items():
-        modules.program_server(tid, sashiny.load(path), engine)
-    session.on_ended(engine.close)
+        modules.program_server(tid, sashiny.load(path), ENGINE)
 
 
 app = App(app_ui, server)

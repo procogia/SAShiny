@@ -41,8 +41,3 @@ profiles:
     saspath: <PATH_TO_SAS>            # e.g. /opt/sas/SASHome/SASFoundation/9.4/bin/sas_u8
     encoding: utf-8
     requires_vpn: true
-
-  offline:
-    label: Offline (recorded results)
-    method: mock
-    recordings: recordings/           # produced by a live run in recording mode

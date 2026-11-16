@@ -10,6 +10,7 @@ import pytest
 
 import sashiny
 from _repo import repo_root
+from engines_helper import MockEngine
 
 SPEC = repo_root() / "spec"
 FIX = SPEC / "fixtures"
@@ -21,7 +22,7 @@ def _minimal_contract() -> sashiny.Contract:
 
 
 def test_pool_runs_contract() -> None:
-    pool = sashiny.Pool(sashiny.MockEngine(), max_size=2)
+    pool = sashiny.Pool(MockEngine(), max_size=2)
     contract = _minimal_contract()
     result = pool.run(contract, {}, today=TODAY)
     assert result.status == "success"
@@ -29,7 +30,7 @@ def test_pool_runs_contract() -> None:
 
 
 def test_pool_reuses_session() -> None:
-    pool = sashiny.Pool(sashiny.MockEngine(), max_size=2)
+    pool = sashiny.Pool(MockEngine(), max_size=2)
     contract = _minimal_contract()
     pool.run(contract, {}, today=TODAY)
     pool.run(contract, {}, today=TODAY)
@@ -41,7 +42,7 @@ def test_pool_reuses_session() -> None:
 
 
 def test_pool_keeps_session_on_validation_error() -> None:
-    pool = sashiny.Pool(sashiny.MockEngine(), max_size=2)
+    pool = sashiny.Pool(MockEngine(), max_size=2)
     contract = sashiny.load(FIX / "contracts" / "valid" / "numeric" / "contract.sashiny.yml")
     result = pool.run(contract, {"min_msrp": "bad"}, today=TODAY)
     assert result.status == "error"
@@ -70,7 +71,7 @@ def test_pool_discards_and_closes_factory_session_on_run_error() -> None:
 
 
 def test_pool_factory_gives_each_session_its_own_engine() -> None:
-    pool = sashiny.Pool(sashiny.MockEngine, max_size=2)
+    pool = sashiny.Pool(MockEngine, max_size=2)
     a = pool._acquire()
     b = pool._acquire()
     assert a.engine is not b.engine
@@ -106,7 +107,7 @@ def test_pool_warms_min_size_sessions() -> None:
     made: list[sashiny.Engine] = []
 
     def factory() -> sashiny.Engine:
-        engine = sashiny.MockEngine()
+        engine = MockEngine()
         made.append(engine)
         return engine
 
@@ -118,9 +119,9 @@ def test_pool_warms_min_size_sessions() -> None:
 
 def test_pool_rejects_invalid_bounds() -> None:
     with pytest.raises(ValueError, match="min_size"):
-        sashiny.Pool(sashiny.MockEngine(), min_size=3, max_size=2)
+        sashiny.Pool(MockEngine(), min_size=3, max_size=2)
     with pytest.raises(ValueError, match="non-negative"):
-        sashiny.Pool(sashiny.MockEngine(), min_size=-1)
+        sashiny.Pool(MockEngine(), min_size=-1)
 
 
 class _SlowEngine(sashiny.Engine):
@@ -177,7 +178,7 @@ def test_pool_close_stops_creating_sessions() -> None:
     made: list[sashiny.Engine] = []
 
     def factory() -> sashiny.Engine:
-        engine = sashiny.MockEngine()
+        engine = MockEngine()
         made.append(engine)
         return engine
 
@@ -190,7 +191,7 @@ def test_pool_close_stops_creating_sessions() -> None:
 
 
 def test_pool_run_after_close_returns_error() -> None:
-    pool = sashiny.Pool(sashiny.MockEngine(), max_size=2)
+    pool = sashiny.Pool(MockEngine(), max_size=2)
     contract = _minimal_contract()
     pool.close()
     result = pool.run(contract, {}, today=TODAY)

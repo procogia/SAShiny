@@ -3,9 +3,9 @@
 # These tests exercise the parts that do not require a live SAS session: profile
 # loading and log classification/status. Live verification is deferred to #11.
 
-test_that("load_profiles defaults to offline", {
+test_that("load_profiles has no default without a file", {
   profiles <- sas_load_profiles(file.path(tempdir(), "missing.yml"))
-  expect_identical(profiles$default, "offline")
+  expect_null(profiles$default)
   expect_identical(profiles$profiles, list())
 })
 

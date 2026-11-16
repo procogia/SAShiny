@@ -46,7 +46,6 @@ ProCogia Viya or SAS 9.4.
 | `SASHINY_VIYA_URL`, `SASHINY_VIYA_CONTEXT` | Viya |
 | `SASHINY_SAS94_HOST`, `SASHINY_SAS94_PORT`, `SASHINY_SAS94_SASPATH` | SAS 9.4 |
 | `SASHINY_JAVA` | Java executable, if not on `PATH` or `JAVA_HOME` |
-| `SASHINY_RECORD_TO` | where recordings go (default: a temp folder) |
 
 Python, from `Python/`:
 
@@ -62,19 +61,10 @@ SASHINY_LIVE=1 SASHINY_PROFILE=oda SASHINY_ODA_REGION=eu1 NOT_CRAN=true \
   Rscript -e 'testthat::test_dir("testthat", package = "SAShiny", load_package = "installed", filter = "demo")'
 ```
 
-## Recording the demo with the suite
+## Recordings
 
-Point `SASHINY_RECORD_TO` at `examples/recordings` (from `Python/`, use
-`../examples/recordings`) and run one suite. It writes one recording per
-scenario, eight in total, and only passes when every recording replays. Then
-check that nothing is missing:
-
-```sh
-cd Python && SASHINY_REQUIRE_RECORDINGS=1 uv run pytest tests/test_demo_scenarios.py
-```
-
-Commit `examples/recordings/*.json`. The manual click-through in the checklist
-is still worth doing once, since the suite does not drive the Shiny UI.
+Live runs are no longer recorded (spec §6.6, PLAN.md D30). The demo runs only on
+live, licensed SAS.
 
 ## When it fails
 

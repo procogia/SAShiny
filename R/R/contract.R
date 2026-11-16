@@ -208,7 +208,7 @@ sas_validate <- function(contract, today = Sys.Date()) {
   if (identical(value, "today")) {
     return(today)
   }
-  # Year 0000 is not a real calendar date (spec §4 V009). R's `as.Date` would
+  # Year 0000 is not a real calendar date (spec section 4 V009). R's `as.Date` would
   # otherwise accept it and map it to a "year 0" date.
   if (grepl("^0000-", value)) {
     stop("year 0000 is not a real calendar date", call. = FALSE)

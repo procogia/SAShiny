@@ -4,19 +4,32 @@
 \alias{sas_app}
 \title{Build a multi-program Shiny app from a list of contracts}
 \usage{
-sas_app(contracts, engine, title = "SAShiny")
+sas_app(contracts, engine, title = "SAShiny", publish = FALSE)
 }
 \arguments{
 \item{contracts}{A list of \code{sashiny_contract} objects or paths to
 \verb{*.sashiny.yml} files (loaded automatically).}
 
-\item{engine}{An engine object (e.g. from \code{\link[=sas_engine_mock]{sas_engine_mock()}}).}
+\item{engine}{An engine from \code{\link[=sas_connect]{sas_connect()}}, \code{\link[=sas_engine_saspy]{sas_engine_saspy()}} or
+\code{\link[=sas_pool]{sas_pool()}}.}
 
 \item{title}{The app title.}
+
+\item{publish}{\code{TRUE} to add a "Publish" tab that deploys the app to Posit
+Connect with \code{\link[=sas_publish]{sas_publish()}}. Off by default, and never shown when the
+app itself runs on Posit Connect.}
 }
 \value{
 A Shiny app object (from \code{\link[shiny:shinyApp]{shiny::shinyApp()}}).
 }
 \description{
 Build a multi-program Shiny app from a list of contracts
+}
+\examples{
+\dontrun{
+# Needs a licensed 'SAS' system and saspy; not run during checks.
+path <- system.file("examples", "minimal", "minimal.sashiny.yml", package = "SAShiny")
+engine <- sas_pool(function() sas_connect("oda", license_ack = TRUE), max_size = 2L)
+shiny::runApp(sas_app(list(path), engine, publish = TRUE))
+}
 }

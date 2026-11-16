@@ -1,10 +1,10 @@
 """Verify the Daytona sandbox for the SAShiny demo (issue #12).
 
-Creates a sandbox, runs a hello-world check, smoke-tests the demo app in Offline
+Creates a sandbox, runs a hello-world check, smoke-tests the demo app
 mode, and — most importantly — tests whether the sandbox can make an outbound
 TCP 8591 connection to ``*.oda.sas.com`` (SAS OnDemand for Academics). That
 egress test is the "tier" verification: if it succeeds, the hosted demo can
-connect to ODA; if it fails, the demo relies on its offline fallback.
+connect to ODA; if it fails, the hosted demo cannot run SAS.
 
 Usage (from the repository root):
 
@@ -104,7 +104,7 @@ def main() -> int:
         if any_reachable:
             print("TIER RESULT: ODA reachable — the hosted demo can offer the ODA profile.")
         else:
-            print("TIER RESULT: ODA NOT reachable — the hosted demo relies on offline fallback.")
+            print("TIER RESULT: ODA NOT reachable — the hosted demo cannot run SAS.")
             print("  (This is expected on Daytona Tier 1/2, which restricts outbound")
             print("   non-HTTP egress. Confirm the tier with ProCogia.)")
     finally:

@@ -10,7 +10,7 @@ test_that("sas_app builds a multi-program app", {
   # Both fixtures use `program.sas`, so give them distinct explicit ids.
   a$data$id <- "minimal"
   b$data$id <- "numeric"
-  app <- sas_app(list(a, b), sas_engine_mock())
+  app <- sas_app(list(a, b), .sashiny_engine_mock())
   expect_s3_class(app, "shiny.appobj")
 })
 
@@ -21,7 +21,7 @@ test_that("sas_app accepts paths", {
     file.path(.sashiny_fixtures(), "contracts", "valid",
               "minimal", "contract.sashiny.yml")
   )
-  app <- sas_app(paths, sas_engine_mock())
+  app <- sas_app(paths, .sashiny_engine_mock())
   expect_s3_class(app, "shiny.appobj")
 })
 
@@ -33,7 +33,7 @@ test_that("sas_app rejects duplicate module ids", {
   b <- sas_contract(file.path(.sashiny_fixtures(), "contracts", "valid",
                               "numeric", "contract.sashiny.yml"))
   # Both derive to `program` from their `program.sas` file name.
-  expect_error(sas_app(list(a, b), sas_engine_mock()), "duplicate module id")
+  expect_error(sas_app(list(a, b), .sashiny_engine_mock()), "duplicate module id")
 })
 
 test_that("default module id is derived from the program file name (spec section 2)", {

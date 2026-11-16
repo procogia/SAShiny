@@ -1,4 +1,4 @@
-"""Tests for the mock engine (issue #5)."""
+"""Tests for the internal offline mock engine (issue #5; a test fixture, spec §6.6)."""
 
 from __future__ import annotations
 
@@ -7,8 +7,12 @@ import json
 from datetime import date
 from pathlib import Path
 
+import pytest
+
 import sashiny
 from _repo import repo_root
+from engines_helper import MockEngine
+from sashiny.engines import _mock
 
 SPEC = repo_root() / "spec"
 FIX = SPEC / "fixtures"
@@ -20,7 +24,7 @@ def _minimal_contract() -> sashiny.Contract:
 
 
 def test_mock_engine_empty_success() -> None:
-    engine = sashiny.MockEngine()
+    engine = MockEngine()
     contract = _minimal_contract()
     result = engine.run(contract, {}, today=TODAY)
     assert result.status == "success"
@@ -29,18 +33,18 @@ def test_mock_engine_empty_success() -> None:
 
 
 def test_mock_engine_invalid_values() -> None:
-    engine = sashiny.MockEngine()
+    engine = MockEngine()
     contract = sashiny.load(FIX / "contracts" / "valid" / "numeric" / "contract.sashiny.yml")
     result = engine.run(contract, {"min_msrp": "not-a-number"}, today=TODAY)
     assert result.status == "error"
 
 
 def test_mock_engine_replay(tmp_path: Path) -> None:
-    engine = sashiny.MockEngine(recordings_dir=tmp_path)
+    engine = MockEngine(recordings_dir=tmp_path)
     contract = _minimal_contract()
     # Save a recording for the empty-macros key.
     macros: dict[str, str] = {}
-    key = sashiny.engines.mock._recording_key(contract, macros)
+    key = _mock._recording_key(contract, macros)
     recording = {
         "status": "warning",
         "log": "NOTE: SASHINY-BEGIN run=fixture;\nWARNING: something\n",
@@ -57,19 +61,35 @@ def test_mock_engine_replay(tmp_path: Path) -> None:
 
 
 def test_mock_engine_save_recording(tmp_path: Path) -> None:
-    engine = sashiny.MockEngine(recordings_dir=tmp_path)
+    engine = MockEngine(recordings_dir=tmp_path)
     contract = _minimal_contract()
     macros: dict[str, str] = {}
     engine.save_recording(contract, macros, {"status": "success", "log": ""})
-    key = sashiny.engines.mock._recording_key(contract, macros)
+    key = _mock._recording_key(contract, macros)
     assert (tmp_path / f"{key}.json").is_file()
+
+
+def test_mock_and_recordings_are_not_public(monkeypatch: pytest.MonkeyPatch) -> None:
+    for name in ("MockEngine", "save_recording", "load_recording"):
+        assert not hasattr(sashiny, name)
+    contract = _minimal_contract()
+    engine = MockEngine()
+    monkeypatch.delenv("PYTEST_CURRENT_TEST")
+    with pytest.raises(RuntimeError, match="internal test fixture"):
+        MockEngine()
+    with pytest.raises(RuntimeError, match="internal test fixture"):
+        engine.run(contract, {})
+    with pytest.raises(TypeError, match=r"sashiny\.connect"):
+        sashiny.run(contract, {}, engine)
+    with pytest.raises(TypeError, match=r"sashiny\.connect"):
+        sashiny.Pool(engine)
 
 
 def test_contract_sha256_hashes_yaml_not_program() -> None:
     """Spec §8: contract_sha256 is the YAML bytes; program_sha256 the program bytes."""
     path = repo_root() / "spec/fixtures/contracts/valid/minimal/contract.sashiny.yml"
     contract = sashiny.load(path)
-    res = sashiny.MockEngine().run(contract, {}, today=date(2026, 11, 11))
+    res = MockEngine().run(contract, {}, today=date(2026, 11, 11))
     assert res.metadata["contract_sha256"] == hashlib.sha256(path.read_bytes()).hexdigest()
     program = (path.parent / "program.sas").read_bytes()
     assert res.metadata["program_sha256"] == hashlib.sha256(program).hexdigest()
@@ -79,14 +99,14 @@ def test_contract_sha256_hashes_yaml_not_program() -> None:
 def test_mock_engine_reports_v014_for_missing_upload() -> None:
     """The mock engine runs §7 step-1 checks: a missing file is V014, not a crash."""
     contract = sashiny.load(FIX / "contracts" / "valid" / "dataset" / "contract.sashiny.yml")
-    result = sashiny.MockEngine().run(contract, {}, uploads={"adsl": "/nonexistent/path.csv"})
+    result = MockEngine().run(contract, {}, uploads={"adsl": "/nonexistent/path.csv"})
     assert result.status == "error"
     assert result.metadata["issues"] == [{"code": "V014", "message": "file not found: path.csv"}]
 
 
 def test_mock_engine_reports_v014_for_bad_extension() -> None:
     contract = sashiny.load(FIX / "contracts" / "valid" / "dataset" / "contract.sashiny.yml")
-    result = sashiny.MockEngine().run(contract, {}, uploads={"adsl": "sample.txt"})
+    result = MockEngine().run(contract, {}, uploads={"adsl": "sample.txt"})
     assert result.status == "error"
     assert result.metadata["issues"][0]["code"] == "V014"
     assert "not accepted" in result.metadata["issues"][0]["message"]

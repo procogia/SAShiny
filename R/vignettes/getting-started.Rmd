@@ -12,64 +12,107 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 ```
 
 SAShiny lets an **unchanged SAS program** act as the server of a Shiny app. A
-sidecar YAML contract declares the program's inputs and outputs; SAShiny
-validates the inputs, safely passes them to SAS as macro variables, submits the
+sidecar YAML contract declares the program's inputs and outputs. SAShiny
+validates the inputs, passes them safely to SAS as macro variables, submits the
 program verbatim, and collects the results.
 
-This vignette walks through the core workflow using the **mock engine**, which
-needs no SAS installation.
+Programs run only on a live, licensed SAS system: **SAS 9.4**, **SAS Viya** or
+**SAS OnDemand for Academics (ODA)**. There is no offline mode. You are
+responsible for holding a valid licence for the system you connect to.
+
+This vignette does not connect to SAS. Chunks that need SAS are shown but not
+evaluated.
 
 ## The contract
 
 A SAShiny program is a pair of files:
 
-- `analysis.sas` — your SAS program (never modified).
-- `analysis.sashiny.yml` — the contract declaring inputs and outputs.
+- `analysis.sas`: your SAS program (never modified).
+- `analysis.sashiny.yml`: the contract declaring inputs and outputs.
+
+The package ships a minimal example:
 
 ```{r}
 library(SAShiny)
 
-# Write a minimal contract and program to a temporary directory.
-dir <- tempfile("sashiny-")
-dir.create(dir)
-writeLines(c(
-  "sashiny: 1",
-  "program: program.sas",
-  "title: Minimal",
-  "outputs:",
-  "  log:",
-  "    type: log"
-), file.path(dir, "contract.sashiny.yml"))
-writeLines("proc print data=sashelp.class; run;", file.path(dir, "program.sas"))
+path <- system.file("examples", "minimal", "minimal.sashiny.yml", package = "SAShiny")
+cat(readLines(path), sep = "\n")
 ```
 
 ## Load and validate
 
+Validation needs no SAS.
+
 ```{r}
-contract <- sas_contract(file.path(dir, "contract.sashiny.yml"))
-issues <- sas_validate(contract)
-length(issues)  # 0 means valid
+contract <- sas_contract(path)
+length(sas_validate(contract)) # 0 means valid
 ```
 
-## Run against the mock engine
+Input values are validated and rendered as SAS macro variables before any SAS
+code is submitted:
 
 ```{r}
-engine <- sas_engine_mock()
-result <- sas_run(contract, list(), engine)
+sas_render_values(contract$data, list(n_rows = 3))$macros
+sas_render_values(contract$data, list(n_rows = 50))$issues[[1]]$code
+```
+
+You can also inspect the exact SAS code that would be submitted:
+
+```{r}
+macros <- sas_render_values(contract$data, list(n_rows = 3))$macros
+program_path <- system.file("examples", "minimal", "minimal.sas", package = "SAShiny")
+program <- readBin(program_path, "raw", n = file.info(program_path)$size)
+cat(sas_wrapper_code(contract$data, macros, program))
+```
+
+## Connect to SAS
+
+Choose one of the three supported systems. Building an engine does not start a
+SAS session:
+
+```{r}
+engine <- sas_connect("oda", region = "us1")
+engine$backend
+```
+
+Credentials come from `~/.authinfo` (or, on Posit Connect, the environment
+variables `SASHINY_SAS_USER` and `SASHINY_SAS_PASSWORD`). A run also needs your
+licence acknowledgement. Without it, nothing is sent to SAS:
+
+```{r}
+engine <- sas_connect("oda", region = "us1", license_ack = FALSE)
+result <- sas_run(contract, list(n_rows = 3), engine)
 result$status
+result$metadata$engine_error
 ```
 
-## Connection selection
+With a licensed system:
 
-For live SAS, choose one of three backends. The consumer supplies the
-connection details; credentials come from `~/.authinfo`.
+```{r, eval = FALSE}
+options(SAShiny.license_ack = TRUE) # I hold a valid licence for this system
+engine <- sas_connect("viya", url = "https://viya.example.com")
+result <- sas_run(contract, list(n_rows = 3), engine)
+result$status
+sas_engine_close(engine)
+```
 
-```{r}
-oda <- sas_connect("oda", region = "us1")
-oda$cfg$authkey
+## Build and publish an app
+
+```{r, eval = FALSE}
+pool <- sas_pool(function() sas_connect("sas94", host = "sas.example.com"), max_size = 4L)
+app <- sas_app(list(path), pool, publish = TRUE)
+shiny::runApp(app)
+```
+
+To deploy to Posit Connect, call `sas_publish()` or use the
+*Publish SAShiny app to Posit Connect* addin. Credential files such as
+`.authinfo` are never bundled.
+
+```{r, eval = FALSE}
+sas_publish("my-app", title = "Class listing", license_ack = TRUE)
 ```
 
 ## Next steps
 
-See the `spec/CONTRACT.md` file in the source repository for the full contract
-reference, and `docs/HANDOFF.md` for the path to CRAN/PyPI.
+See `spec/CONTRACT.md` in the source repository for the full contract
+reference.

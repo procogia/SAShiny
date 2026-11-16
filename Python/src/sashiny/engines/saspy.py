@@ -1,9 +1,10 @@
-"""saspy engine with selectable connection profiles (issue #6).
+"""saspy engine for live SAS 9.4, SAS Viya and SAS OnDemand for Academics.
 
 Implements the run protocol (spec §6.1), dataset upload conversion (§7), result
-collection (§8) and run status (§6.5) against live SAS 9.4 / Viya via saspy.
-Connection profiles are chosen per app or session; credentials come only from
-``~/.authinfo`` or environment variables, never from the contract.
+collection (§8) and run status (§6.5) via saspy. Only the three backends of spec
+§6.6 are accepted, and a run needs the user's licence acknowledgement.
+Credentials come only from ``~/.authinfo`` or environment variables, never from
+the contract or function arguments.
 
 Live verification is recorded in the live SAS check reports (issue #11).
 """
@@ -38,20 +39,36 @@ from ..collect import (
     xpt_bytes,
 )
 from ..contract import Contract
-from ..recording import contract_sha256, key_for, program_sha256, save_recording
+from ..recording import contract_sha256, program_sha256
 from ..result import Result
 from ..upload import UploadError, read_upload, resolve_upload
 from ..values import render_values
 from ..wrapper import reset_code, wrapper_code
 from .base import Engine
 
-__all__ = ["SaspyEngine", "authinfo_path", "connect", "load_profiles", "preflight"]
+__all__ = [
+    "LICENSE_MESSAGE",
+    "SaspyEngine",
+    "authinfo_path",
+    "backend_of",
+    "connect",
+    "license_acknowledged",
+    "load_profiles",
+    "preflight",
+]
 
 CONTROL = re.compile(r"[\x00-\x1f\x7f-\x9f]")
 # syscc threshold above which a run is an error (spec §6.5).
 SYSCC_ERROR = 4
 # Submitted once per new SAS session (spec §6.1).
 SESSION_SETUP_CODE = "/* SAShiny 1 session */\noptions notes;\n"
+
+LICENSE_MESSAGE = (
+    "SAS licence not acknowledged: SAShiny runs programs only on a SAS system you are "
+    "licensed to use. Confirm this with license_ack=True or the environment variable "
+    "SASHINY_LICENSE_ACK=true."
+)
+_SUPPORTED = "supported backends are SAS 9.4 (IOM or SSH), SAS Viya and SAS OnDemand for Academics"
 
 # ODA hosts by region (spec/tools/live_sas_check.py).
 ODA_HOSTS = {
@@ -75,15 +92,21 @@ def connect(  # noqa: PLR0913 - explicit connection parameters per backend
     saspath: str | None = None,
     ssh_user: str | None = None,
     java: str | None = None,
-    record_to: str | Path | None = None,
+    license_ack: bool | None = None,
 ) -> SaspyEngine:
-    """Build a SAS engine for one of three connection types.
+    """Build a SAS engine for one of the three supported SAS systems.
 
-    The consumer chooses the backend explicitly and supplies its connection
-    details. SAShiny does not auto-detect or validate the SAS version: the
-    responsibility for pointing at the correct endpoint/version rests with the
-    caller. Credentials are never passed here — they come from ``~/.authinfo``
-    keyed by the profile's ``authkey``.
+    SAShiny runs programs only on a live SAS system: SAS 9.4 (IOM or SSH), SAS
+    Viya (HTTP) or SAS OnDemand for Academics (ODA). There is no offline mode.
+
+    **Licence responsibility.** SAS is commercial software; you are responsible
+    for holding a valid licence for the system you connect to (or, for ODA, for
+    accepting its terms of use). A run fails with "SAS licence not acknowledged"
+    unless ``license_ack=True`` or ``SASHINY_LICENSE_ACK=true`` is set.
+
+    Credentials are never passed here. They come from ``~/.authinfo`` keyed by
+    the profile's ``authkey``, or from ``SASHINY_SAS_USER`` /
+    ``SASHINY_SAS_PASSWORD`` on hosted platforms such as Posit Connect.
 
     Args:
         profile: One of ``"oda"``, ``"viya"`` or ``"sas94"``. Required; there is
@@ -100,8 +123,8 @@ def connect(  # noqa: PLR0913 - explicit connection parameters per backend
         ssh_user: SSH login user (optional).
         java: Path to the Java executable for IOM (optional; auto-detected when
             omitted).
-        record_to: Directory where every run is also saved as a recording
-            (spec §8.3) for offline replay with :class:`sashiny.MockEngine`.
+        license_ack: ``True`` acknowledges that you are licensed to use the SAS
+            system. ``None`` defers to ``SASHINY_LICENSE_ACK``.
 
     Returns:
         A :class:`SaspyEngine` configured for the chosen backend.
@@ -152,7 +175,7 @@ def connect(  # noqa: PLR0913 - explicit connection parameters per backend
     else:
         raise ValueError(f"unknown profile {profile!r}; expected 'oda', 'viya' or 'sas94'")
 
-    return SaspyEngine(cfg, record_to=record_to)
+    return SaspyEngine(cfg, license_ack=license_ack)
 
 
 def _find_java() -> str | None:
@@ -194,7 +217,7 @@ def load_profiles(path: str | Path | None = None) -> dict[str, Any]:
         )
     p = Path(path)
     if not p.is_file():
-        return {"default": "offline", "profiles": {}}
+        return {"default": None, "profiles": {}}
     data: dict[str, Any] = yaml.safe_load(p.read_text(encoding="utf-8"))
     return data
 
@@ -302,7 +325,83 @@ def authinfo_path() -> Path:
     return Path.home() / ".authinfo"
 
 
-def preflight(cfg: dict[str, Any]) -> None:
+def backend_of(cfg: dict[str, Any] | str | Path) -> str:
+    """Identify the supported backend of a saspy configuration (spec §6.6).
+
+    Args:
+        cfg: A saspy configuration dict, or the path of a configuration file
+            (accepted as is; you are responsible for its target).
+
+    Returns:
+        ``"oda"``, ``"viya"``, ``"sas94-iom"``, ``"sas94-ssh"`` or ``"cfgfile"``.
+
+    Raises:
+        ValueError: For any other configuration (local COM, local STDIO,
+            unknown or ambiguous methods).
+
+    """
+    if isinstance(cfg, (str, Path)) and str(cfg):
+        return "cfgfile"
+    if not isinstance(cfg, dict) or not cfg:
+        raise ValueError(
+            f"cfg must be a dict or the path of a saspy configuration file; {_SUPPORTED}"
+        )
+    if "provider" in cfg or "colocal" in cfg:
+        raise ValueError(f"local SAS (COM) connections are not supported; {_SUPPORTED}")
+    http = "url" in cfg
+    iom = "iomhost" in cfg
+    ssh = "saspath" in cfg and "host" in cfg
+    if http + iom + ssh != 1:
+        if "saspath" in cfg and "host" not in cfg:
+            raise ValueError(f"local SAS (STDIO) connections are not supported; {_SUPPORTED}")
+        raise ValueError(
+            "cfg must describe exactly one connection (url, iomhost, or saspath + host); "
+            + _SUPPORTED
+        )
+    if http:
+        if not re.match(r"^https?://", str(cfg["url"])):
+            raise ValueError("the SAS Viya url must start with https:// or http://")
+        return "viya"
+    if iom:
+        hosts = cfg["iomhost"] if isinstance(cfg["iomhost"], list) else [cfg["iomhost"]]
+        if hosts and all(str(h).endswith(".oda.sas.com") for h in hosts):
+            return "oda"
+        if len(hosts) != 1:
+            raise ValueError("a SAS 9.4 IOM configuration needs exactly one iomhost")
+        return "sas94-iom"
+    return "sas94-ssh"
+
+
+def license_acknowledged(explicit: bool | None = None) -> bool:
+    """Whether the user acknowledged licence responsibility (spec §6.6).
+
+    An explicit ``license_ack`` wins; otherwise ``SASHINY_LICENSE_ACK`` set to
+    ``true`` or ``1`` (case-insensitive) acknowledges it.
+    """
+    if explicit is not None:
+        return bool(explicit)
+    return os.environ.get("SASHINY_LICENSE_ACK", "").lower() in {"true", "1"}
+
+
+def env_credentials(cfg: dict[str, Any] | str | Path) -> dict[str, str]:
+    """Saspy session keyword arguments from ``SASHINY_SAS_USER``/``SASHINY_SAS_PASSWORD``.
+
+    Used on hosted platforms such as Posit Connect (spec §6.7). The values go
+    only to saspy, never to a file or a log. Empty for SSH (key-based login) or
+    when either variable is unset.
+    """
+    user = os.environ.get("SASHINY_SAS_USER", "")
+    password = os.environ.get("SASHINY_SAS_PASSWORD", "")
+    if not user or not password or not isinstance(cfg, dict):
+        return {}
+    if "iomhost" in cfg:
+        return {"omruser": user, "omrpw": password}
+    if "url" in cfg:
+        return {"user": user, "pw": password}
+    return {}
+
+
+def preflight(cfg: dict[str, Any], *, check_authinfo: bool = True) -> None:
     """Fail fast, with a clear message, on settings saspy would reject or prompt for.
 
     saspy prompts for a user id and password on stdin when the ``authkey`` is
@@ -320,7 +419,7 @@ def preflight(cfg: dict[str, Any]) -> None:
             "Install it, set JAVA_HOME, or pass java='/path/to/java'."
         )
     key = cfg.get("authkey")
-    if key:
+    if key and check_authinfo:
         path = authinfo_path()
         lines = path.read_text(encoding="utf-8").splitlines() if path.is_file() else []
         if not any(line.split()[:1] == [key] for line in lines):
@@ -334,17 +433,20 @@ class SaspyEngine(Engine):
     """A live SAS engine backed by saspy.
 
     One engine holds one SAS session, started on first use and reused across
-    runs (each run resets WORK, spec §6.2). Use :class:`sashiny.SessionPool` to
-    serve several users.
+    runs (each run resets WORK, spec §6.2). Use :class:`sashiny.Pool` to serve
+    several users. Only SAS 9.4, SAS Viya and SAS OnDemand for Academics
+    configurations are accepted (spec §6.6), and a run needs the licence
+    acknowledgement described in :func:`sashiny.connect`.
 
     Args:
         cfg: A saspy configuration dict (written to a temporary ``sascfg``
             module) or the path of an existing saspy configuration file.
         cfgname: The configuration name inside that file.
-        record_to: When set, every completed run is also written as a
-            recording (§8.3) in this directory, for offline replay.
-        session_factory: Advanced/testing hook returning a saspy-like session
-            object (``submit``, ``sd2df``, ``df2sd``, ``download``, ``endsas``).
+        license_ack: ``True`` acknowledges that you are licensed to use the SAS
+            system. ``None`` defers to ``SASHINY_LICENSE_ACK``.
+
+    Raises:
+        ValueError: If ``cfg`` is not a supported backend.
 
     """
 
@@ -356,14 +458,17 @@ class SaspyEngine(Engine):
         cfg: dict[str, Any] | str | Path,
         cfgname: str = "sashiny",
         *,
-        record_to: str | Path | None = None,
-        session_factory: Callable[[], Any] | None = None,
+        license_ack: bool | None = None,
     ) -> None:
         """Create a saspy engine; the SAS session starts on the first run."""
+        self.backend = backend_of(cfg)
         self.cfg = cfg
         self.cfgname = cfgname
-        self.record_to = Path(record_to) if record_to else None
-        self._factory = session_factory
+        self.license_ack = license_ack
+        # Testing hook returning a fake saspy session; set only by the test
+        # suite. Deliberately not a constructor argument: a public factory would
+        # let a caller supply SAS logs that never came from SAS (spec §6.6).
+        self._factory: Callable[[], Any] | None = None
         self._sas: Any = None
         self._sas_version_text: str | None = None
         self._tmp: tempfile.TemporaryDirectory[str] | None = None
@@ -375,17 +480,20 @@ class SaspyEngine(Engine):
 
     def _session(self) -> Any:
         # A timed-out run's worker must never open or reuse a session that a
-        # newer run owns (spec ?6.5). Each run carries an immutable generation;
+        # newer run owns (spec §6.5). Each run carries an immutable generation;
         # once the engine has moved on, the stale worker raises instead.
         generation = getattr(self._run_generation, "value", None)
         if generation is not None and generation != self._generation:
             raise RuntimeError("run was cancelled (timeout)")
         if self._sas is None:
+            if not license_acknowledged(self.license_ack):
+                raise RuntimeError(LICENSE_MESSAGE)
             if self._factory is not None:
                 self._sas = self._factory()
             else:
+                credentials = env_credentials(self.cfg)
                 if isinstance(self.cfg, dict):
-                    preflight(self.cfg)
+                    preflight(self.cfg, check_authinfo=not credentials)
                 import saspy  # noqa: PLC0415 - optional dependency
 
                 if isinstance(self.cfg, dict):
@@ -393,7 +501,9 @@ class SaspyEngine(Engine):
                     cfgfile = str(_write_cfgfile(self.cfg, self.cfgname, Path(self._tmp.name)))
                 else:
                     cfgfile = str(self.cfg)
-                self._sas = saspy.SASsession(cfgfile=cfgfile, cfgname=self.cfgname, results="HTML")
+                self._sas = saspy.SASsession(
+                    cfgfile=cfgfile, cfgname=self.cfgname, results="HTML", **credentials
+                )
             # Session setup (spec 6.1): ODA starts with NONOTES, which hides the sentinels.
             self._sas.submit(SESSION_SETUP_CODE, results="TEXT")
         return self._sas
@@ -430,12 +540,12 @@ class SaspyEngine(Engine):
         """Close the current session (if any) and forget it.
 
         Used when a run fails or times out: the session must be ended before the
-        reference is lost, otherwise it leaks (spec ?6.5). Session-scoped caches
-        are invalid once the session is gone (spec ?6.4 reads choices once per
+        reference is lost, otherwise it leaks (spec §6.5). Session-scoped caches
+        are invalid once the session is gone (spec §6.4 reads choices once per
         session); a replacement session must re-query them.
 
         ``background`` runs ``endsas()`` on a daemon thread so a blocking teardown
-        cannot extend the whole-run deadline (spec ?6.5); the caller returns
+        cannot extend the whole-run deadline (spec §6.5); the caller returns
         promptly and the session is closed asynchronously.
         """
         sas = self._sas
@@ -455,7 +565,7 @@ class SaspyEngine(Engine):
                     sas.endsas()
 
     def choices(self, contract: Contract) -> dict[str, list[dict[str, str]]]:
-        """Read ``choices_from`` choices once per session and contract (spec ?6.4)."""
+        """Read ``choices_from`` choices once per session and contract (spec §6.4)."""
         out: dict[str, list[dict[str, str]]] = {}
         tag = contract_sha256(contract) or str(contract.base_dir)
         for iid, spec in (contract.data.get("inputs") or {}).items():
@@ -497,6 +607,10 @@ class SaspyEngine(Engine):
     ) -> Result:
         today = today or date.today()
         run_id = run_id or str(uuid.uuid4())
+        if not license_acknowledged(self.license_ack):
+            refused = Result.new(run_id, "error", engine=self.name, engine_version=self.version)
+            refused.metadata["engine_error"] = LICENSE_MESSAGE
+            return refused
         started = datetime.now(timezone.utc)
         timeout = float((contract.data.get("run") or {}).get("timeout_seconds", 300))
 
@@ -521,7 +635,7 @@ class SaspyEngine(Engine):
         thread.join(timeout)
         if thread.is_alive():
             # Invalidate the stale worker's generation so it can never open or
-            # reuse a session owned by a later run (spec ?6.5).
+            # reuse a session owned by a later run (spec §6.5).
             self._generation += 1
             self._discard_session(background=True)
             result = Result.new(run_id, "error", engine=self.name, engine_version=self.version)
@@ -564,7 +678,7 @@ class SaspyEngine(Engine):
             return result
 
         try:
-            files = self._prepare(contract, uploads)
+            self._prepare(contract, uploads)
             res = self._submit(
                 wrapper_code(data, macros, self._program(contract), run_id=run_id), "HTML"
             )
@@ -588,12 +702,7 @@ class SaspyEngine(Engine):
         ended = datetime.now(timezone.utc)
         result.metadata["ended_at"] = ended.isoformat()
         result.metadata["seconds"] = round((ended - started).total_seconds(), 2)
-        if self.record_to is not None:
-            try:
-                path = save_recording(self.record_to, key_for(contract, macros, files), result)
-                result.metadata["recording"] = str(path)
-            except Exception as exc:  # a recording failure never discards a run
-                result.metadata["recording_error"] = f"{type(exc).__name__}: {exc}"
+        result.metadata["backend"] = self.backend
         return result
 
     @staticmethod

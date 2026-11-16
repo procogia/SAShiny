@@ -141,11 +141,6 @@
   meta <- result$metadata
   lines <- c(paste("status:", result$status), paste("run_id:", result$run_id))
   if (nzchar(meta$sas_version %||% "")) lines <- c(lines, paste("SAS:", meta$sas_version))
-  if (identical(meta$recording, "missing")) {
-    lines <- c(lines, "offline: no recording matches these inputs")
-  } else if (identical(meta$recording, "replayed")) {
-    lines <- c(lines, paste("offline: replayed recording from", meta$recorded_at %||% ""))
-  }
   for (issue in meta$issues %||% list()) {
     lines <- c(lines, trimws(paste(
       "invalid input", issue$code, issue$input %||% "", issue$message %||% ""
@@ -306,13 +301,14 @@
   }
 }
 
-# The previous `shiny.maxRequestSize` option, saved so it can be restored when
-# the module session ends (CRAN policy: restore options you change). Stored in
-# an environment (not a locked binding) so it can be reassigned at runtime.
+# CRAN: the previous `shiny.maxRequestSize` option is saved so it can be
+# restored when the module session ends (restore options you change). Stored
+# in an environment (not a locked binding) so it can be reassigned at runtime.
 .sashiny_upload_state <- new.env(parent = emptyenv())
+.sashiny_upload_state$saved <- FALSE
 .sashiny_upload_state$prev_max_request_size <- NULL
 
-#' Raise Shiny's upload cap to the largest declared `max_size_mb` (spec §7).
+#' Raise Shiny's upload cap to the largest declared `max_size_mb` (spec section 7).
 #'
 #' Shiny's default `shiny.maxRequestSize` is 5 MiB, which would reject valid
 #' datasets up to the contract's (larger) limit with an HTTP 413 before the
@@ -329,7 +325,10 @@
     return(invisible(NULL))
   }
   max_mb <- max(limits)
-  .sashiny_upload_state$prev_max_request_size <- getOption("shiny.maxRequestSize")
+  if (!isTRUE(.sashiny_upload_state$saved)) {
+    .sashiny_upload_state$prev_max_request_size <- getOption("shiny.maxRequestSize")
+    .sashiny_upload_state$saved <- TRUE
+  }
   options(shiny.maxRequestSize = max_mb * 1024 * 1024)
   invisible(NULL)
 }
@@ -337,10 +336,11 @@
 #' Restore `shiny.maxRequestSize` to its previous value.
 #' @noRd
 .sashiny_restore_upload_limit <- function() {
-  prev <- .sashiny_upload_state$prev_max_request_size
-  if (!is.null(prev)) {
-    options(shiny.maxRequestSize = prev)
+  if (isTRUE(.sashiny_upload_state$saved)) {
+    # options(x = NULL) removes the option when it was unset before.
+    options(shiny.maxRequestSize = .sashiny_upload_state$prev_max_request_size)
     .sashiny_upload_state$prev_max_request_size <- NULL
+    .sashiny_upload_state$saved <- FALSE
   }
   invisible(NULL)
 }
@@ -412,7 +412,7 @@ sas_program_ui <- function(id, contract, ui_override = NULL, today = Sys.Date())
 #'
 #' @param id The module id.
 #' @param contract A `sashiny_contract` object.
-#' @param engine An engine: [sas_engine_mock()], [sas_connect()] or
+#' @param engine An engine: [sas_connect()], [sas_engine_saspy()] or
 #'   [sas_pool()].
 #' @param server_override An optional function `function(id, contract, engine)`
 #'   that returns a custom server, replacing the auto-generated server.
@@ -420,7 +420,7 @@ sas_program_ui <- function(id, contract, ui_override = NULL, today = Sys.Date())
 #'   output id. Each is `function(value, spec, ...)` returning a plot object
 #'   (spec section 8.5). Takes precedence over a declarative `spec`.
 #' @details In a running app (with 'callr' and 'later' installed) a run of a
-#'   [sas_engine_mock()] or [sas_connect()] engine executes in a background R
+#'   [sas_connect()] engine executes in a background R
 #'   process that loads the installed 'SAShiny', so a slow 'SAS' run does not
 #'   block other browser sessions. That process starts its own 'SAS' session
 #'   and ends it after the run, and is killed when `run.timeout_seconds`
@@ -430,6 +430,7 @@ sas_program_ui <- function(id, contract, ui_override = NULL, today = Sys.Date())
 #' @return A list of reactives: `result`, `status`, `log`.
 #' @export
 sas_program_server <- function(id, contract, engine, server_override = NULL, render = NULL) {
+  .sashiny_check_engine(engine)
   if (!is.null(server_override)) {
     return(server_override(id, contract, engine))
   }

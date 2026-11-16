@@ -6,6 +6,7 @@ import pytest
 
 import sashiny
 from _repo import repo_root
+from engines_helper import MockEngine
 
 SPEC = repo_root() / "spec"
 FIX = SPEC / "fixtures"
@@ -22,7 +23,7 @@ def _contracts() -> list[sashiny.Contract]:
 
 
 def test_app_builds_multi_program_app() -> None:
-    app = sashiny.app(_contracts(), sashiny.MockEngine())
+    app = sashiny.app(_contracts(), MockEngine())
     assert app is not None
 
 
@@ -30,7 +31,7 @@ def test_app_accepts_paths() -> None:
     paths = [
         FIX / "contracts" / "valid" / "minimal" / "contract.sashiny.yml",
     ]
-    app = sashiny.app(paths, sashiny.MockEngine())
+    app = sashiny.app(paths, MockEngine())
     assert app is not None
 
 
@@ -39,7 +40,7 @@ def test_app_rejects_duplicate_module_ids() -> None:
     b = sashiny.load(FIX / "contracts" / "valid" / "numeric" / "contract.sashiny.yml")
     # Both derive to `program` from their `program.sas` file name.
     with pytest.raises(ValueError, match="duplicate module id"):
-        sashiny.app([a, b], sashiny.MockEngine())
+        sashiny.app([a, b], MockEngine())
 
 
 def test_default_module_id_derivation() -> None:
