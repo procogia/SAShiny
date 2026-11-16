@@ -221,3 +221,75 @@ def test_module_coalesces_run_clicks() -> None:
             session.set_inputs(**{"mod-run": i + 1})
         _wait_for_run(session)
         assert len(runs) == 1
+
+
+class _PairedEngine(MockEngine):
+    """A mock engine that returns a paired SAS graph + SAShiny chart value."""
+
+    def run(self, contract, values, *, today=None, uploads=None, run_id=None):
+        result = sashiny.Result.new(run_id or "r", "success", engine="mock")
+
+        def paired(x: str, y: str) -> dict:
+            chart = {
+                "columns": [
+                    {"name": x, "type": "character", "label": "", "format": ""},
+                    {"name": y, "type": "numeric", "label": "", "format": ""},
+                ],
+                "rows": [["a", 2], ["b", 4]],
+                "total_rows": 2,
+                "truncated": False,
+                "formatted": False,
+            }
+            return {"sas": [{"mime": "image/png", "data": "QUJD"}], "sashiny": chart}
+
+        result.outputs = {
+            "scatter": paired("height", "weight"),
+            "bars": paired("sex", "weight"),
+        }
+        return result
+
+
+def _paired_app(**kwargs: object) -> App:
+    contract = sashiny.load(FIX / "contracts" / "valid" / "paired_outputs" / "contract.sashiny.yml")
+    app_ui = ui.page_fluid(modules.program_ui("mod", contract))
+
+    def server(input, output, session):
+        modules.program_server("mod", contract, _PairedEngine(), **kwargs)
+
+    return App(app_ui, server)
+
+
+def test_module_renders_paired_cards_with_toggle() -> None:
+    pytest.importorskip("plotnine")
+    with test_server(_paired_app()) as session:
+        session.set_inputs(**{"mod-run": 1})
+        _wait_for_run(session)
+        card = str(session.get_output("mod-out_scatter").value)
+        assert 'data-sashiny-group="mod-views"' in card
+        assert 'data-sashiny-default="sashiny"' in card
+        assert "data:image/png;base64,QUJD" in card
+        # The SAShiny chart is drawn too: a second image next to the SAS graph.
+        assert card.count("<img") == 2
+        toggle = str(session.get_output("mod-out__view").value)
+        assert "SAS graphs" in toggle
+        assert "SAShiny charts" in toggle
+        assert 'data-sashiny-default="sashiny"' in toggle
+
+
+def test_module_chart_view_sas_and_toggle_off() -> None:
+    pytest.importorskip("plotnine")
+    with test_server(_paired_app(chart_view={"bars": "sas"})) as session:
+        session.set_inputs(**{"mod-run": 1})
+        _wait_for_run(session)
+        assert 'data-sashiny-default="sashiny"' in str(session.get_output("mod-out_scatter").value)
+        assert 'data-sashiny-default="sas"' in str(session.get_output("mod-out_bars").value)
+        # The module toggle has no single default when the cards differ.
+        assert "data-sashiny-default" not in str(session.get_output("mod-out__view").value)
+    with test_server(_paired_app(chart_view="sas", chart_toggle=False)) as session:
+        session.set_inputs(**{"mod-run": 1})
+        _wait_for_run(session)
+        card = str(session.get_output("mod-out_scatter").value)
+        assert "data-sashiny-paired" not in card
+        assert card.count("<img") == 1
+        assert "QUJD" in card
+        assert str(session.get_output("mod-out__view").value) in ("", "None")

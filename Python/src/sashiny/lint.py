@@ -175,9 +175,13 @@ def _lint_l003(data: dict[str, Any], text: str) -> list[Issue]:
     out: list[Issue] = []
     targets = _dataset_targets(data)
     for oid, spec in (data.get("outputs") or {}).items():
-        if spec.get("type") not in ("table", "download"):
+        kind = spec.get("type")
+        if kind == "plot" and isinstance(spec.get("chart"), dict):
+            ref = spec["chart"].get("from")
+        elif kind in ("table", "chart", "download"):
+            ref = spec.get("from")
+        else:
             continue
-        ref = spec.get("from")
         if not ref or "." not in ref:
             continue
         lib, member = ref.split(".", 1)

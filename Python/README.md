@@ -15,5 +15,30 @@ uv pip install sashiny
 # optional extras: sashiny[shiny], sashiny[saspy], sashiny[plotnine], sashiny[matplotlib], sashiny[plotly]
 ```
 
+## Toggle between SAS graphs and SAShiny charts
+
+A paired output shows the original SAS graph and a SAShiny chart in one card, with a toggle
+in the browser (spec §8.6). Add a `chart:` block to a `plot` output, or `sas_plot: <k>` to a
+`chart` output:
+
+```yaml
+outputs:
+  price_vs_mpg:
+    type: plot
+    select: 1                 # the SAS graph shown by "SAS graph"
+    chart:                    # the SAShiny chart shown by "SAShiny chart"
+      from: work.cars_filtered
+      spec: {kind: scatter, x: mpg_city, y: msrp, color: origin}
+```
+
+Each card has its own toggle and the module has one that switches them all. The default view is the
+SAShiny chart; both settings are code arguments:
+
+```python
+sashiny.app([path], engine, chart_view="sas")  # start on the SAS graphs
+sashiny.app([path], engine, chart_view={"price_vs_mpg": "sas"})  # per output
+sashiny.app([path], engine, chart_toggle=False)  # hide the toggles
+```
+
 SAS is a registered trademark of SAS Institute Inc. Shiny is a registered trademark of Posit
 Software, PBC. This project is not affiliated with or endorsed by either company.

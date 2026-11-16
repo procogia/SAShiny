@@ -54,3 +54,11 @@ def test_default_module_id_unicode_normalization() -> None:
     # Issue #63: a capital dotted I (U+0130) must lower-case to a plain `i`,
     # not `i` + a combining dot, so the id matches R's `tolower`.
     assert sashiny.default_module_id("\u0130stanbul.sas") == "istanbul"
+
+
+def test_app_passes_chart_settings_and_validates_them() -> None:
+    paired = sashiny.load(FIX / "contracts" / "valid" / "paired_outputs" / "contract.sashiny.yml")
+    assert sashiny.app([paired], MockEngine(), chart_view="sas", chart_toggle=False) is not None
+    assert sashiny.app([paired], MockEngine(), chart_view={"bars": "sas"}) is not None
+    with pytest.raises(ValueError, match="chart_view"):
+        sashiny.app([paired], MockEngine(), chart_view={"missing": "sas"})

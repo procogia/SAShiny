@@ -10,6 +10,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from .collect import is_paired
 from .contract import Contract, default_module_id, load
 from .engines import Engine
 from .engines.base import check_engine
@@ -19,12 +20,14 @@ from .publish import on_connect
 __all__ = ["app"]
 
 
-def app(
+def app(  # noqa: PLR0913 - the §8.6 chart settings are keyword-only options
     contracts: list[Contract | str | Path],
     engine: Engine,
     *,
     title: str = "SAShiny",
     publish: bool = False,
+    chart_view: str | dict[str, str] = "sashiny",
+    chart_toggle: bool = True,
 ) -> Any:
     """Build a multi-program Shiny app from a list of contracts.
 
@@ -36,6 +39,10 @@ def app(
         publish: Add a "Publish" tab that deploys the app to Posit Connect with
             :func:`sashiny.publish`. Off by default and never shown when the
             app itself runs on Posit Connect.
+        chart_view: The default view of paired outputs (spec §8.6), passed to
+            every module: `"sashiny"` (default), `"sas"`, or a dict of paired
+            output id to view. Each module uses the entries for its outputs.
+        chart_toggle: Whether to show the SAS / SAShiny toggles (default `True`).
 
     Returns:
         A Shiny ``App`` with one tab per contract.
@@ -65,6 +72,12 @@ def app(
                 f"duplicate module id {mid!r}: contracts {seen[mid]} and {i} resolve to the same id"
             )
         seen[mid] = i
+    views = [_module_views(c, chart_view) for c in loaded]
+    if isinstance(chart_view, dict):
+        used = {oid for v in views if isinstance(v, dict) for oid in v}
+        unknown = [oid for oid in chart_view if oid not in used]
+        if unknown:
+            raise ValueError(f"chart_view names outputs that are not paired: {', '.join(unknown)}")
 
     panels = [
         ui.nav_panel(contract.data.get("title", f"Program {i}"), program_ui(ids[i], contract))
@@ -76,7 +89,7 @@ def app(
 
     def server(input: Any, output: Any, session: Any) -> None:
         for i, contract in enumerate(loaded):
-            program_server(ids[i], contract, engine)
+            program_server(ids[i], contract, engine, chart_view=views[i], chart_toggle=chart_toggle)
         if not show_publish:
             return
         status = reactive.value("")
@@ -104,6 +117,14 @@ def app(
             return status()
 
     return App(app_ui, server)
+
+
+def _module_views(contract: Contract, chart_view: str | dict[str, str]) -> str | dict[str, str]:
+    """Return the part of an app-wide `chart_view` that applies to one module."""
+    if not isinstance(chart_view, dict):
+        return chart_view
+    paired = {oid for oid, s in contract.data["outputs"].items() if is_paired(s)}
+    return {oid: v for oid, v in chart_view.items() if oid in paired}
 
 
 def _publish_ui() -> Any:

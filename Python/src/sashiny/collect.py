@@ -5,6 +5,7 @@ unit-tested directly against the ``spec/fixtures/collect`` fixtures:
 
 - log splitting, scoping and classification (§8.2 *log*);
 - plot extraction from the ODS HTML document (§8.2 *plot*);
+- paired SAS graph / SAShiny chart outputs (§8.2 *paired*);
 - the SAS code used to collect tables (§8.2 *table*);
 - client-side download serialisation (§8.2 *download*);
 - the recording key (§8.3).
@@ -30,8 +31,11 @@ __all__ = [
     "download_value",
     "extract_plots",
     "formatted_table_code",
+    "is_paired",
     "join_remote",
     "log_level",
+    "paired_chart_spec",
+    "paired_parts",
     "recording_key",
     "recording_key_text",
     "scope_log",
@@ -154,6 +158,34 @@ def extract_plots(html: str, select: int | None = None) -> list[dict[str, str]]:
     if select > len(plots):
         raise ValueError(f"select={select} but the run produced {len(plots)} graph(s)")
     return [plots[select - 1]]
+
+
+# --------------------------------------------------------------------------- paired outputs
+
+
+def is_paired(spec: dict[str, Any]) -> bool:
+    """Whether an output pairs a SAS graph with a SAShiny chart (§2.2, §8.6)."""
+    kind = spec.get("type")
+    return (kind == "chart" and "sas_plot" in spec) or (kind == "plot" and "chart" in spec)
+
+
+def paired_parts(spec: dict[str, Any]) -> tuple[int, dict[str, Any]]:
+    """Return ``(select, chart fields)`` of a paired output (§8.2 *paired*).
+
+    ``select`` is the SAS graph position. The chart fields are ``from``,
+    ``columns``, ``max_rows`` and ``spec``, from the chart output itself or the
+    plot's ``chart`` mapping.
+    """
+    if spec["type"] == "chart":
+        return int(spec["sas_plot"]), spec
+    return int(spec["select"]), spec["chart"]
+
+
+def paired_chart_spec(spec: dict[str, Any]) -> dict[str, Any]:
+    """Return a ``chart`` output spec equivalent to the chart part of a paired output."""
+    _, chart = paired_parts(spec)
+    out = {k: v for k, v in chart.items() if k in ("from", "columns", "max_rows", "spec")}
+    return {"type": "chart", **out}
 
 
 # --------------------------------------------------------------------------- tables
