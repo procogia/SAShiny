@@ -56,10 +56,34 @@ test_that("the run deadline matches the saspy engine's rule", {
   expect_identical(.sashiny_run_deadline(hook, contract), 2)
 })
 
-test_that("a background run resolves without blocking the event loop", {
+test_that("a background run resolves with the engine's result", {
   .sashiny_skip_bg()
   contract <- sas_contract(file.path(.sashiny_fixtures(), "contracts", "valid",
                                      "minimal", "contract.sashiny.yml"))
+  p <- .sashiny_run_bg_promise(.sashiny_engine_mock(), contract, list(),
+    today = .sashiny_today, run_id = "bg-1"
+  )
+  expect_true(promises::is.promise(p))
+  state <- .sashiny_await(p)
+  expect_true(state$done)
+  expect_null(state$error)
+  expect_s3_class(state$value, "sashiny_result")
+  expect_identical(state$value$run_id, "bg-1")
+  expect_identical(state$value$status, "success")
+})
+
+test_that("the event loop keeps running while a background run works", {
+  .sashiny_skip_bg()
+  contract <- sas_contract(file.path(.sashiny_fixtures(), "contracts", "valid",
+                                     "minimal", "contract.sashiny.yml"))
+  # The child takes at least a second, so it is still running while the
+  # parent polls. A fast mock run can finish before the first poll when the
+  # child process is slow to start (as on Windows), which proves nothing.
+  slow <- function() {
+    Sys.sleep(1)
+    NULL
+  }
+  engine <- test_saspy_engine(list(java = "java"), session_factory = slow)
   ticks <- 0L
   ticking <- TRUE
   tick <- function() {
@@ -69,20 +93,12 @@ test_that("a background run resolves without blocking the event loop", {
   later::later(tick, 0)
   # Stop the ticker even on failure, so it cannot keep the global loop busy.
   on.exit(ticking <- FALSE, add = TRUE)
-  p <- .sashiny_run_bg_promise(.sashiny_engine_mock(), contract, list(),
-    today = .sashiny_today, run_id = "bg-1"
-  )
-  expect_true(promises::is.promise(p))
-  state <- .sashiny_await(p)
+  state <- .sashiny_await(.sashiny_run_bg_promise(engine, contract, list(), today = .sashiny_today))
   ticking <- FALSE
   later::run_now(0.05)
   expect_true(state$done)
-  expect_null(state$error)
-  expect_s3_class(state$value, "sashiny_result")
-  expect_identical(state$value$run_id, "bg-1")
-  expect_identical(state$value$status, "success")
   # Other callbacks ran while the child process was working.
-  expect_gt(ticks, 1L)
+  expect_gt(ticks, 10L)
 })
 
 test_that("a background saspy run past timeout_seconds resolves to an error (issue #97)", {
