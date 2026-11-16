@@ -1,0 +1,25 @@
+sashiny: 1
+program: program.sas
+title: Paired SAS graphs and SAShiny charts
+outputs:
+  scatter:
+    type: chart
+    label: Weight vs height
+    from: work.class
+    sas_plot: 1
+    spec:
+      kind: scatter
+      x: height
+      y: weight
+  bars:
+    type: plot
+    label: Mean weight by sex
+    select: 2
+    chart:
+      from: work.means
+      columns: [sex, weight]
+      max_rows: 100
+      spec:
+        kind: bar
+        x: sex
+        y: weight

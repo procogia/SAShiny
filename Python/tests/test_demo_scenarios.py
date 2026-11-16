@@ -51,6 +51,16 @@ def test_primary_scenarios_equal_the_ui_defaults(scenario) -> None:  # type: ign
 # --------------------------------------------------------------------------- checker self-test
 
 
+def _chart_value() -> dict[str, object]:
+    return {
+        "columns": [{"name": "a", "type": "character", "label": "", "format": ""}],
+        "rows": [["x"]],
+        "total_rows": 1,
+        "truncated": False,
+        "formatted": False,
+    }
+
+
 def _good_result(contract: sashiny.Contract) -> sashiny.Result:
     result = sashiny.Result.new("r", "success")
     for oid, spec in contract.data["outputs"].items():
@@ -64,7 +74,10 @@ def _good_result(contract: sashiny.Contract) -> sashiny.Result:
                 "formatted": True,
             }
         elif kind == "plot":
-            result.outputs[oid] = [{"mime": "image/png", "data": "QQ=="}]
+            graphs = [{"mime": "image/png", "data": "QQ=="}]
+            result.outputs[oid] = (
+                {"sas": graphs, "sashiny": _chart_value()} if "chart" in spec else graphs
+            )
         elif kind == "html":
             result.outputs[oid] = "<html><body>ok</body></html>"
         elif kind == "log":
@@ -113,7 +126,7 @@ def test_checker_reports_every_problem() -> None:
     result.status = "warning"
     result.metadata["collect_errors"] = ["report_pdf: download failed"]
     result.outputs["stats"]["rows"] = []
-    result.outputs["price_vs_mpg"] = []
+    result.outputs["price_vs_mpg"] = {"sas": [], "sashiny": {"error": "dataset WORK.X not found"}}
     result.outputs["report"] = "plain text"
     result.outputs["log"] = [{"level": "error", "text": "ERROR: boom"}]
     result.outputs["report_pdf"] = {
@@ -128,7 +141,8 @@ def test_checker_reports_every_problem() -> None:
         "status 'warning'",
         "collect error: report_pdf",
         "stats: 0 rows",
-        "price_vs_mpg: 0 graphs",
+        "price_vs_mpg.sas: 0 graphs",
+        "price_vs_mpg.sashiny: dataset WORK.X not found",
         "price_by_type: missing",
         "report: not an HTML document",
         "SAS log error: ERROR: boom",

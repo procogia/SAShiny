@@ -6,6 +6,16 @@ All notable changes to the Python library are documented here. The format follow
 
 ## [Unreleased]
 
+### Added
+
+- Paired outputs (spec §2.2 and §8.6) show the original SAS graph and the SAShiny chart in one
+  card, with a toggle in the browser. Declare one with `sas_plot: <k>` on a `chart` output, or
+  a `chart:` block on a `plot` output (which needs `select`). Each card has its own
+  toggle, and a module toggle switches them all, with no server round trip.
+- `program_server` and `sashiny.app` take `chart_view` (`"sashiny"` by default, `"sas"`,
+  or a dict per output) and `chart_toggle` (`True` by default; `False` hides the toggles).
+- Each part of a paired output is collected on its own, so one failing does not hide the other.
+
 ## [0.2.0]
 
 ### Changed (breaking)

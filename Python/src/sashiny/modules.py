@@ -14,6 +14,7 @@ import io
 import logging
 import uuid
 from collections.abc import Callable, Iterator
+from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -23,6 +24,7 @@ from shiny import Inputs, Outputs, Session, module, reactive, req, ui
 from shiny import render as shiny_render
 from shiny.ui import TagChild
 
+from .collect import is_paired, paired_chart_spec
 from .contract import Contract
 from .engines import Engine
 from .engines.base import check_engine
@@ -38,6 +40,14 @@ _CHART_DPI = 150
 __all__ = ["program_server", "program_ui", "shiny_values"]
 
 SAMPLE_SUFFIX = "__sample"
+# Output id of the module-wide view toggle (spec §8.6). Output ids start with a
+# letter, so `out_` + `_view` never collides with an output card.
+_VIEW_TOGGLE_ID = "out__view"
+_VIEW_GROUP_ID = "views"
+_VIEWS = ("sas", "sashiny")
+_VIEW_LABELS = {"sas": "SAS graph", "sashiny": "SAShiny chart"}
+_GROUP_LABELS = {"sas": "SAS graphs", "sashiny": "SAShiny charts"}
+_WWW = Path(__file__).resolve().parent / "www"
 _LOG_COLOURS = {"error": "#b42318", "warning": "#b54708", "note": "#175cd3", "text": "inherit"}
 
 
@@ -335,6 +345,135 @@ def _plot_to_png(plot: Any) -> str:
     return base64.b64encode(buf.getvalue()).decode("ascii")
 
 
+def _toggle_dependency() -> HTMLDependency:
+    """Return the client-side view toggle script and styles (spec §8.6)."""
+    from . import __version__  # noqa: PLC0415 - avoid import cycle
+
+    return HTMLDependency(
+        "sashiny-toggle",
+        __version__,
+        source={"subdir": str(_WWW)},
+        script={"src": "sashiny-toggle.js"},
+        stylesheet={"href": "sashiny-toggle.css"},
+    )
+
+
+def _toggle_buttons(labels: dict[str, str], view: str | None, **attrs: str) -> TagChild:
+    """Return a pair of `aria-pressed` buttons that switch views in the browser."""
+    buttons = [
+        ui.tags.button(
+            labels[v],
+            type="button",
+            class_="active" if v == view else None,
+            aria_pressed="true" if v == view else "false",
+            data_sashiny_set=v,
+        )
+        for v in ("sashiny", "sas")
+    ]
+    return ui.div(*buttons, class_="sashiny-toggle", role="group", **attrs)
+
+
+def paired_tag(  # noqa: PLR0913 - value, spec and the §8.6 view settings
+    value: dict[str, Any],
+    spec: dict[str, Any],
+    *,
+    output_id: str,
+    group: str,
+    view: str = "sashiny",
+    toggle: bool = True,
+    render: Callable[[dict[str, Any], dict[str, Any] | None], Any] | None = None,
+) -> TagChild:
+    """Render a paired output: the SAS graph and the SAShiny chart (spec §8.6).
+
+    Both views are rendered once; the browser switches between them. With
+    ``toggle=False`` only the default ``view`` is rendered.
+
+    Args:
+        value: The §8.1 paired value ``{"sas", "sashiny"}``.
+        spec: The output's contract spec.
+        output_id: The output id (keys the remembered view).
+        group: The module's toggle group id.
+        view: The default view, ``"sashiny"`` or ``"sas"``.
+        toggle: Whether to show the per-card toggle.
+        render: An optional chart render callback (spec §8.5).
+
+    Returns:
+        The card body.
+
+    """
+    chart_spec = paired_chart_spec(spec)
+
+    def _pane(part: str) -> TagChild:
+        part_value = value.get(part) if isinstance(value, dict) else None
+        if part_value is None:
+            return ui.tags.small("No output for this run.")
+        error = _error_tag(part_value)
+        if error is not None:
+            return error
+        if part == "sas":
+            return plot_tag(part_value)
+        return chart_tag(part_value, chart_spec, render)
+
+    if not toggle:
+        return _pane(view)
+    return ui.div(
+        _toggle_dependency(),
+        _toggle_buttons(_VIEW_LABELS, view, data_sashiny_card_toggle="", aria_label="Chart view"),
+        *[
+            ui.div(_pane(v), data_sashiny_pane=v, hidden=None if v == view else "")
+            for v in ("sashiny", "sas")
+        ],
+        class_="sashiny-paired",
+        data_sashiny_paired="",
+        data_sashiny_group=group,
+        data_sashiny_output=output_id,
+        data_sashiny_default=view,
+        data_sashiny_view=view,
+    )
+
+
+def view_toggle_tag(group: str, view: str | None) -> TagChild:
+    """Render the module-wide SAS / SAShiny view toggle (spec §8.6).
+
+    Args:
+        group: The module's toggle group id.
+        view: The default view of every paired card, or ``None`` when they differ.
+
+    Returns:
+        The toggle.
+
+    """
+    attrs: dict[str, str] = {"data_sashiny_group": group}
+    if view is not None:
+        attrs["data_sashiny_default"] = view
+    return ui.div(
+        _toggle_dependency(),
+        ui.tags.span("Show:", class_="small"),
+        _toggle_buttons(_GROUP_LABELS, view, aria_label="Chart view for all outputs"),
+        class_="sashiny-group-toggle",
+        data_sashiny_group_toggle="",
+        **attrs,
+    )
+
+
+def _chart_views(contract: Contract, chart_view: str | dict[str, str]) -> dict[str, str]:
+    """Return the default view of each paired output, validating `chart_view` (spec §8.6)."""
+    paired = [oid for oid, s in contract.data["outputs"].items() if is_paired(s)]
+    if isinstance(chart_view, str):
+        if chart_view not in _VIEWS:
+            raise ValueError(f"chart_view must be 'sashiny' or 'sas', not {chart_view!r}")
+        return dict.fromkeys(paired, chart_view)
+    if not isinstance(chart_view, dict):
+        raise TypeError("chart_view must be 'sashiny', 'sas' or a dict of output id to view")
+    unknown = [oid for oid in chart_view if oid not in paired]
+    if unknown:
+        raise ValueError(f"chart_view names outputs that are not paired: {', '.join(unknown)}")
+    bad = [oid for oid, v in chart_view.items() if v not in _VIEWS]
+    if bad:
+        raise ValueError(f"chart_view must map outputs to 'sashiny' or 'sas': {', '.join(bad)}")
+    return {oid: chart_view.get(oid, "sashiny") for oid in paired}
+
+
 def html_tag(value: str) -> TagChild:
     """Render the ODS HTML document in a sandboxed frame (no scripts)."""
     if not value:
@@ -407,6 +546,9 @@ def program_ui(
     settings = contract.data.get("ui") or {}
     controls.append(ui.input_action_button("run", settings.get("run_label", "Run")))
     outputs = [_output_card(oid, spec) for oid, spec in contract.data["outputs"].items()]
+    if any(is_paired(spec) for spec in contract.data["outputs"].values()):
+        # Module-wide SAS / SAShiny toggle (spec §8.6); empty when the server turns it off.
+        outputs.insert(0, ui.output_ui(_VIEW_TOGGLE_ID))
     status = ui.card(
         ui.card_header("Run"),
         ui.output_code("status"),
@@ -430,6 +572,9 @@ def program_server(  # noqa: PLR0913, PLR0917 - Shiny module signature + overrid
     engine: Engine,
     server_override: Callable[..., Any] | None = None,
     chart_render: (dict[str, Callable[[dict[str, Any], dict[str, Any] | None], Any]] | None) = None,
+    *,
+    chart_view: str | dict[str, str] = "sashiny",
+    chart_toggle: bool = True,
 ) -> dict[str, Any]:
     """Serve a SAS program module (run the contract and render outputs).
 
@@ -444,12 +589,18 @@ def program_server(  # noqa: PLR0913, PLR0917 - Shiny module signature + overrid
         chart_render: An optional mapping of chart render callbacks keyed by
             output id. Each is `(value, spec) -> object` returning a plot
             object (spec §8.5). Takes precedence over a declarative `spec`.
+        chart_view: The default view of paired outputs (spec §8.6):
+            `"sashiny"` (default) for the SAShiny chart, `"sas"` for the
+            original SAS graph, or a dict of paired output id to view.
+        chart_toggle: Whether to show the SAS / SAShiny toggles (default
+            `True`). With `False` each paired card shows only its default view.
 
     Returns:
         `{"result", "status", "log"}` reactive calcs for custom extensions.
 
     """
     check_engine(engine)
+    views = _chart_views(contract, chart_view)
     if server_override is not None:
         return server_override(input, output, session, contract, engine)  # type: ignore[no-any-return]
     inputs: dict[str, Any] = contract.data.get("inputs") or {}
@@ -539,17 +690,54 @@ def program_server(  # noqa: PLR0913, PLR0917 - Shiny module signature + overrid
             return "(no log)"
         return res.log or "(no log)"
 
-    for oid, spec in contract.data["outputs"].items():
-        if spec["type"] == "download":
-            _register_download(output, oid, spec, result)
-        else:
-            _register_card(output, oid, spec, result, running, (chart_render or {}).get(oid))
+    _register_outputs(
+        output,
+        contract,
+        result,
+        running,
+        chart_render or {},
+        views,
+        group=session.ns(_VIEW_GROUP_ID),
+        chart_toggle=chart_toggle,
+    )
 
     return {
         "result": result,
         "status": reactive.calc(lambda: (result() or _empty_result()).status),
         "log": reactive.calc(lambda: (result() or _empty_result()).log),
     }
+
+
+def _register_outputs(  # noqa: PLR0913, PLR0917 - the module's reactive pieces and §8.6 settings
+    output: Outputs,
+    contract: Contract,
+    result: Callable[[], Result | None],
+    running: Callable[[], bool],
+    chart_render: dict[str, Callable[[dict[str, Any], dict[str, Any] | None], Any]],
+    views: dict[str, str],
+    *,
+    group: str,
+    chart_toggle: bool,
+) -> None:
+    """Register one card (or download) per output and the module-wide view toggle."""
+    for oid, spec in contract.data["outputs"].items():
+        if spec["type"] == "download":
+            _register_download(output, oid, spec, result)
+            continue
+        pairing = (
+            _Pairing(group=group, view=views[oid], toggle=chart_toggle) if oid in views else None
+        )
+        _register_card(output, oid, spec, result, running, chart_render.get(oid), pairing)
+
+    if not views:
+        return
+    defaults = set(views.values())
+    group_view = next(iter(defaults)) if len(defaults) == 1 else None
+
+    @output(id=_VIEW_TOGGLE_ID)
+    @shiny_render.ui
+    def _view_toggle() -> TagChild:
+        return view_toggle_tag(group, group_view) if chart_toggle else None
 
 
 def _snapshot_inputs(
@@ -589,6 +777,15 @@ def _empty_result() -> Result:
     return Result.new("", "idle")
 
 
+@dataclass(frozen=True)
+class _Pairing:
+    """View settings of one paired output card (spec §8.6)."""
+
+    group: str
+    view: str
+    toggle: bool
+
+
 def _register_card(  # noqa: PLR0913, PLR0917 - Shiny render callback + running flag
     output: Outputs,
     oid: str,
@@ -596,6 +793,7 @@ def _register_card(  # noqa: PLR0913, PLR0917 - Shiny render callback + running 
     result: Callable[[], Result | None],
     running: Callable[[], bool],
     chart_render: Callable[[dict[str, Any], dict[str, Any] | None], Any] | None = None,
+    pairing: _Pairing | None = None,
 ) -> None:
     kind = spec["type"]
 
@@ -612,6 +810,16 @@ def _register_card(  # noqa: PLR0913, PLR0917 - Shiny render callback + running 
         if oid not in res.outputs:
             return ui.tags.small("No output for this run.")
         value = res.outputs[oid]
+        if pairing is not None:
+            return _error_tag(value) or paired_tag(
+                value,
+                spec,
+                output_id=oid,
+                group=pairing.group,
+                view=pairing.view,
+                toggle=pairing.toggle,
+                render=chart_render,
+            )
         if kind == "chart":
             return _error_tag(value) or chart_tag(value, spec, chart_render)
         return _error_tag(value) or _RENDERERS[kind](value)

@@ -30,7 +30,9 @@ from ..collect import (
     download_value,
     extract_plots,
     formatted_table_code,
+    is_paired,
     join_remote,
+    paired_parts,
     scope_log,
     select_columns,
     split_member,
@@ -737,6 +739,9 @@ class SaspyEngine(Engine):
         errors: list[str] = []
         html = res.get("LST", "")
         for oid, spec in (data.get("outputs") or {}).items():
+            if is_paired(spec):
+                outputs[oid] = self._collect_paired(oid, spec, html, errors)
+                continue
             try:
                 outputs[oid] = self._collect_one(oid, spec, html, res.get("LOG", ""))
             except Exception as exc:
@@ -744,6 +749,29 @@ class SaspyEngine(Engine):
                 outputs[oid] = {"error": str(exc)}
                 errors.append(message)
         return outputs, errors
+
+    def _collect_paired(
+        self, oid: str, spec: dict[str, Any], html: str, errors: list[str]
+    ) -> dict[str, Any]:
+        """Collect both parts of a paired output (§8.2 *paired*); each part fails alone."""
+        select, chart = paired_parts(spec)
+        value: dict[str, Any] = {}
+        parts: dict[str, Callable[[], Any]] = {
+            "sas": lambda: extract_plots(html, select),
+            "sashiny": lambda: self._table(
+                chart["from"],
+                chart.get("columns"),
+                int(chart.get("max_rows", 10000)),
+                formatted=False,
+            ),
+        }
+        for part, collect in parts.items():
+            try:
+                value[part] = collect()
+            except Exception as exc:
+                value[part] = {"error": str(exc)}
+                errors.append(f"{oid}.{part}: {exc}")
+        return value
 
     def _collect_one(self, oid: str, spec: dict[str, Any], html: str, log: str) -> Any:
         kind = spec["type"]

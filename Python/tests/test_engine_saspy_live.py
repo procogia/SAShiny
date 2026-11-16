@@ -192,6 +192,47 @@ def test_full_run_collects_every_output(contract: sashiny.Contract) -> None:
     assert not [k for k in fake.datasets if k[1].startswith("_SX_")]
 
 
+PAIRED = """\
+sashiny: 1
+program: prog.sas
+title: Paired
+outputs:
+  by_chart:
+    type: chart
+    from: work.stats
+    columns: [name, age]
+    sas_plot: 2
+  by_plot:
+    type: plot
+    select: 1
+    chart: {from: work.nope}
+  bad_graph:
+    type: chart
+    from: work.stats
+    sas_plot: 3
+"""
+
+
+def test_paired_outputs_collect_both_parts_independently(tmp_path: Path) -> None:
+    # Spec §8.2 paired: each part is collected, and fails, on its own.
+    (tmp_path / "prog.sas").write_text("data work.stats; run;\n", encoding="utf-8")
+    path = tmp_path / "p.sashiny.yml"
+    path.write_text(PAIRED, encoding="utf-8")
+    result = _engine(_fake()).run(sashiny.load(path), {}, today=TODAY)
+    out = result.outputs
+    assert set(out["by_chart"]) == {"sas", "sashiny"}
+    assert [p["mime"] for p in out["by_chart"]["sas"]] == ["image/svg+xml"]
+    assert out["by_chart"]["sashiny"]["rows"][0] == ["Ann", 40]
+    assert [p["mime"] for p in out["by_plot"]["sas"]] == ["image/png"]
+    assert out["by_plot"]["sashiny"] == {"error": "dataset WORK.NOPE not found"}
+    assert out["bad_graph"]["sas"] == {"error": "select=3 but the run produced 2 graph(s)"}
+    assert out["bad_graph"]["sashiny"]["total_rows"] == 3
+    assert result.metadata["collect_errors"] == [
+        "by_plot.sashiny: dataset WORK.NOPE not found",
+        "bad_graph.sas: select=3 but the run produced 2 graph(s)",
+    ]
+
+
 def test_choices_from_validation_uses_sas_choices(contract: sashiny.Contract) -> None:
     engine = _engine(_fake())
     assert engine.choices(contract) == {

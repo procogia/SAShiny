@@ -172,6 +172,15 @@ outputs:
     type: plot
     label: "Data: history and moving average"
     select: 1
+    chart:
+      from: work.series
+      columns: [month, prescriptions]
+      spec:
+        kind: line
+        x: month
+        y: prescriptions
+        xlab: Month (SAS date)
+        ylab: Prescriptions
   seasonal_plot:
     type: plot
     label: "Explore: seasonal profile"
@@ -208,6 +217,15 @@ outputs:
     type: plot
     label: "Diagnostics: residuals over time"
     select: 6
+    chart:
+      from: work.diagnostics
+      columns: [month, residual]
+      spec:
+        kind: line
+        x: month
+        y: residual
+        xlab: Month (SAS date)
+        ylab: Residual
   residual_acf_plot:
     type: plot
     label: "Diagnostics: residual ACF"
@@ -216,10 +234,26 @@ outputs:
     type: plot
     label: "Diagnostics: residual distribution"
     select: 8
+    chart:
+      from: work.diagnostics
+      columns: [residual]
+      spec:
+        kind: histogram
+        x: residual
+        xlab: Residual
   forecast_plot:
     type: plot
     label: "Forecast: history and forecast"
     select: 9
+    chart:
+      from: work.forecast
+      columns: [month, forecast]
+      spec:
+        kind: line
+        x: month
+        y: forecast
+        xlab: Month (SAS date)
+        ylab: Forecast prescriptions
   forecast:
     type: table
     label: "Forecast: monthly values and prediction limits"

@@ -18,6 +18,7 @@ import yaml
 
 import sashiny
 from _repo import repo_root
+from sashiny.collect import is_paired
 
 REPO = repo_root()
 EXAMPLES = REPO / "examples"
@@ -127,6 +128,29 @@ def _download_problems(
     return problems
 
 
+def _paired_problems(oid: str, value: object, minimum: int) -> list[str]:
+    """Return the problems of a paired output value (spec §8.6): one check per part."""
+    if not isinstance(value, dict):
+        return [f"{oid}: paired value is not a dict"]
+    problems = []
+    for part in ("sas", "sashiny"):
+        got = value.get(part)
+        if isinstance(got, dict) and "error" in got:
+            problems.append(f"{oid}.{part}: {got['error']}")
+        elif part == "sas":
+            graphs = got or []
+            if len(graphs) < minimum:
+                problems.append(f"{oid}.sas: {len(graphs)} graphs, expected at least {minimum}")
+            problems += [
+                f"{oid}.sas: unexpected mime {p['mime']}"
+                for p in graphs
+                if p["mime"] not in MIME_PREFIX
+            ]
+        elif not isinstance(got, dict) or not got.get("rows"):
+            problems.append(f"{oid}.sashiny: no chart data")
+    return problems
+
+
 def check_result(  # noqa: PLR0912 - one branch per kind of problem
     result: sashiny.Result, contract: sashiny.Contract, scenario: Scenario
 ) -> list[str]:
@@ -149,7 +173,9 @@ def check_result(  # noqa: PLR0912 - one branch per kind of problem
             problems.append(f"{oid}: {value['error']}")
             continue
         kind = spec["type"]
-        if kind == "table":
+        if is_paired(spec):
+            problems += _paired_problems(oid, value, (expect.get("plots") or {}).get(oid, 0))
+        elif kind == "table":
             minimum = (expect.get("tables") or {}).get(oid, {}).get("min_rows", 0)
             if len(value["rows"]) < minimum:
                 problems.append(f"{oid}: {len(value['rows'])} rows, expected at least {minimum}")

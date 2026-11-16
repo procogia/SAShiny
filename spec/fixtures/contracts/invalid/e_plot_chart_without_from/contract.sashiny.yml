@@ -1,0 +1,12 @@
+sashiny: 1
+program: program.sas
+title: Invalid
+outputs:
+  bars:
+    type: plot
+    select: 1
+    chart:
+      spec:
+        kind: bar
+        x: sex
+        y: weight

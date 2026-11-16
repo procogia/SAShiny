@@ -37,3 +37,28 @@ sas_publish("my-app", title = "Cars explorer", license_ack = TRUE)
 You can also use the *Publish SAShiny app to Posit Connect* RStudio/Positron
 addin, or `sas_app(..., publish = TRUE)`. Credential files (`.authinfo`,
 `.Renviron`, `.env`, keys) are never bundled.
+
+## Toggle between SAS graphs and SAShiny charts
+
+A paired output shows the original SAS graph and a SAShiny chart in one card, with a toggle
+in the browser (spec section 8.6). Add a `chart:` block to a `plot` output, or `sas_plot: <k>` to a
+`chart` output:
+
+```yaml
+outputs:
+  price_vs_mpg:
+    type: plot
+    select: 1                 # the SAS graph shown by "SAS graph"
+    chart:                    # the SAShiny chart shown by "SAShiny chart"
+      from: work.cars_filtered
+      spec: {kind: scatter, x: mpg_city, y: msrp, color: origin}
+```
+
+Each card has its own toggle and the module has one that switches them all. The default view is the
+SAShiny chart; both settings are code arguments:
+
+```r
+sas_app(list(path), engine, chart_view = "sas")                 # start on the SAS graphs
+sas_app(list(path), engine, chart_view = list(price_vs_mpg = "sas")) # per output
+sas_app(list(path), engine, chart_toggle = FALSE)               # hide the toggles
+```

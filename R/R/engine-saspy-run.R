@@ -632,6 +632,12 @@ sas_engine_run.sashiny_engine_saspy <- function(engine, contract, values, today 
   errors <- list()
   for (oid in names(data$outputs)) {
     spec <- data$outputs[[oid]]
+    if (.sashiny_is_paired(spec)) {
+      paired <- .sashiny_collect_paired(engine, oid, spec, main)
+      errors <- c(errors, paired$errors)
+      outputs[oid] <- list(paired$value)
+      next
+    }
     value <- tryCatch(
       .sashiny_collect_one(engine, oid, spec, main),
       error = function(e) structure(list(error = conditionMessage(e)), class = "sashiny_failed")
@@ -643,6 +649,38 @@ sas_engine_run.sashiny_engine_saspy <- function(engine, contract, values, today 
     outputs[oid] <- list(value)
   }
   list(outputs = outputs, errors = errors)
+}
+
+#' Collect both parts of a paired output (section 8.2, paired).
+#'
+#' Each part fails on its own: a failed part's value is `list(error = ...)`
+#' and its message is returned as `<output_id>.<part>: <message>`.
+#' @noRd
+.sashiny_collect_paired <- function(engine, oid, spec, main) {
+  parts <- .sashiny_paired_parts(spec)
+  chart <- parts$chart
+  collectors <- list(
+    sas = function() .sashiny_extract_plots(main$LST, parts$select),
+    sashiny = function() {
+      .sashiny_fetch_table(engine, chart$from, chart$columns,
+        as.integer(chart$max_rows %||% 10000L),
+        formatted = FALSE
+      )
+    }
+  )
+  value <- list()
+  errors <- list()
+  for (part in names(collectors)) {
+    got <- tryCatch(collectors[[part]](), error = function(e) {
+      structure(list(error = conditionMessage(e)), class = "sashiny_failed")
+    })
+    if (inherits(got, "sashiny_failed")) {
+      errors[[length(errors) + 1L]] <- paste0(oid, ".", part, ": ", got$error)
+      got <- list(error = got$error)
+    }
+    value[part] <- list(got)
+  }
+  list(value = value, errors = errors)
 }
 
 #' Collect one output.

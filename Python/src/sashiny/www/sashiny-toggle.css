@@ -1,0 +1,43 @@
+/* SAShiny view toggle for paired outputs (spec CONTRACT.md section 8.6). */
+.sashiny-toggle {
+  display: inline-flex;
+  gap: 0;
+  margin-bottom: 0.5rem;
+}
+.sashiny-toggle button {
+  border: 1px solid #98a2b3;
+  background: #fff;
+  color: #344054;
+  padding: 0.2rem 0.7rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.sashiny-toggle button + button {
+  border-left: 0;
+}
+.sashiny-toggle button:first-child {
+  border-radius: 0.3rem 0 0 0.3rem;
+}
+.sashiny-toggle button:last-child {
+  border-radius: 0 0.3rem 0.3rem 0;
+}
+.sashiny-toggle button[aria-pressed="true"] {
+  background: #175cd3;
+  border-color: #175cd3;
+  color: #fff;
+}
+.sashiny-toggle button:focus-visible {
+  outline: 2px solid #175cd3;
+  outline-offset: 2px;
+}
+.sashiny-group-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.sashiny-group-toggle .sashiny-toggle {
+  margin-bottom: 0;
+}
+[data-sashiny-pane][hidden] {
+  display: none !important;
+}

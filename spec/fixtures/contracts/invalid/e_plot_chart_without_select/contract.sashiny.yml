@@ -1,0 +1,8 @@
+sashiny: 1
+program: program.sas
+title: Invalid
+outputs:
+  bars:
+    type: plot
+    chart:
+      from: work.means

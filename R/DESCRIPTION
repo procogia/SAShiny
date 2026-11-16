@@ -40,6 +40,7 @@ Suggests:
     callr,
     ggplot2,
     haven,
+    htmltools,
     knitr,
     later,
     openxlsx,

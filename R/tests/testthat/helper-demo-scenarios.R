@@ -142,6 +142,10 @@ demo_check_result <- function(result, contract, scenario) {
       problems <- c(problems, sprintf("%s: %s", oid, value$error))
       next
     }
+    if (.sashiny_is_paired(spec)) {
+      problems <- c(problems, .demo_paired_problems(oid, value, expect$plots[[oid]] %||% 0))
+      next
+    }
     problems <- c(problems, switch(spec$type,
       table = {
         minimum <- expect$tables[[oid]]$min_rows %||% 0
@@ -175,6 +179,33 @@ demo_check_result <- function(result, contract, scenario) {
       },
       download = .demo_download_problems(oid, spec$format, value, contract)
     ))
+  }
+  problems
+}
+
+# Problems of a paired output value (spec section 8.6): one check per part.
+.demo_paired_problems <- function(oid, value, minimum) {
+  if (!is.list(value)) {
+    return(sprintf("%s: paired value is not a list", oid))
+  }
+  problems <- character(0)
+  sas <- value$sas
+  if (.sashiny_is_collect_error(sas)) {
+    problems <- c(problems, sprintf("%s.sas: %s", oid, sas$error))
+  } else {
+    mimes <- vapply(sas %||% list(), function(p) p$mime, "")
+    problems <- c(problems,
+      if (length(sas) < minimum) {
+        sprintf("%s.sas: %d graphs, expected at least %d", oid, length(sas), minimum)
+      },
+      sprintf("%s.sas: unexpected mime %s", oid, setdiff(mimes, .demo_mimes))
+    )
+  }
+  chart <- value$sashiny
+  if (.sashiny_is_collect_error(chart)) {
+    problems <- c(problems, sprintf("%s.sashiny: %s", oid, chart$error))
+  } else if (length(chart$rows) == 0L) {
+    problems <- c(problems, sprintf("%s.sashiny: no chart data", oid))
   }
   problems
 }

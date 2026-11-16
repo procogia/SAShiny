@@ -1,0 +1,6 @@
+{
+  "findings": [
+    {"code": "L003", "path": "/outputs/bars"},
+    {"code": "L003", "path": "/outputs/trend"}
+  ]
+}
