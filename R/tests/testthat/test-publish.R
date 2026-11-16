@@ -35,7 +35,7 @@ test_that("sas_publish bundles no credential files and sends env var names only"
   calls <- new.env()
   local_mocked_bindings(.sashiny_rsconnect = function() stub_rsconnect(calls))
   withr::local_envvar(
-    SASHINY_SAS_USER = "me", SASHINY_SAS_PASSWORD = "pw", SASHINY_LICENSE_ACK = NA,
+    SASHINY_SAS_USER = "me", SASHINY_SAS_PASSWORD = "s3cret-Pa55", SASHINY_LICENSE_ACK = NA,
     CONNECT_SERVER = NA, CONNECT_API_KEY = NA
   )
   expect_message(
@@ -54,7 +54,7 @@ test_that("sas_publish bundles no credential files and sends env var names only"
   # The acknowledgement is set only for the deploy call, then restored.
   expect_identical(calls$deploy$ack_at_deploy, "true")
   expect_identical(Sys.getenv("SASHINY_LICENSE_ACK", unset = "unset"), "unset")
-  expect_false(any(grepl("pw", unlist(calls$deploy), fixed = TRUE)))
+  expect_false(any(grepl("s3cret-Pa55", unlist(calls$deploy), fixed = TRUE)))
 })
 
 test_that("sas_publish registers CONNECT_SERVER and CONNECT_API_KEY", {

@@ -47,7 +47,7 @@ def test_publish_bundles_no_credentials_and_sends_names_only(
     app_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("SASHINY_SAS_USER", "me")
-    monkeypatch.setenv("SASHINY_SAS_PASSWORD", "pw")
+    monkeypatch.setenv("SASHINY_SAS_PASSWORD", "s3cret-Pa55")
     monkeypatch.delenv("SASHINY_LICENSE_ACK", raising=False)
     rec = Recorder()
     res = publish(app_dir, title="Demo", name="srv", license_ack=True, runner=rec)
@@ -57,7 +57,7 @@ def test_publish_bundles_no_credentials_and_sends_names_only(
     assert res.env_vars == ["SASHINY_LICENSE_ACK", "SASHINY_SAS_USER", "SASHINY_SAS_PASSWORD"]
     assert rec.args[:2] == ["deploy", "shiny"]
     assert rec.args[3:5] == ["--name", "srv"]
-    assert "pw" not in " ".join(rec.args)
+    assert "s3cret-Pa55" not in " ".join(rec.args)
     assert rec.env["SASHINY_LICENSE_ACK"] == "true"
     assert "SASHINY_LICENSE_ACK" not in os.environ
 
