@@ -1,0 +1,8 @@
+sashiny: 1
+program: program.sas
+title: Invalid
+outputs:
+  scatter:
+    type: chart
+    from: work.class
+    sas_plot: 0

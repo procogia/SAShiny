@@ -626,6 +626,32 @@ server (e.g. `sas_program_server(..., render = list(<output_id> = fn))` in R, or
 Python), following the same "render callback" pattern as `shiny::renderPlot` and
 `shiny.render.plot`.
 
+### 8.6 Paired outputs and the view toggle
+
+A paired output (2.2) is rendered by the Shiny module as one card with two views: `sas` (the
+original SAS graph, rendered like a `plot`) and `sashiny` (the client-side chart, rendered like a
+`chart`, 8.5). The behaviour is identical in R and Python:
+
+- Both views are rendered into the card once per run. Switching views happens in the browser only;
+  it MUST NOT re-run SAS or re-render the card on the server.
+- **Per-card toggle:** each paired card shows two buttons, `SAS graph` and `SAShiny chart`, with
+  `aria-pressed` marking the visible view.
+- **Module toggle:** a program module with at least one paired output shows one more pair of
+  buttons, `SAS graphs` and `SAShiny charts`, above the outputs. It switches every paired card of
+  that module. A later per-card choice overrides it for that card only.
+- The view chosen for a card, or by the module toggle, persists when the card re-renders after a
+  new run, for the life of the browser tab.
+- A view whose part failed (8.2 paired) shows the part's collection error, like an unpaired output.
+- **Default view:** `sashiny`. The module server takes a `chart_view` argument: `"sashiny"`,
+  `"sas"`, or a mapping from paired output ids to either value (unlisted paired outputs use
+  `sashiny`). An unknown value or an id that is not a paired output is an error when the server
+  starts.
+- **Toggle on/off:** the toggles are shown by default. The module takes a `chart_toggle` argument
+  (default true). With `chart_toggle` false neither the per-card nor the module toggle is shown,
+  and each paired card shows only its default view.
+- `chart_view` and `chart_toggle` are code arguments, not YAML fields; the app helpers pass them
+  through to every module.
+
 ---
 
 ## 9. Known constraints (documented, not errors)
@@ -651,7 +677,7 @@ Python), following the same "render callback" pattern as `shiny::renderPlot` and
 |---|---|
 | `L001` | Program assigns an injected macro variable outside a `%symexist` guard (section 9). The guard exemption applies only to assignments inside the guard; a later assignment to the same macro outside any guard is still `L001`. Under `run.entry: macro`, an assignment to `NAME` is also exempt when it lies inside the definition of the entry macro itself (from `%macro <MACRO>(` to the next `%mend`) and `NAME` is one of that macro's parameters (a name in the parenthesised parameter list, matched case-insensitively): this is parameter self-normalisation and the value is local to the macro. The same assignment outside that definition, or to a name that is not a parameter, is still `L001`. |
 | `L002` | Injected macro variable never referenced in the program (`&NAME` not found, case-insensitive). |
-| `L003` | `table`/`download` `from` dataset never created in the program and not a dataset input target or a permanent library. |
+| `L003` | `table`/`chart`/`download` `from` dataset, or the `chart.from` of a paired `plot`, never created in the program and not a dataset input target or a permanent library. |
 | `L004` | More than one `rtf`/`pdf` download: each receives the same output; usually unintended. |
 | `L005` | `entry: macro` but `%macro <MACRO>` not found in the program. |
 

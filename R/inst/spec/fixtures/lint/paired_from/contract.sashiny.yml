@@ -1,0 +1,19 @@
+sashiny: 1
+program: program.sas
+title: Paired outputs read datasets the program never creates
+outputs:
+  scatter:
+    type: chart
+    from: work.class
+    sas_plot: 1
+  bars:
+    type: plot
+    select: 2
+    chart:
+      from: work.means
+  trend:
+    type: chart
+    from: work.trend
+  people:
+    type: chart
+    from: sashelp.class
