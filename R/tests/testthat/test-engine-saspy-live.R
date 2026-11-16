@@ -84,6 +84,33 @@ test_that("a full run collects every output type", {
   expect_false(any(startsWith(names(fake$datasets), "WORK._SX_")))
 })
 
+test_that("paired outputs collect both parts independently (spec section 8.2)", {
+  dir <- tempfile("sashiny-paired-")
+  dir.create(dir)
+  writeLines("data work.stats; run;", file.path(dir, "prog.sas"))
+  writeLines(c(
+    "sashiny: 1", "program: prog.sas", "title: Paired", "outputs:",
+    "  by_chart:", "    type: chart", "    from: work.stats", "    columns: [name, age]",
+    "    sas_plot: 2",
+    "  by_plot:", "    type: plot", "    select: 1", "    chart: {from: work.nope}",
+    "  bad_graph:", "    type: chart", "    from: work.stats", "    sas_plot: 3"
+  ), file.path(dir, "p.sashiny.yml"))
+  contract <- sas_contract(file.path(dir, "p.sashiny.yml"))
+  result <- sas_engine_run(fake_engine(), contract, list(), today = .sashiny_today)
+  out <- result$outputs
+  expect_setequal(names(out$by_chart), c("sas", "sashiny"))
+  expect_identical(vapply(out$by_chart$sas, function(p) p$mime, ""), "image/svg+xml")
+  expect_identical(out$by_chart$sashiny$rows[[1]], list("Ann", 40))
+  expect_identical(vapply(out$by_plot$sas, function(p) p$mime, ""), "image/png")
+  expect_identical(out$by_plot$sashiny, list(error = "dataset WORK.NOPE not found"))
+  expect_identical(out$bad_graph$sas, list(error = "select=3 but the run produced 2 graph(s)"))
+  expect_identical(out$bad_graph$sashiny$total_rows, 3L)
+  expect_identical(result$metadata$collect_errors, list(
+    "by_plot.sashiny: dataset WORK.NOPE not found",
+    "bad_graph.sas: select=3 but the run produced 2 graph(s)"
+  ))
+})
+
 test_that("choices_from validation uses the choices read from SAS", {
   engine <- fake_engine()
   contract <- fake_contract()

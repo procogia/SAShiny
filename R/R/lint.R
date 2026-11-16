@@ -205,14 +205,18 @@ sashiny_lint <- function(data, program_text) {
     }
   }
 
-  # L003: table/download `from` dataset never created and not a target.
+  # L003: table/chart/download (or paired plot chart) `from` dataset never
+  # created and not a target.
   targets <- .sashiny_dataset_targets(data)
   for (oid in names(data$outputs %||% list())) {
     spec <- data$outputs[[oid]]
-    if (!(spec$type %in% c("table", "download"))) {
+    if (identical(spec$type, "plot") && is.list(spec$chart)) {
+      ref <- spec$chart$from
+    } else if (spec$type %in% c("table", "chart", "download")) {
+      ref <- spec$from
+    } else {
       next
     }
-    ref <- spec$from
     if (is.null(ref) || !grepl(".", ref, fixed = TRUE)) {
       next
     }

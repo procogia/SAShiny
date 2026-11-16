@@ -125,6 +125,43 @@
   plots[select]
 }
 
+# ---------------------------------------------------------------- paired outputs
+
+#' Whether an output pairs a SAS graph with a SAShiny chart (sections 2.2, 8.6)
+#'
+#' @param spec One output spec.
+#' @return `TRUE` or `FALSE`.
+#' @noRd
+.sashiny_is_paired <- function(spec) {
+  kind <- spec$type %||% ""
+  (identical(kind, "chart") && !is.null(spec$sas_plot)) ||
+    (identical(kind, "plot") && !is.null(spec$chart))
+}
+
+#' The SAS graph position and chart fields of a paired output (section 8.2)
+#'
+#' @param spec One paired output spec.
+#' @return `list(select, chart)`; `chart` holds `from`, `columns`, `max_rows`
+#'   and `spec`, from the chart output itself or the plot's `chart` mapping.
+#' @noRd
+.sashiny_paired_parts <- function(spec) {
+  if (identical(spec$type, "chart")) {
+    return(list(select = as.integer(spec$sas_plot), chart = spec))
+  }
+  list(select = as.integer(spec$select), chart = spec$chart)
+}
+
+#' A `chart` output spec equivalent to the chart part of a paired output
+#'
+#' @param spec One paired output spec.
+#' @return A `chart` output spec.
+#' @noRd
+.sashiny_paired_chart_spec <- function(spec) {
+  chart <- .sashiny_paired_parts(spec)$chart
+  keep <- intersect(names(chart), c("from", "columns", "max_rows", "spec"))
+  c(list(type = "chart"), chart[keep])
+}
+
 # ---------------------------------------------------------------- SAS code
 
 #' Split `lib.member` into upper-cased parts.

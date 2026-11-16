@@ -239,3 +239,164 @@ test_that("each chart output gets its own render callback", {
     expect_identical(getOption("shiny.maxRequestSize"), 50 * 1024 * 1024)
     .sashiny_restore_upload_limit()
   })
+
+# ---------------------------------------------------------------- paired outputs (section 8.6)
+
+paired_contract <- function() {
+  sas_contract(file.path(.sashiny_fixtures(), "contracts", "valid", "paired_outputs",
+                         "contract.sashiny.yml"))
+}
+
+paired_value <- function(x = "x", y = "y") {
+  chart <- list(
+    columns = list(
+      list(name = x, type = "character", label = "", format = ""),
+      list(name = y, type = "numeric", label = "", format = "")
+    ),
+    rows = list(list("a", 2), list("b", 4)), total_rows = 2L, truncated = FALSE, formatted = FALSE
+  )
+  list(sas = list(list(mime = "image/png", data = "QUJD")), sashiny = chart)
+}
+
+paired_spec <- function() {
+  list(type = "chart", from = "work.t", sas_plot = 1L,
+       spec = list(kind = "bar", x = "x", y = "y"))
+}
+
+test_that("a paired tag renders both views and the toggle", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("htmltools")
+  html <- as.character(.sashiny_paired_tag(paired_value(), paired_spec(), "p", "mod-views"))
+  expect_match(html, "data-sashiny-paired", fixed = TRUE)
+  expect_match(html, "data-sashiny-default=\"sashiny\"", fixed = TRUE)
+  expect_match(html, "data-sashiny-group=\"mod-views\"", fixed = TRUE)
+  expect_equal(lengths(regmatches(html, gregexpr("data-sashiny-pane=", html, fixed = TRUE))), 2L)
+  expect_match(html, "data:image/png;base64,QUJD", fixed = TRUE)
+  expect_match(html, "SAS graph", fixed = TRUE)
+  expect_match(html, "SAShiny chart", fixed = TRUE)
+  # Only the default view is visible.
+  sas_pane <- sub(".*(data-sashiny-pane=\"sas\"[^>]*>).*", "\\1", html)
+  expect_match(sas_pane, "hidden", fixed = TRUE)
+  expect_match(as.character(.sashiny_paired_tag(
+    paired_value(), paired_spec(), "p", "g", view = "sas"
+  )), "data-sashiny-view=\"sas\"", fixed = TRUE)
+})
+
+test_that("a paired tag without the toggle shows only the default view", {
+  skip_if_not_installed("shiny")
+  chart_only <- as.character(.sashiny_paired_tag(
+    paired_value(), paired_spec(), "p", "g", toggle = FALSE
+  ))
+  expect_false(grepl("data-sashiny-paired", chart_only, fixed = TRUE))
+  expect_false(grepl("QUJD", chart_only, fixed = TRUE))
+  sas_only <- as.character(.sashiny_paired_tag(
+    paired_value(), paired_spec(), "p", "g", toggle = FALSE, view = "sas"
+  ))
+  expect_match(sas_only, "QUJD", fixed = TRUE)
+  expect_false(grepl("data-sashiny-paired", sas_only, fixed = TRUE))
+})
+
+test_that("a failed part is reported without hiding the other part", {
+  skip_if_not_installed("shiny")
+  value <- paired_value()
+  value$sas <- list(error = "select=3 but the run produced 2 graph(s)")
+  html <- as.character(.sashiny_paired_tag(value, paired_spec(), "p", "g"))
+  expect_match(html, "select=3 but the run produced 2 graph(s)", fixed = TRUE)
+  expect_equal(lengths(regmatches(html, gregexpr("<img", html, fixed = TRUE))), 1L)
+})
+
+test_that("paired helpers recognise both pairing forms", {
+  plot <- list(type = "plot", select = 2L, chart = list(from = "work.m", max_rows = 5L, spec = list()))
+  expect_identical(
+    .sashiny_paired_chart_spec(plot),
+    list(type = "chart", from = "work.m", max_rows = 5L, spec = list())
+  )
+  expect_identical(.sashiny_paired_parts(plot)$select, 2L)
+  expect_identical(.sashiny_paired_parts(paired_spec())$select, 1L)
+  expect_true(.sashiny_is_paired(plot))
+  expect_true(.sashiny_is_paired(paired_spec()))
+  expect_false(.sashiny_is_paired(list(type = "plot", select = 1L)))
+  expect_false(.sashiny_is_paired(list(type = "chart", from = "work.t")))
+})
+
+test_that("chart_view defaults and validation follow spec section 8.6", {
+  contract <- paired_contract()
+  expect_identical(.sashiny_chart_views(contract, "sashiny"),
+    c(scatter = "sashiny", bars = "sashiny"))
+  expect_identical(.sashiny_chart_views(contract, "sas"), c(scatter = "sas", bars = "sas"))
+  expect_identical(.sashiny_chart_views(contract, list(bars = "sas")),
+    c(scatter = "sashiny", bars = "sas"))
+  expect_error(.sashiny_chart_views(contract, "both"), "chart_view")
+  expect_error(.sashiny_chart_views(contract, list(bars = "x")), "chart_view")
+  expect_error(.sashiny_chart_views(contract, list(nope = "sas")), "not paired")
+  expect_error(.sashiny_chart_views(contract, 3), "chart_view")
+})
+
+test_that("the module UI has the module toggle only for paired contracts", {
+  skip_if_not_installed("shiny")
+  expect_match(as.character(sas_program_ui("m", paired_contract())), "m-out__view", fixed = TRUE)
+  plain <- sas_contract(file.path(.sashiny_fixtures(), "contracts", "valid", "outputs",
+                                  "contract.sashiny.yml"))
+  expect_false(grepl("out__view", as.character(sas_program_ui("m", plain)), fixed = TRUE))
+})
+
+paired_engine <- function() {
+  engine <- structure(list(), class = c("sashiny_paired_engine", "sashiny_engine"))
+  registerS3method("sas_engine_run", "sashiny_paired_engine", function(engine, contract, values, ...) {
+    .sashiny_result("r1", "success",
+      outputs = list(
+        scatter = paired_value("height", "weight"), bars = paired_value("sex", "weight")
+      )
+    )
+  }, envir = asNamespace("SAShiny"))
+  engine
+}
+
+test_that("the module renders paired cards, the module toggle and honours the settings", {
+  skip_on_cran()
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("htmltools")
+  contract <- paired_contract()
+  shiny::testServer(
+    sas_program_server, args = list(contract = contract, engine = paired_engine()), {
+      session$setInputs(run = 1)
+      expect_match(output$out_scatter$html, "data-sashiny-default=\"sashiny\"", fixed = TRUE)
+      expect_match(output$out_scatter$html, "data:image/png;base64,QUJD", fixed = TRUE)
+      # The SAShiny chart is drawn too: a second image next to the SAS graph.
+      expect_equal(lengths(regmatches(output$out_scatter$html,
+        gregexpr("<img", output$out_scatter$html, fixed = TRUE))), 2L)
+      expect_match(output$out__view$html, "SAS graphs", fixed = TRUE)
+      expect_match(output$out__view$html, "data-sashiny-default=\"sashiny\"", fixed = TRUE)
+    }
+  )
+  shiny::testServer(
+    sas_program_server,
+    args = list(contract = contract, engine = paired_engine(), chart_view = list(bars = "sas")), {
+      session$setInputs(run = 1)
+      expect_match(output$out_bars$html, "data-sashiny-default=\"sas\"", fixed = TRUE)
+      expect_false(grepl("data-sashiny-default", output$out__view$html, fixed = TRUE))
+    }
+  )
+  shiny::testServer(
+    sas_program_server,
+    args = list(contract = contract, engine = paired_engine(),
+                chart_view = "sas", chart_toggle = FALSE), {
+      session$setInputs(run = 1)
+      expect_false(grepl("data-sashiny-paired", output$out_scatter$html, fixed = TRUE))
+      expect_match(output$out_scatter$html, "QUJD", fixed = TRUE)
+      expect_false(nzchar(output$out__view$html %||% ""))
+    }
+  )
+})
+
+test_that("sas_app passes chart settings to every module and validates them", {
+  skip_on_cran()
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("htmltools")
+  paired <- paired_contract()
+  engine <- .sashiny_engine_mock()
+  expect_s3_class(sas_app(list(paired), engine, chart_view = "sas", chart_toggle = FALSE),
+    "shiny.appobj")
+  expect_s3_class(sas_app(list(paired), engine, chart_view = list(bars = "sas")), "shiny.appobj")
+  expect_error(sas_app(list(paired), engine, chart_view = list(missing = "sas")), "not paired")
+})

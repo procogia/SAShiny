@@ -4,7 +4,14 @@
 \alias{sas_app}
 \title{Build a multi-program Shiny app from a list of contracts}
 \usage{
-sas_app(contracts, engine, title = "SAShiny", publish = FALSE)
+sas_app(
+  contracts,
+  engine,
+  title = "SAShiny",
+  publish = FALSE,
+  chart_view = "sashiny",
+  chart_toggle = TRUE
+)
 }
 \arguments{
 \item{contracts}{A list of \code{sashiny_contract} objects or paths to
@@ -18,6 +25,14 @@ sas_app(contracts, engine, title = "SAShiny", publish = FALSE)
 \item{publish}{\code{TRUE} to add a "Publish" tab that deploys the app to Posit
 Connect with \code{\link[=sas_publish]{sas_publish()}}. Off by default, and never shown when the
 app itself runs on Posit Connect.}
+
+\item{chart_view}{The default view of paired outputs (spec section 8.6),
+passed to every module: \code{"sashiny"} (the default), \code{"sas"}, or a named
+list of paired output id to view. Each module uses the entries for its
+own outputs.}
+
+\item{chart_toggle}{Whether to show the 'SAS' / 'SAShiny' toggles (default
+\code{TRUE}).}
 }
 \value{
 A Shiny app object (from \code{\link[shiny:shinyApp]{shiny::shinyApp()}}).

@@ -43,7 +43,17 @@ demo_good_result <- function(contract) {
         columns = list(list(name = "a", type = "character", label = "", format = "")),
         rows = list(list("x")), total_rows = 1L, truncated = FALSE, formatted = TRUE
       ),
-      plot = list(list(mime = "image/png", data = "QQ==")),
+      plot = {
+        graphs <- list(list(mime = "image/png", data = "QQ=="))
+        if (is.null(spec$chart)) {
+          graphs
+        } else {
+          list(sas = graphs, sashiny = list(
+            columns = list(list(name = "a", type = "character", label = "", format = "")),
+            rows = list(list("x")), total_rows = 1L, truncated = FALSE, formatted = FALSE
+          ))
+        }
+      },
       html = "<html><body>ok</body></html>",
       log = list(list(level = "note", text = "NOTE: ok")),
       download = {
@@ -97,7 +107,7 @@ test_that("the checker reports every problem", {
   result$status <- "warning"
   result$metadata$collect_errors <- list("report_pdf: download failed")
   result$outputs$stats$rows <- list()
-  result$outputs$price_vs_mpg <- list()
+  result$outputs$price_vs_mpg <- list(sas = list(), sashiny = list(error = "dataset WORK.X not found"))
   result$outputs$report <- "plain text"
   result$outputs$log <- list(list(level = "error", text = "ERROR: boom"))
   result$outputs$report_pdf <- list(
@@ -109,7 +119,8 @@ test_that("the checker reports every problem", {
   problems <- paste(demo_check_result(result, contract, s), collapse = "\n")
   for (expected in c(
     "status 'warning'", "collect error: report_pdf", "stats: 0 rows",
-    "price_vs_mpg: 0 graphs", "price_by_type: missing", "report: not an HTML document",
+    "price_vs_mpg.sas: 0 graphs", "price_vs_mpg.sashiny: dataset WORK.X not found",
+    "price_by_type: missing", "report: not an HTML document",
     "SAS log error: ERROR: boom", "report_pdf: not a valid .pdf",
     "stats_csv: dataset WORK.CARS_STATS not found"
   )) {

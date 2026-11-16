@@ -221,12 +221,24 @@
   )
 }
 
+#' Whether an output value is a collection error (`list(error = ...)`).
+#' @noRd
+.sashiny_is_collect_error <- function(value) {
+  is.list(value) && !is.null(value$error) && length(value) == 1L
+}
+
+#' Render a collection error.
+#' @noRd
+.sashiny_error_tag <- function(value) {
+  message <- paste("Could not collect this output:", value$error)
+  shiny::tags$div(class = "text-danger", message)
+}
+
 #' Render one output value (or its collection error).
 #' @noRd
 .sashiny_output_tag <- function(kind, value, spec = NULL, render = NULL) {
-  if (is.list(value) && !is.null(value$error) && length(value) == 1L) {
-    message <- paste("Could not collect this output:", value$error)
-    return(shiny::tags$div(class = "text-danger", message))
+  if (.sashiny_is_collect_error(value)) {
+    return(.sashiny_error_tag(value))
   }
   switch(kind,
     table = .sashiny_table_tag(value),
@@ -289,6 +301,162 @@
     stop("the chart produced no image", call. = FALSE)
   }
   openssl::base64_encode(readBin(tmp, "raw", n = file.info(tmp)$size))
+}
+
+#' The client-side view toggle script and styles (spec section 8.6)
+#' @noRd
+.sashiny_toggle_dependency <- function() {
+  .sashiny_need("htmltools", "to build the module UI")
+  htmltools::htmlDependency(
+    name = "sashiny-toggle",
+    version = as.character(utils::packageVersion("SAShiny")),
+    src = system.file("www", package = "SAShiny"),
+    script = "sashiny-toggle.js",
+    stylesheet = "sashiny-toggle.css"
+  )
+}
+
+.sashiny_view_labels <- c(sas = "SAS graph", sashiny = "SAShiny chart")
+.sashiny_group_labels <- c(sas = "SAS graphs", sashiny = "SAShiny charts")
+
+#' A pair of `aria-pressed` buttons that switch views in the browser
+#' @noRd
+.sashiny_toggle_buttons <- function(labels, view, ...) {
+  buttons <- lapply(c("sashiny", "sas"), function(v) {
+    on <- identical(v, view)
+    shiny::tags$button(
+      labels[[v]],
+      type = "button", class = if (on) "active",
+      `aria-pressed` = if (on) "true" else "false",
+      `data-sashiny-set` = v
+    )
+  })
+  shiny::tags$div(class = "sashiny-toggle", role = "group", ..., buttons)
+}
+
+#' Render a paired output: the SAS graph and the SAShiny chart (spec section 8.6)
+#'
+#' Both views are rendered once; the browser switches between them. With
+#' `toggle = FALSE` only the default `view` is rendered.
+#' @param value The section 8.1 paired value `list(sas, sashiny)`.
+#' @param spec The output's contract spec.
+#' @param output_id The output id (keys the remembered view).
+#' @param group The module's toggle group id.
+#' @param view The default view, `"sashiny"` or `"sas"`.
+#' @param toggle Whether to show the per-card toggle.
+#' @param render An optional chart render callback.
+#' @noRd
+.sashiny_paired_tag <- function(value, spec, output_id, group, view = "sashiny", toggle = TRUE,
+                                render = NULL) {
+  chart_spec <- .sashiny_paired_chart_spec(spec)
+  pane <- function(part) {
+    part_value <- value[[part]]
+    if (is.null(part_value)) {
+      return(shiny::tags$small("No output for this run."))
+    }
+    if (.sashiny_is_collect_error(part_value)) {
+      return(.sashiny_error_tag(part_value))
+    }
+    if (identical(part, "sas")) {
+      .sashiny_plot_tag(part_value)
+    } else {
+      .sashiny_chart_tag(part_value, chart_spec, render)
+    }
+  }
+  if (!toggle) {
+    return(pane(view))
+  }
+  panes <- lapply(c("sashiny", "sas"), function(v) {
+    shiny::tags$div(
+      `data-sashiny-pane` = v,
+      hidden = if (!identical(v, view)) NA,
+      pane(v)
+    )
+  })
+  shiny::tags$div(
+    class = "sashiny-paired",
+    `data-sashiny-paired` = "", `data-sashiny-group` = group,
+    `data-sashiny-output` = output_id, `data-sashiny-default` = view,
+    `data-sashiny-view` = view,
+    .sashiny_toggle_dependency(),
+    .sashiny_toggle_buttons(.sashiny_view_labels, view,
+      `data-sashiny-card-toggle` = "", `aria-label` = "Chart view"
+    ),
+    panes
+  )
+}
+
+#' Render the module-wide SAS / SAShiny view toggle (spec section 8.6)
+#' @param group The module's toggle group id.
+#' @param view The default view of every paired card, or `NULL` when they differ.
+#' @noRd
+.sashiny_view_toggle_tag <- function(group, view = NULL) {
+  shiny::tags$div(
+    class = "sashiny-group-toggle",
+    `data-sashiny-group-toggle` = "", `data-sashiny-group` = group,
+    `data-sashiny-default` = view,
+    .sashiny_toggle_dependency(),
+    shiny::tags$span("Show:", class = "small"),
+    .sashiny_toggle_buttons(.sashiny_group_labels, view,
+      `aria-label` = "Chart view for all outputs"
+    )
+  )
+}
+
+#' The default view of each paired output, validating `chart_view` (spec section 8.6)
+#' @param contract A `sashiny_contract` object.
+#' @param chart_view `"sashiny"`, `"sas"`, or a named list/vector of output id to view.
+#' @return A named character vector (empty when the contract has no paired outputs).
+#' @noRd
+.sashiny_chart_views <- function(contract, chart_view) {
+  outputs <- contract$data$outputs %||% list()
+  paired <- names(outputs)[vapply(outputs, .sashiny_is_paired, logical(1))]
+  views <- c("sashiny", "sas")
+  if (is.character(chart_view) && length(chart_view) == 1L && is.null(names(chart_view))) {
+    if (!(chart_view %in% views)) {
+      stop("chart_view must be 'sashiny' or 'sas', not '", chart_view, "'", call. = FALSE)
+    }
+    return(stats::setNames(rep(chart_view, length(paired)), paired))
+  }
+  if (!(is.list(chart_view) || is.character(chart_view)) || is.null(names(chart_view))) {
+    stop("chart_view must be 'sashiny', 'sas' or a named list of output id to view",
+      call. = FALSE
+    )
+  }
+  given <- vapply(chart_view, function(v) as.character(v)[[1L]], character(1))
+  unknown <- setdiff(names(given), paired)
+  if (length(unknown) > 0L) {
+    stop("chart_view names outputs that are not paired: ", paste(unknown, collapse = ", "),
+      call. = FALSE
+    )
+  }
+  bad <- names(given)[!(given %in% views)]
+  if (length(bad) > 0L) {
+    stop("chart_view must map outputs to 'sashiny' or 'sas': ", paste(bad, collapse = ", "),
+      call. = FALSE
+    )
+  }
+  out <- stats::setNames(rep("sashiny", length(paired)), paired)
+  out[names(given)] <- given
+  out
+}
+
+#' The part of an app-wide `chart_view` that applies to one module
+#' @param contract A `sashiny_contract` object.
+#' @param chart_view As for [sas_app()].
+#' @return A `chart_view` for [sas_program_server()], validated against `contract`.
+#' @noRd
+.sashiny_module_views <- function(contract, chart_view) {
+  if (is.list(chart_view) && !is.null(names(chart_view))) {
+    outputs <- contract$data$outputs %||% list()
+    paired <- names(outputs)[vapply(outputs, .sashiny_is_paired, logical(1))]
+    chart_view <- chart_view[names(chart_view) %in% paired]
+    if (length(chart_view) == 0L) {
+      chart_view <- "sashiny"
+    }
+  }
+  .sashiny_chart_views(contract, chart_view)
+  chart_view
 }
 
 #' A card (bslib when installed, otherwise a panel).
@@ -394,6 +562,11 @@ sas_program_ui <- function(id, contract, ui_override = NULL, today = Sys.Date())
     }
     .sashiny_card(label, if (!is.null(spec$help)) shiny::helpText(spec$help), body)
   })
+  if (any(vapply(contract$data$outputs, .sashiny_is_paired, logical(1)))) {
+    # Module-wide SAS / SAShiny toggle (spec section 8.6); empty when the
+    # server turns it off.
+    outputs <- c(list(shiny::uiOutput(ns("out__view"))), outputs)
+  }
   if (identical(settings$layout, "top")) {
     return(shiny::tagList(shiny::wellPanel(controls), status, outputs))
   }
@@ -419,6 +592,11 @@ sas_program_ui <- function(id, contract, ui_override = NULL, today = Sys.Date())
 #' @param render An optional named list of chart render callbacks, keyed by
 #'   output id. Each is `function(value, spec, ...)` returning a plot object
 #'   (spec section 8.5). Takes precedence over a declarative `spec`.
+#' @param chart_view The default view of paired outputs (spec section 8.6):
+#'   `"sashiny"` (the default) for the 'SAShiny' chart, `"sas"` for the
+#'   original 'SAS' graph, or a named list of paired output id to view.
+#' @param chart_toggle Whether to show the 'SAS' / 'SAShiny' toggles (default
+#'   `TRUE`). With `FALSE` each paired card shows only its default view.
 #' @details In a running app (with 'callr' and 'later' installed) a run of a
 #'   [sas_connect()] engine executes in a background R
 #'   process that loads the installed 'SAShiny', so a slow 'SAS' run does not
@@ -429,8 +607,10 @@ sas_program_ui <- function(id, contract, ui_override = NULL, today = Sys.Date())
 #'   blocks it for the duration of the run.
 #' @return A list of reactives: `result`, `status`, `log`.
 #' @export
-sas_program_server <- function(id, contract, engine, server_override = NULL, render = NULL) {
+sas_program_server <- function(id, contract, engine, server_override = NULL, render = NULL,
+                               chart_view = "sashiny", chart_toggle = TRUE) {
   .sashiny_check_engine(engine)
+  views <- .sashiny_chart_views(contract, chart_view)
   if (!is.null(server_override)) {
     return(server_override(id, contract, engine))
   }
@@ -519,8 +699,21 @@ sas_program_server <- function(id, contract, engine, server_override = NULL, ren
       if (nzchar(log %||% "")) log else "(no log)"
     })
 
+    group <- session$ns("views")
     for (oid in names(contract$data$outputs)) {
-      .sashiny_register_output(output, oid, contract$data$outputs[[oid]], result, render[[oid]])
+      pairing <- if (oid %in% names(views)) {
+        list(group = group, view = views[[oid]], toggle = isTRUE(chart_toggle))
+      }
+      .sashiny_register_output(
+        output, oid, contract$data$outputs[[oid]], result, render[[oid]], pairing
+      )
+    }
+    if (length(views) > 0L) {
+      defaults <- unique(unname(views))
+      group_view <- if (length(defaults) == 1L) defaults
+      output$out__view <- shiny::renderUI({
+        if (isTRUE(chart_toggle)) .sashiny_view_toggle_tag(group, group_view)
+      })
     }
 
     list(
@@ -560,10 +753,11 @@ sas_program_server <- function(id, contract, engine, server_override = NULL, ren
 
 #' Register the renderer for one output id.
 #' @noRd
-.sashiny_register_output <- function(output, oid, spec, result, render = NULL) {
-  # The caller passes render[[oid]] from a loop; force it now, or the lazy
-  # promise would be evaluated inside renderUI with the loop's last oid.
+.sashiny_register_output <- function(output, oid, spec, result, render = NULL, pairing = NULL) {
+  # The caller passes render[[oid]] and pairing from a loop; force them now, or
+  # the lazy promises would be evaluated inside renderUI with the loop's last oid.
   force(render)
+  force(pairing)
   kind <- spec$type
   if (identical(kind, "download")) {
     value <- function() {
@@ -595,7 +789,16 @@ sas_program_server <- function(id, contract, engine, server_override = NULL, ren
     if (!(oid %in% names(outputs))) {
       return(shiny::tags$small("No output for this run."))
     }
-    .sashiny_output_tag(kind, outputs[[oid]], spec, render)
+    value <- outputs[[oid]]
+    if (!is.null(pairing)) {
+      if (.sashiny_is_collect_error(value)) {
+        return(.sashiny_error_tag(value))
+      }
+      return(.sashiny_paired_tag(value, spec, oid, pairing$group,
+        view = pairing$view, toggle = pairing$toggle, render = render
+      ))
+    }
+    .sashiny_output_tag(kind, value, spec, render)
   })
   invisible(NULL)
 }

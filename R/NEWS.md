@@ -29,6 +29,15 @@
   Connect.
 * Live engines read `SASHINY_SAS_USER`/`SASHINY_SAS_PASSWORD` when both are
   set and pass them to saspy without writing them to a file.
+* Paired outputs (spec sections 2.2 and 8.6) show the original 'SAS' graph and the
+  'SAShiny' chart in one card, with a toggle in the browser. Declare one with
+  `sas_plot: <k>` on a `chart` output, or a `chart:` block on a `plot` output
+  (which needs `select`). Each card has its own toggle, and a module toggle
+  switches them all, with no server round trip. `sas_program_server()` and
+  `sas_app()` take `chart_view` (`"sashiny"` by default, `"sas"`, or a named
+  list per output) and `chart_toggle` (`TRUE` by default; `FALSE` hides the
+  toggles). Each part is collected on its own, so one failing does not hide the
+  other. 'htmltools' is now suggested.
 
 # SAShiny 0.1.6
 

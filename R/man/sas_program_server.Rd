@@ -4,7 +4,15 @@
 \alias{sas_program_server}
 \title{The server for a SAS program module}
 \usage{
-sas_program_server(id, contract, engine, server_override = NULL, render = NULL)
+sas_program_server(
+  id,
+  contract,
+  engine,
+  server_override = NULL,
+  render = NULL,
+  chart_view = "sashiny",
+  chart_toggle = TRUE
+)
 }
 \arguments{
 \item{id}{The module id.}
@@ -20,6 +28,13 @@ that returns a custom server, replacing the auto-generated server.}
 \item{render}{An optional named list of chart render callbacks, keyed by
 output id. Each is \verb{function(value, spec, ...)} returning a plot object
 (spec section 8.5). Takes precedence over a declarative \code{spec}.}
+
+\item{chart_view}{The default view of paired outputs (spec section 8.6):
+\code{"sashiny"} (the default) for the 'SAShiny' chart, \code{"sas"} for the
+original 'SAS' graph, or a named list of paired output id to view.}
+
+\item{chart_toggle}{Whether to show the 'SAS' / 'SAShiny' toggles (default
+\code{TRUE}). With \code{FALSE} each paired card shows only its default view.}
 }
 \value{
 A list of reactives: \code{result}, \code{status}, \code{log}.

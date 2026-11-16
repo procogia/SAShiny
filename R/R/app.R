@@ -14,6 +14,12 @@
 #' @param publish `TRUE` to add a "Publish" tab that deploys the app to Posit
 #'   Connect with [sas_publish()]. Off by default, and never shown when the
 #'   app itself runs on Posit Connect.
+#' @param chart_view The default view of paired outputs (spec section 8.6),
+#'   passed to every module: `"sashiny"` (the default), `"sas"`, or a named
+#'   list of paired output id to view. Each module uses the entries for its
+#'   own outputs.
+#' @param chart_toggle Whether to show the 'SAS' / 'SAShiny' toggles (default
+#'   `TRUE`).
 #' @return A Shiny app object (from [shiny::shinyApp()]).
 #' @examples
 #' \dontrun{
@@ -23,7 +29,8 @@
 #' shiny::runApp(sas_app(list(path), engine, publish = TRUE))
 #' }
 #' @export
-sas_app <- function(contracts, engine, title = "SAShiny", publish = FALSE) {
+sas_app <- function(contracts, engine, title = "SAShiny", publish = FALSE,
+                    chart_view = "sashiny", chart_toggle = TRUE) {
   .sashiny_need("shiny", "to build a Shiny app")
   .sashiny_check_engine(engine)
   show_publish <- isTRUE(publish) && !.sashiny_on_connect()
@@ -43,6 +50,17 @@ sas_app <- function(contracts, engine, title = "SAShiny", publish = FALSE) {
     stop(sprintf("duplicate module id %s: two contracts resolve to the same id", dup),
          call. = FALSE)
   }
+  module_views <- lapply(loaded, function(contract) {
+    .sashiny_module_views(contract, chart_view)
+  })
+  if (is.list(chart_view) && !is.null(names(chart_view))) {
+    used <- unlist(lapply(module_views, names))
+    unknown <- setdiff(names(chart_view), used)
+    if (length(unknown) > 0L) {
+      stop("chart_view names outputs that are not paired: ", paste(unknown, collapse = ", "),
+           call. = FALSE)
+    }
+  }
 
   tabs <- lapply(seq_along(loaded), function(i) {
     contract <- loaded[[i]]
@@ -58,7 +76,9 @@ sas_app <- function(contracts, engine, title = "SAShiny", publish = FALSE) {
 
   server <- function(input, output, session) {
     for (i in seq_along(loaded)) {
-      sas_program_server(ids[[i]], loaded[[i]], engine)
+      sas_program_server(ids[[i]], loaded[[i]], engine,
+        chart_view = module_views[[i]], chart_toggle = chart_toggle
+      )
     }
     if (show_publish) .sashiny_publish_server("sashiny_publish")
   }
