@@ -38,7 +38,7 @@ Rscript -e 'shiny::runApp("R/inst/examples/demo")'
 ```
 
 ```sh
-cd Python && uv run --extra shiny --extra saspy --extra upload shiny run examples/demo/app.py --host 127.0.0.1 --port 8000
+cd Python && uv run --extra shiny --extra saspy --extra upload --extra plotnine shiny run examples/demo/app.py --host 127.0.0.1 --port 8000
 ```
 
 ## Before the demo

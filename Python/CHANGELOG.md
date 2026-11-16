@@ -26,7 +26,8 @@ All notable changes to the Python library are documented here. The format follow
 - The disabled download placeholder shown before a run no longer reuses the output's id, which
   made Shiny report a shared input/output id.
 - The demo Docker image defaults to the `oda` profile (the removed `offline` profile stopped the
-  app from starting) and installs the `upload` and `matplotlib` extras the demo needs.
+  app from starting) and installs the `upload` and `plotnine` extras the demo needs (plotnine
+  is the default chart backend). The documented demo run commands add `--extra plotnine`.
 
 ## [0.2.0]
 

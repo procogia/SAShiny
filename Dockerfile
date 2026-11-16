@@ -45,8 +45,8 @@ COPY Python/src ./Python/src
 COPY Python/examples ./Python/examples
 
 # Install the Python library with the extras the demo needs (Shiny, saspy,
-# uploads and a chart backend).
-RUN cd Python && uv sync --extra shiny --extra saspy --extra upload --extra matplotlib
+# uploads and plotnine, the default chart backend).
+RUN cd Python && uv sync --extra shiny --extra saspy --extra upload --extra plotnine
 
 # --- R package + demo app ---------------------------------------------------
 COPY R/DESCRIPTION R/NAMESPACE R/LICENSE R/LICENSE.md R/NEWS.md ./R/
