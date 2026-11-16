@@ -102,7 +102,7 @@ record from a console:
 
 ```python
 import sashiny
-engine = sashiny.connect("oda", region="eu1", record_to="examples/recordings")
+engine = sashiny.connect("oda", region="eu1", license_ack=True)
 contract = sashiny.load("examples/general/cars_explorer.sashiny.yml")
 print(engine.run(contract, {"origins": ["Asia", "Europe", "USA"],
                             "types": ["Sedan", "SUV"], "min_msrp": 20000}).status)
@@ -111,7 +111,7 @@ engine.close()
 
 ```r
 library(SAShiny)
-engine <- sas_connect("oda", region = "eu1", record_to = "examples/recordings")
+engine <- sas_connect("oda", region = "eu1", license_ack = TRUE)
 contract <- sas_contract("examples/general/cars_explorer.sashiny.yml")
 sas_engine_run(engine, contract, list(
   origins = list("Asia", "Europe", "USA"), types = list("Sedan", "SUV"), min_msrp = 20000

@@ -1,3 +1,6 @@
+> **Superseded (0.2.0, PLAN.md D30).** SAShiny no longer records live runs or replays them in
+> apps. The demo runs only on live, licensed SAS. This checklist is kept for history.
+
 # Demo recording checklist (Lisbon, 2026-11-11)
 
 Record each track once against live SAS so the offline fallback can replay it.

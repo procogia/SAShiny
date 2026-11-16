@@ -1,14 +1,9 @@
 # Recordings
 
-Recorded SAS runs that the mock engine replays offline (spec `CONTRACT.md` section 8.3).
-Each `<key>.json` file holds one run; the key depends only on the contract bytes, the
-rendered input values and any uploaded files, so R and Python share these files.
+Recordings are **internal test fixtures** (spec `CONTRACT.md` sections 6.6 and 8.3). The test
+suites' internal mock engine can replay them, but the public API cannot. Live engines never write
+recordings, and apps cannot run from them. Every user run happens on a live, licensed SAS
+system.
 
-To fill this folder, run the demo inputs once against live SAS with recording on:
-
-- Python: `sashiny.connect("oda", record_to="examples/recordings")`, or pick a live
-  profile in the demo app (it records automatically).
-- R: `sas_connect("oda", record_to = "examples/recordings")`.
-
-Recordings contain SAS output for synthetic example data only. Do not commit
-recordings made from real data.
+If you add a recording here for the demo-scenario tests, it must contain SAS output for the
+synthetic example data only. Never commit recordings made from real data.

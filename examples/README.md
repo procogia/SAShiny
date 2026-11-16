@@ -17,4 +17,4 @@ defaults. Forecasting needs SAS/ETS.
 The sample data are entirely synthetic. They are regenerated deterministically by the script in each
 `data/` folder (`make_data.py`, or `generate_rx_data.py` for Forecasting).
 
-`connections.example.yml` shows the draft connection-profile format with placeholders (ODA, ProCogia Viya, ProCogia SAS 9.4 IOM/SSH, offline).
+`connections.example.yml` shows the draft connection-profile format with placeholders (ODA, ProCogia Viya, ProCogia SAS 9.4 IOM/SSH).
