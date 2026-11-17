@@ -1,0 +1,18 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "appName": {
+      "value": "sas-reports"
+    },
+    "port": {
+      "value": 3838
+    },
+    "maxReplicas": {
+      "value": 3
+    },
+    "infrastructureSubnetId": {
+      "value": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/net/providers/Microsoft.Network/virtualNetworks/vnet/subnets/aca"
+    }
+  }
+}

@@ -197,7 +197,13 @@ register(
 
 def targets() -> list[Target]:
     """Return the registered deployment targets, in id order."""
+    _load_targets()
     return [_REGISTRY[k] for k in sorted(_REGISTRY)]
+
+
+def _load_targets() -> None:
+    """Register the platform targets (imported lazily to avoid an import cycle)."""
+    from . import targets as _targets  # noqa: F401, PLC0415
 
 
 def _language(app_dir: Path, requested: str | None) -> tuple[str, bool]:
@@ -217,6 +223,7 @@ def _language(app_dir: Path, requested: str | None) -> tuple[str, bool]:
 
 
 def _lookup(target: str) -> Target:
+    _load_targets()
     spec = _REGISTRY.get(target)
     if spec is None:
         raise ValueError(

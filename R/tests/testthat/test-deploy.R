@@ -206,3 +206,78 @@ test_that("bundle files skip nested metadata folders and sort by bytes", {
   expect_identical(res$files, c("Z.R", "a/x.R", "b.R"))
   expect_identical(res$excluded, "keys/id.key")
 })
+
+az_app <- function() {
+  app <- tempfile("sashiny-az-app-")
+  dir.create(app)
+  writeLines("library(shiny)", file.path(app, "app.R"))
+  app
+}
+az_oda <- list(name = "oda", method = "iom", oda_region = "us1")
+
+test_that("azure apply runs az through the runner (spec section 6.8.1)", {
+  calls <- list()
+  runner <- function(args, env) {
+    calls[[length(calls) + 1L]] <<- args
+    0L
+  }
+  res <- sas_deploy(az_app(), "azure_container_apps", tempfile("az-out-"), az_oda,
+    license_ack = TRUE, apply = TRUE, runner = runner, version = "0.0.0",
+    resource_group = "rg1", acr_name = "myacr", image_tag = "v1",
+    sas_user_secret_uri = "https://kv.vault.azure.net/secrets/sashiny-sas-user",
+    sas_password_secret_uri = "https://kv.vault.azure.net/secrets/sashiny-sas-password"
+  )
+  expect_equal(calls[[1]], c(
+    "az", "acr", "build", "--registry", "myacr", "--image", "sashiny-app:v1", res$out_dir
+  ))
+  expect_equal(calls[[2]][1:6], c("az", "deployment", "group", "create", "--resource-group", "rg1"))
+  expect_true("acrName=myacr" %in% calls[[2]])
+  expect_equal(res$commands, calls)
+})
+
+test_that("azure apply needs its options and stops on a failed command", {
+  expect_error(
+    sas_deploy(az_app(), "azure_container_apps", tempfile(), az_oda,
+      license_ack = TRUE, apply = TRUE, runner = function(a, e) 0L
+    ),
+    "apply needs the options resource_group, acr_name", fixed = TRUE
+  )
+  expect_error(
+    sas_deploy(az_app(), "azure_container_apps", tempfile(), az_oda,
+      license_ack = TRUE, apply = TRUE, runner = function(a, e) 1L,
+      resource_group = "rg", acr_name = "a", sas_user_secret_uri = "u", sas_password_secret_uri = "p"
+    ),
+    "exit status 1"
+  )
+})
+
+test_that("azure options are validated", {
+  expect_error(
+    sas_deploy(az_app(), "azure_container_apps", tempfile(), az_oda, license_ack = TRUE, app_name = "Bad_Name"),
+    "app_name must be"
+  )
+  expect_error(
+    sas_deploy(az_app(), "azure_container_apps", tempfile(), az_oda, license_ack = TRUE, max_replicas = 0),
+    "max_replicas must be"
+  )
+  vpn <- list(name = "v", method = "http", url = "https://v.example.com", requires_vpn = TRUE)
+  expect_error(
+    sas_deploy(az_app(), "azure_container_apps", tempfile(), vpn, license_ack = TRUE),
+    "profile v requires a private network; pass infrastructure_subnet_id", fixed = TRUE
+  )
+})
+
+test_that("azure output for an ssh profile has no secrets", {
+  prof <- list(name = "s", method = "ssh", host = "h.example.com", saspath = "/opt/sas/sas")
+  res <- sas_deploy(az_app(), "azure_container_apps", tempfile(), prof, license_ack = TRUE)
+  bicep <- paste(readLines(file.path(res$out_dir, "infra", "main.bicep")), collapse = "\n")
+  expect_false(grepl("secrets:", bicep, fixed = TRUE))
+  expect_false(grepl("SecretUri", bicep, fixed = TRUE))
+  guide <- paste(readLines(file.path(res$out_dir, "deploy-azure.md")), collapse = "\n")
+  expect_false(grepl("keyvault", guide, fixed = TRUE))
+})
+
+test_that("azure doctor reports a failed login by name", {
+  skip_if_not(nzchar(Sys.which("az")), "az is not installed")
+  expect_equal(sas_deploy_doctor("azure_container_apps", function(a, e) 1L), "az is not logged in (run az login)")
+})

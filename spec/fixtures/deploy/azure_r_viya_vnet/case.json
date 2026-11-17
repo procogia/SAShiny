@@ -1,0 +1,31 @@
+{
+  "description": "azure_container_apps, R app on a VPN-only Viya profile: the infrastructure subnet satisfies the private-network rule; custom name, port and replicas.",
+  "add_files": {},
+  "target": "azure_container_apps",
+  "version": "0.0.0",
+  "license_ack": true,
+  "options": {
+    "port": 3838,
+    "app_name": "sas-reports",
+    "max_replicas": 3,
+    "infrastructure_subnet_id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/net/providers/Microsoft.Network/virtualNetworks/vnet/subnets/aca"
+  },
+  "profile": {"name": "procogia_viya", "method": "http", "url": "https://viya.example.com", "requires_vpn": true},
+  "expected": {
+    "language": "r",
+    "files": [
+      ".dockerignore",
+      "Dockerfile",
+      "bundle/app.R",
+      "bundle/report.sas",
+      "bundle/report.sashiny.yml",
+      "deploy-azure.md",
+      "infra/main.bicep",
+      "infra/main.parameters.json"
+    ],
+    "excluded": [],
+    "env": [["SASHINY_LICENSE_ACK", "true"], ["SASHINY_PROFILE", "viya"], ["SASHINY_VIYA_URL", "https://viya.example.com"]],
+    "secrets": ["SASHINY_SAS_USER", "SASHINY_SAS_PASSWORD"],
+    "endpoints": ["viya.example.com:443"]
+  }
+}

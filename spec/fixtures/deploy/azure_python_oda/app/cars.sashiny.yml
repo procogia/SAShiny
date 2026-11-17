@@ -1,0 +1,6 @@
+sashiny: 1
+program: cars.sas
+title: Cars
+outputs:
+  log:
+    type: log
