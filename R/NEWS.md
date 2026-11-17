@@ -50,6 +50,11 @@
 * In the Shiny module, the download button rendered after a run now uses the
   module-namespaced id, so downloads work again; before, the button stayed
   disabled. The disabled placeholder shown before a run no longer has an id.
+* The Run button gives feedback while 'SAS' runs (#108). With 'bslib' 0.7.0
+  or later it is a task button that shows "Running..." and stays disabled
+  until the run finishes. A click during a run is ignored instead of queuing
+  another 'SAS' run, and the Run card shows `running...`, as in the Python
+  module.
 
 # SAShiny 0.1.6
 

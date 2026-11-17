@@ -135,6 +135,26 @@
   list(values = values, uploads = uploads)
 }
 
+#' Whether 'bslib' task buttons are available (bslib 0.7.0 or later).
+#' @noRd
+.sashiny_has_task_button <- function() {
+  requireNamespace("bslib", quietly = TRUE) &&
+    utils::packageVersion("bslib") >= "0.7.0"
+}
+
+#' The Run button.
+#'
+#' A 'bslib' task button when available: it shows a busy state and is disabled
+#' from the click until the run finishes, so a run cannot be started twice.
+#' Otherwise a plain action button.
+#' @noRd
+.sashiny_run_button <- function(id, label) {
+  if (.sashiny_has_task_button()) {
+    return(bslib::input_task_button(id, label, label_busy = "Running...", type = "primary"))
+  }
+  shiny::actionButton(id, label, class = "btn-primary")
+}
+
 #' Status text for a result.
 #' @noRd
 .sashiny_status_text <- function(result) {
@@ -539,7 +559,7 @@ sas_program_ui <- function(id, contract, ui_override = NULL, today = Sys.Date())
     lapply(.sashiny_ordered_inputs(contract), function(iid) {
       .sashiny_input_ui(iid, inputs[[iid]], ns, today)
     }),
-    shiny::actionButton(ns("run"), settings$run_label %||% "Run", class = "btn-primary")
+    .sashiny_run_button(ns("run"), settings$run_label %||% "Run")
   )
   status <- .sashiny_card(
     "Run",
@@ -647,6 +667,9 @@ sas_program_server <- function(id, contract, engine, server_override = NULL, ren
     # testServer cannot await a background process, so it runs synchronously.
     use_extended <- shiny::isRunning() && requireNamespace("callr", quietly = TRUE) &&
       requireNamespace("later", quietly = TRUE) && requireNamespace("promises", quietly = TRUE)
+    # Whether a run is in flight; only an ExtendedTask can be running between
+    # flushes (the synchronous path finishes inside the click handler).
+    running <- function() FALSE
     if (use_extended) {
       portable <- .sashiny_portable_engine(engine)
       run_task <- shiny::ExtendedTask$new(function(contract, values, uploads) {
@@ -663,8 +686,16 @@ sas_program_server <- function(id, contract, engine, server_override = NULL, ren
           function(e) .sashiny_engine_error(run_id, list(), e)
         )
       })
+      running <- function() identical(run_task$status(), "running")
+      # Keep the task button busy and disabled until the run finishes.
+      if (.sashiny_has_task_button()) bslib::bind_task_button(run_task, "run")
       shiny::observeEvent(input$run,
         {
+          # Ignore a click while a run is in flight, so a burst of clicks does
+          # not queue one SAS run per click (ExtendedTask queues invocations).
+          if (running()) {
+            return(invisible(NULL))
+          }
           converted <- .sashiny_shiny_values(contract, function(iid) input[[iid]])
           run_task$invoke(contract, converted$values, converted$uploads)
         },
@@ -684,6 +715,9 @@ sas_program_server <- function(id, contract, engine, server_override = NULL, ren
       }
 
     output$status <- shiny::renderText({
+      if (running()) {
+        return("running...")
+      }
       res <- result()
       if (is.null(res)) {
         # Before the first run, surface a choices_from load failure so the
