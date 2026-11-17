@@ -12,7 +12,21 @@ profile; SAShiny does not provide SAS. Live SAS connections are not yet verified
 ```sh
 # released on PyPI
 uv pip install sashiny
-# optional extras: sashiny[shiny], sashiny[saspy], sashiny[plotnine], sashiny[matplotlib], sashiny[plotly]
+# optional extras: sashiny[shiny], sashiny[saspy], sashiny[plotnine], sashiny[matplotlib], sashiny[plotly],
+# sashiny[streamlit]
+```
+
+## Streamlit front end
+
+`sashiny.streamlit_app.streamlit_app` renders the same contracts as a Streamlit app (spec §6.9),
+with the same value validation and SAS wrapper as the Shiny modules. There is no R equivalent.
+
+```python
+# streamlit_app.py; run with: streamlit run streamlit_app.py
+import sashiny
+from sashiny.streamlit_app import streamlit_app
+
+streamlit_app(["cars_explorer.sashiny.yml"], sashiny.connect_from_env)
 ```
 
 ## Toggle between SAS graphs and SAShiny charts

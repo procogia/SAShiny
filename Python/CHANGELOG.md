@@ -25,6 +25,12 @@ All notable changes to the Python library are documented here. The format follow
 - Deployment target `posit_snowflake` (spec §6.8.4): publishes to Posit Connect in the Posit Team
   Native App with `sashiny.publish()`, and writes the egress SQL that lets Connect reach SAS
   (public or private connectivity).
+- Streamlit front end (spec §6.9): `sashiny.streamlit_app.streamlit_app` renders contracts as a
+  Streamlit app with the same validation, wrapper and engines; runs in a background thread. New
+  extra `sashiny[streamlit]`. Python only (no R equivalent).
+- Deployment target `streamlit_snowflake` (spec §6.8.5): Streamlit in Snowflake on the container
+  runtime, for SAS Viya (http) profiles; entry point, `pyproject.toml`, setup/secret/streamlit SQL
+  and a deployment guide.
 - `sashiny.parse_profile()` / `Profile` validate a connection profile and derive its egress
   endpoints, Java need and runtime variables; `sashiny.connect_from_env()` builds a deployed
   app's engine from those variables.

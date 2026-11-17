@@ -6,6 +6,6 @@ Importing this package registers every platform target with
 
 from __future__ import annotations
 
-from . import aws, azure, posit_snowflake, snowflake
+from . import aws, azure, posit_snowflake, snowflake, streamlit_snowflake
 
-__all__ = ["aws", "azure", "posit_snowflake", "snowflake"]
+__all__ = ["aws", "azure", "posit_snowflake", "snowflake", "streamlit_snowflake"]

@@ -1,0 +1,28 @@
+{
+  "description": "streamlit_snowflake, Python app on Viya: Streamlit front end on the container runtime, PyPI through the artifact repository, HOST_PORT egress, PASSWORD secret.",
+  "add_files": {".authinfo": "placeholder credential file\n"},
+  "target": "streamlit_snowflake",
+  "version": "0.0.0",
+  "license_ack": true,
+  "options": {},
+  "profile": {"name": "viya", "method": "http", "url": "https://viya.example.com"},
+  "expected": {
+    "language": "python",
+    "files": [
+      "bundle/app.py",
+      "bundle/cars.sas",
+      "bundle/cars.sashiny.yml",
+      "bundle/data/cars.csv",
+      "bundle/pyproject.toml",
+      "bundle/streamlit_app.py",
+      "deploy-streamlit-snowflake.md",
+      "snowflake/secret.sql",
+      "snowflake/setup.sql",
+      "snowflake/streamlit.sql"
+    ],
+    "excluded": [".authinfo"],
+    "env": [["SASHINY_LICENSE_ACK", "true"], ["SASHINY_PROFILE", "viya"], ["SASHINY_VIYA_URL", "https://viya.example.com"]],
+    "secrets": ["SASHINY_SAS_USER", "SASHINY_SAS_PASSWORD"],
+    "endpoints": ["viya.example.com:443"]
+  }
+}

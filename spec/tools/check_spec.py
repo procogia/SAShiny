@@ -173,6 +173,19 @@ def check_deploy(r: Report) -> None:
             r.check(not issues, f"deploy/{case.parent.name} contract {contract.name} valid", str([i.key() for i in issues]))
 
 
+def check_streamlit(r: Report) -> None:
+    """Streamlit widget fixture (§6.9): one case per schema input type and widget variant."""
+    schema = json.loads((REPO / "spec" / "sashiny.schema.json").read_text(encoding="utf-8"))
+    doc = json.loads((FIX / "streamlit" / "widgets.json").read_text(encoding="utf-8"))
+    types = set(schema["$defs"]["input_common"]["properties"]["type"]["enum"])
+    covered = {c["input"]["type"] for c in doc["cases"]}
+    r.check(covered == types, "streamlit/widgets.json covers every input type", str(sorted(types - covered)))
+    seen = {(c["input"]["type"], c["input"].get("widget", "select")) for c in doc["cases"]}
+    for kind in ("choice", "multichoice"):
+        for variant in schema["$defs"][f"input_{kind}"]["properties"]["widget"]["enum"]:
+            r.check((kind, variant) in seen, f"streamlit/widgets.json covers {kind} widget {variant}")
+
+
 def check_expected_sas_format(r: Report) -> None:
     for f in sorted(FIX.glob("wrapper/*/expected_*.sas")):
         raw = f.read_bytes()
@@ -204,6 +217,7 @@ def main() -> int:
     check_collect(r)
     check_lint(r, today)
     check_deploy(r)
+    check_streamlit(r)
     check_expected_sas_format(r)
     check_examples(r, date.today())
     for f in r.failures:
