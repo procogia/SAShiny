@@ -1,0 +1,111 @@
+{
+  "description": "Connection profiles for deployment targets (CONTRACT.md 6.8): kind, egress endpoints, Java, runtime environment and validation errors. Written by hand from the spec.",
+  "cases": [
+    {
+      "name": "oda_us1",
+      "profile": {"name": "oda", "method": "iom", "oda_region": "us1", "iomport": 8591, "authkey": "oda", "label": "SAS OnDemand for Academics"},
+      "expected": {
+        "kind": "oda",
+        "endpoints": ["odaws01-usw2.oda.sas.com:8591", "odaws02-usw2.oda.sas.com:8591"],
+        "needs_java": true,
+        "requires_vpn": false,
+        "env": [["SASHINY_LICENSE_ACK", "true"], ["SASHINY_PROFILE", "oda"], ["SASHINY_ODA_REGION", "us1"]],
+        "secrets": ["SASHINY_SAS_USER", "SASHINY_SAS_PASSWORD"]
+      }
+    },
+    {
+      "name": "oda_eu1",
+      "profile": {"name": "oda_eu", "method": "iom", "oda_region": "eu1"},
+      "expected": {
+        "kind": "oda",
+        "endpoints": ["odaws01-euw1.oda.sas.com:8591", "odaws02-euw1.oda.sas.com:8591"],
+        "needs_java": true,
+        "requires_vpn": false,
+        "env": [["SASHINY_LICENSE_ACK", "true"], ["SASHINY_PROFILE", "oda"], ["SASHINY_ODA_REGION", "eu1"]],
+        "secrets": ["SASHINY_SAS_USER", "SASHINY_SAS_PASSWORD"]
+      }
+    },
+    {
+      "name": "viya_https",
+      "profile": {"name": "procogia_viya", "method": "http", "url": "https://viya.example.com", "requires_vpn": true},
+      "expected": {
+        "kind": "viya",
+        "endpoints": ["viya.example.com:443"],
+        "needs_java": false,
+        "requires_vpn": true,
+        "env": [["SASHINY_LICENSE_ACK", "true"], ["SASHINY_PROFILE", "viya"], ["SASHINY_VIYA_URL", "https://viya.example.com"]],
+        "secrets": ["SASHINY_SAS_USER", "SASHINY_SAS_PASSWORD"]
+      }
+    },
+    {
+      "name": "viya_explicit_port",
+      "profile": {"name": "viya_dev", "method": "http", "url": "https://viya.example.com:8443/SASStudio"},
+      "expected": {
+        "kind": "viya",
+        "endpoints": ["viya.example.com:8443"],
+        "needs_java": false,
+        "requires_vpn": false,
+        "env": [["SASHINY_LICENSE_ACK", "true"], ["SASHINY_PROFILE", "viya"], ["SASHINY_VIYA_URL", "https://viya.example.com:8443/SASStudio"]],
+        "secrets": ["SASHINY_SAS_USER", "SASHINY_SAS_PASSWORD"]
+      }
+    },
+    {
+      "name": "viya_plain_http",
+      "profile": {"name": "viya_lab", "method": "http", "url": "http://viya.lab.example.com"},
+      "expected": {
+        "kind": "viya",
+        "endpoints": ["viya.lab.example.com:80"],
+        "needs_java": false,
+        "requires_vpn": false,
+        "env": [["SASHINY_LICENSE_ACK", "true"], ["SASHINY_PROFILE", "viya"], ["SASHINY_VIYA_URL", "http://viya.lab.example.com"]],
+        "secrets": ["SASHINY_SAS_USER", "SASHINY_SAS_PASSWORD"]
+      }
+    },
+    {
+      "name": "sas94_iom",
+      "profile": {"name": "procogia_sas94_iom", "method": "iom", "iomhost": "sas94.example.com", "iomport": 8591, "requires_vpn": true},
+      "expected": {
+        "kind": "sas94",
+        "endpoints": ["sas94.example.com:8591"],
+        "needs_java": true,
+        "requires_vpn": true,
+        "env": [["SASHINY_LICENSE_ACK", "true"], ["SASHINY_PROFILE", "sas94"], ["SASHINY_SAS94_HOST", "sas94.example.com"], ["SASHINY_SAS94_PORT", "8591"]],
+        "secrets": ["SASHINY_SAS_USER", "SASHINY_SAS_PASSWORD"]
+      }
+    },
+    {
+      "name": "sas94_iom_default_port",
+      "profile": {"name": "sas94", "method": "iom", "iomhost": "sas94.example.com"},
+      "expected": {
+        "kind": "sas94",
+        "endpoints": ["sas94.example.com:8591"],
+        "needs_java": true,
+        "requires_vpn": false,
+        "env": [["SASHINY_LICENSE_ACK", "true"], ["SASHINY_PROFILE", "sas94"], ["SASHINY_SAS94_HOST", "sas94.example.com"], ["SASHINY_SAS94_PORT", "8591"]],
+        "secrets": ["SASHINY_SAS_USER", "SASHINY_SAS_PASSWORD"]
+      }
+    },
+    {
+      "name": "sas94_ssh",
+      "profile": {"name": "procogia_sas94_ssh", "method": "ssh", "host": "sas94.example.com", "saspath": "/opt/sas/SASHome/SASFoundation/9.4/bin/sas_u8", "requires_vpn": true},
+      "expected": {
+        "kind": "sas94",
+        "endpoints": ["sas94.example.com:22"],
+        "needs_java": false,
+        "requires_vpn": true,
+        "env": [["SASHINY_LICENSE_ACK", "true"], ["SASHINY_PROFILE", "sas94"], ["SASHINY_SAS94_HOST", "sas94.example.com"], ["SASHINY_SAS94_SASPATH", "/opt/sas/SASHome/SASFoundation/9.4/bin/sas_u8"]],
+        "secrets": []
+      }
+    },
+    {"name": "missing_method", "profile": {"name": "broken", "url": "https://viya.example.com"}, "expected_error": "profile broken: "},
+    {"name": "unknown_method", "profile": {"name": "local", "method": "com"}, "expected_error": "profile local: "},
+    {"name": "unknown_region", "profile": {"name": "oda", "method": "iom", "oda_region": "xx9"}, "expected_error": "profile oda: "},
+    {"name": "region_with_http", "profile": {"name": "mixed", "method": "http", "url": "https://v.example.com", "oda_region": "us1"}, "expected_error": "profile mixed: "},
+    {"name": "iom_without_host", "profile": {"name": "nohost", "method": "iom"}, "expected_error": "profile nohost: "},
+    {"name": "bad_port", "profile": {"name": "badport", "method": "iom", "iomhost": "h.example.com", "iomport": 70000}, "expected_error": "profile badport: "},
+    {"name": "http_without_url", "profile": {"name": "nourl", "method": "http"}, "expected_error": "profile nourl: "},
+    {"name": "http_bad_scheme", "profile": {"name": "ftp", "method": "http", "url": "ftp://viya.example.com"}, "expected_error": "profile ftp: "},
+    {"name": "ssh_without_saspath", "profile": {"name": "ssh", "method": "ssh", "host": "h.example.com"}, "expected_error": "profile ssh: "},
+    {"name": "vpn_not_boolean", "profile": {"name": "vpn", "method": "http", "url": "https://v.example.com", "requires_vpn": "yes"}, "expected_error": "profile vpn: "}
+  ]
+}

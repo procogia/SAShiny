@@ -148,6 +148,31 @@ def check_lint(r: Report, today: date) -> None:
         r.check(ok and (yml.parent / contract.data["program"]).exists(), f"lint/{yml.parent.name} layout")
 
 
+def check_deploy(r: Report) -> None:
+    """Deployment fixtures (§6.8): well formed, LF-only, no committed credential files."""
+    d = FIX / "deploy"
+    secret_names = {".authinfo", "_authinfo", ".netrc", "_netrc", ".Renviron", ".env"}
+    for f in sorted(d.rglob("*")):
+        if f.is_file():
+            ok = b"\r" not in f.read_bytes() and f.read_bytes().endswith(b"\n")
+            r.check(ok, f"deploy format {f.relative_to(FIX)}", "must be LF and end with a newline")
+            secret = f.name in secret_names or f.suffix.lower() in {".pem", ".key"}
+            r.check(not secret, f"deploy no committed secret {f.relative_to(FIX)}")
+    for name in ("profiles.json", "errors.json"):
+        cases = json.loads((d / name).read_text(encoding="utf-8"))["cases"]
+        r.check(bool(cases) and all("name" in c for c in cases), f"deploy/{name} layout")
+    for case in sorted(d.glob("*/case.json")):
+        c = json.loads(case.read_text(encoding="utf-8"))
+        exp = c["expected"]
+        listed = set(exp["files"])
+        on_disk = {str(p.relative_to(case.parent / "expected").as_posix()) for p in (case.parent / "expected").rglob("*") if p.is_file()}
+        r.check(on_disk <= listed, f"deploy/{case.parent.name} expected files are listed", str(sorted(on_disk - listed)))
+        r.check(exp["files"] == sorted(exp["files"], key=lambda p: p.encode("utf-8")), f"deploy/{case.parent.name} files sorted by bytes")
+        for contract in sorted((case.parent / "app").rglob("*.sashiny.yml")):
+            issues = ref.validate(ref.load(contract), date(2026, 11, 11))
+            r.check(not issues, f"deploy/{case.parent.name} contract {contract.name} valid", str([i.key() for i in issues]))
+
+
 def check_expected_sas_format(r: Report) -> None:
     for f in sorted(FIX.glob("wrapper/*/expected_*.sas")):
         raw = f.read_bytes()
@@ -178,6 +203,7 @@ def main() -> int:
     check_wrappers(r)
     check_collect(r)
     check_lint(r, today)
+    check_deploy(r)
     check_expected_sas_format(r)
     check_examples(r, date.today())
     for f in r.failures:

@@ -1,3 +1,20 @@
+# SAShiny (development version)
+
+## New features
+
+* Deployment targets (spec section 6.8). `sas_deploy()` writes deployment
+  artifacts for an app directory, and `sas_deploy_targets()` lists the
+  targets. The first is `container` (a non-root `Dockerfile` with a
+  health check; Java 17 only for IOM profiles). Generating never touches the
+  network; `apply = TRUE` and `sas_deploy_doctor()` run platform tools
+  through a replaceable runner. Credential files are never bundled and
+  generated files hold secret names only.
+* `sas_profile()` validates a connection profile and derives its egress
+  endpoints, Java need and runtime variables. `sas_connect_env()` builds a
+  deployed app's engine from those variables.
+* Bundles now skip `.git`, `__pycache__` and similar folders at any depth,
+  and list files in byte order (spec section 6.8; also for `sas_publish()`).
+
 # SAShiny 0.2.0
 
 ## Breaking changes

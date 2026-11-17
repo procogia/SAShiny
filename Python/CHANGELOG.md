@@ -8,6 +8,16 @@ All notable changes to the Python library are documented here. The format follow
 
 ### Added
 
+- Deployment targets (spec §6.8): `sashiny.deploy.deploy()` writes deployment artifacts for an
+  app directory and `sashiny.deploy.targets()` lists them. The first target is `container` (a
+  non-root `Dockerfile` with a health check; Java 17 only for IOM profiles). Generating never
+  touches the network; `apply=True` and `sashiny.deploy.doctor()` run platform tools through a
+  replaceable runner. Credential files are never bundled; generated files hold secret names only.
+- `sashiny.parse_profile()` / `Profile` validate a connection profile and derive its egress
+  endpoints, Java need and runtime variables; `sashiny.connect_from_env()` builds a deployed
+  app's engine from those variables.
+- Bundles skip `.git`, `__pycache__`, `rsconnect` and similar folders at any depth and list files
+  in byte order (spec §6.8; also for `sashiny.publish`).
 - Paired outputs (spec §2.2 and §8.6) show the original SAS graph and the SAShiny chart in one
   card, with a toggle in the browser. Declare one with `sas_plot: <k>` on a `chart` output, or
   a `chart:` block on a `plot` output (which needs `select`). Each card has its own

@@ -24,7 +24,9 @@ __all__ = ["PublishResult", "bundle_files", "on_connect", "publish"]
 
 SECRET_NAMES = frozenset({".authinfo", "_authinfo", ".netrc", "_netrc", ".Renviron", ".env"})
 SECRET_SUFFIXES = (".pem", ".key")
-_SKIP_DIRS = frozenset({".git", ".venv", "__pycache__", "rsconnect-python", ".Rproj.user"})
+_SKIP_DIRS = frozenset(
+    {".git", ".venv", "__pycache__", "rsconnect", "rsconnect-python", ".Rproj.user"}
+)
 
 
 @dataclass
@@ -44,19 +46,25 @@ def _is_secret(name: str) -> bool:
 def bundle_files(app_dir: str | Path) -> tuple[list[str], list[str]]:
     """Split an app directory into files to bundle and credential files left out.
 
+    Files under a skipped directory (``.git``, ``.venv``, ``__pycache__``,
+    ``rsconnect``, ``rsconnect-python``, ``.Rproj.user``) at any depth are
+    neither bundled nor reported (spec §6.8).
+
     Returns:
-        ``(files, excluded)``, POSIX paths relative to ``app_dir``.
+        ``(files, excluded)``, POSIX paths relative to ``app_dir``, sorted by
+        their UTF-8 bytes.
 
     """
     root = Path(app_dir)
     files: list[str] = []
     excluded: list[str] = []
-    for path in sorted(root.rglob("*")):
+    for path in root.rglob("*"):
         rel = PurePosixPath(path.relative_to(root).as_posix())
         if not path.is_file() or any(part in _SKIP_DIRS for part in rel.parts):
             continue
         (excluded if _is_secret(rel.name) else files).append(str(rel))
-    return files, excluded
+    key = lambda p: p.encode("utf-8")  # noqa: E731 - spec §6.8 byte order
+    return sorted(files, key=key), sorted(excluded, key=key)
 
 
 def on_connect() -> bool:

@@ -21,17 +21,42 @@
   name %in% .sashiny_secret_names | grepl("\\.(pem|key)$", name, ignore.case = TRUE)
 }
 
+#' Directory names whose files are never bundled or reported (spec section 6.8).
+#' @noRd
+.sashiny_skip_dirs <- c(".git", ".Rproj.user", ".venv", "__pycache__", "rsconnect", "rsconnect-python")
+
+#' Sort paths by their UTF-8 bytes (spec section 6.8), independent of locale.
+#' @noRd
+.sashiny_sort_bytes <- function(x) {
+  if (length(x) == 0L) {
+    return(character(0))
+  }
+  # Fixed-width hex keys of the bytes, padded with "00" (below every byte of a
+  # UTF-8 path), so that a C-locale string sort matches a byte-wise sort.
+  bytes <- lapply(enc2utf8(x), function(s) as.character(charToRaw(s)))
+  width <- max(lengths(bytes))
+  keys <- vapply(bytes, function(b) paste(c(b, rep("00", width - length(b))), collapse = ""), "")
+  x[order(keys, method = "radix")]
+}
+
 #' The files of an app directory to bundle, and the credential files left out.
 #'
-#' Hidden version-control and 'rsconnect' metadata folders are skipped too.
+#' Files under a skipped directory (`.git`, `.venv`, `rsconnect` and so on) at
+#' any depth are neither bundled nor reported.
 #' @param app_dir The app directory.
-#' @return `list(files, excluded)`, both relative to `app_dir`.
+#' @return `list(files, excluded)`, both relative to `app_dir`, sorted by their
+#'   UTF-8 bytes.
 #' @noRd
 .sashiny_bundle_files <- function(app_dir) {
   files <- list.files(app_dir, recursive = TRUE, all.files = TRUE, no.. = TRUE)
-  files <- files[!grepl("^(\\.git|\\.Rproj\\.user|rsconnect|\\.venv|__pycache__)(/|$)", files)]
+  parts <- strsplit(files, "/", fixed = TRUE)
+  keep <- !vapply(parts, function(p) any(utils::head(p, -1L) %in% .sashiny_skip_dirs), logical(1))
+  files <- files[keep]
   secret <- .sashiny_is_secret(files)
-  list(files = files[!secret], excluded = files[secret])
+  list(
+    files = .sashiny_sort_bytes(files[!secret]),
+    excluded = .sashiny_sort_bytes(files[secret])
+  )
 }
 
 #' Whether the current process is running on Posit Connect.
