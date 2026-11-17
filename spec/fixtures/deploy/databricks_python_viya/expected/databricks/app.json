@@ -1,0 +1,22 @@
+{
+  "name": "sashiny-app",
+  "description": "SAShiny app",
+  "resources": [
+    {
+      "name": "sas-user",
+      "secret": {
+        "scope": "sashiny",
+        "key": "sas-user",
+        "permission": "READ"
+      }
+    },
+    {
+      "name": "sas-password",
+      "secret": {
+        "scope": "sashiny",
+        "key": "sas-password",
+        "permission": "READ"
+      }
+    }
+  ]
+}

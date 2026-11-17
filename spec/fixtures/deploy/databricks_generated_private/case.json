@@ -1,0 +1,25 @@
+{
+  "description": "databricks_apps, contracts only on a VPN-only Viya profile: the generated app.py is added; private_connectivity; custom name and secret scope.",
+  "add_files": {},
+  "target": "databricks_apps",
+  "version": "0.0.0",
+  "license_ack": true,
+  "options": {"language": "python", "app_name": "sas-reports", "secret_scope": "sas-prod", "private_connectivity": true},
+  "profile": {"name": "procogia_viya", "method": "http", "url": "https://viya.example.com", "requires_vpn": true},
+  "expected": {
+    "language": "python",
+    "files": [
+      "bundle/app.py",
+      "bundle/app.yaml",
+      "bundle/requirements.txt",
+      "bundle/sub/b.sas",
+      "bundle/sub/b.sashiny.yml",
+      "databricks/app.json",
+      "deploy-databricks.md"
+    ],
+    "excluded": [],
+    "env": [["SASHINY_LICENSE_ACK", "true"], ["SASHINY_PROFILE", "viya"], ["SASHINY_VIYA_URL", "https://viya.example.com"]],
+    "secrets": ["SASHINY_SAS_USER", "SASHINY_SAS_PASSWORD"],
+    "endpoints": ["viya.example.com:443"]
+  }
+}

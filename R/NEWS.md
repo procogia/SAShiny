@@ -25,6 +25,9 @@
   egress SQL that lets Connect reach SAS (public or private connectivity).
 * Deployment target `streamlit_snowflake` (spec section 6.8.5) is Python only:
   `sas_deploy()` lists it and explains that the Python package generates it.
+* Deployment target `databricks_apps` (spec section 6.8.6) is Python only, as
+  Databricks Apps does not run R; `sas_deploy()` rejects R apps with a clear
+  message.
 * `sas_profile()` validates a connection profile and derives its egress
   endpoints, Java need and runtime variables. `sas_connect_env()` builds a
   deployed app's engine from those variables.
