@@ -20,6 +20,9 @@
   Container Services specification, setup SQL (image repository, compute pool,
   egress network rule, external access integration), a placeholder-only secret
   script, service SQL and a deployment guide.
+* Deployment target `posit_snowflake` (spec section 6.8.4): publishes to Posit
+  Connect in the Posit Team Native App with `sas_publish()`, and writes the
+  egress SQL that lets Connect reach SAS (public or private connectivity).
 * `sas_profile()` validates a connection profile and derives its egress
   endpoints, Java need and runtime variables. `sas_connect_env()` builds a
   deployed app's engine from those variables.
