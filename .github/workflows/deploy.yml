@@ -1,0 +1,47 @@
+name: deploy
+
+# Generates every deployment target (spec §6.8) on examples/general and lints
+# the output. No cloud credentials: nothing is deployed. The byte-exact golden
+# comparison runs in the R and Python test suites.
+on:
+  push:
+    branches: [main]
+    paths: ["spec/**", "Python/src/sashiny/**", "examples/general/**", ".github/workflows/deploy.yml"]
+  pull_request:
+    paths: ["spec/**", "Python/src/sashiny/**", "examples/general/**", ".github/workflows/deploy.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  generated-artifacts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - name: Generate every target on examples/general
+        working-directory: Python
+        run: uv run --no-dev python ../spec/tools/gen_deploy_examples.py "$RUNNER_TEMP/deploy"
+      # DL3008/DL3013: apt and pip packages are pinned by the base image and the
+      # SAShiny release; DL3059: the Java and SAShiny layers are split on purpose.
+      - name: hadolint (generated Dockerfiles and the golden fixtures)
+        run: |
+          files=$(find "$RUNNER_TEMP/deploy" spec/fixtures/deploy -name Dockerfile)
+          for f in $files; do
+            echo "== $f"
+            docker run --rm -i hadolint/hadolint:v2.12.0 hadolint --ignore DL3008 --ignore DL3013 --ignore DL3059 - < "$f"
+          done
+      - name: az bicep build
+        run: |
+          az bicep install
+          for f in $(find "$RUNNER_TEMP/deploy" spec/fixtures/deploy -name main.bicep); do
+            echo "== $f"; az bicep build --file "$f" --stdout > /dev/null
+          done
+      - name: cfn-lint
+        run: uvx cfn-lint $(find "$RUNNER_TEMP/deploy" spec/fixtures/deploy -name template.yaml)
+      - name: yamllint (SPCS specs and Databricks app.yaml)
+        run: |
+          uvx yamllint -d "{extends: relaxed, rules: {line-length: {max: 120}}}" \
+            $(find "$RUNNER_TEMP/deploy" spec/fixtures/deploy -name service-spec.yaml -o -name app.yaml)

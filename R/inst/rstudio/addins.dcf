@@ -2,3 +2,8 @@ Name: Publish SAShiny app to Posit Connect
 Description: Deploy a SAShiny app directory to Posit Connect without bundling credential files.
 Binding: sas_publish_addin
 Interactive: true
+
+Name: Deploy SAShiny app...
+Description: Generate deployment files (container, Azure, AWS, Snowflake, Posit Team, Databricks) for a SAShiny app. Nothing is uploaded.
+Binding: sas_deploy_addin
+Interactive: true
