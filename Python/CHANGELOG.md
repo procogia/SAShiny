@@ -19,6 +19,9 @@ All notable changes to the Python library are documented here. The format follow
 - Deployment target `aws_ecs_express` (spec §6.8.2): a CloudFormation template for ECS on Fargate
   behind an Application Load Balancer, with cookie stickiness, a one-hour idle timeout for
   WebSockets, Secrets Manager secret references and SAS egress rules, plus a deployment guide.
+- Deployment target `snowflake_spcs` (spec §6.8.3): a Snowpark Container Services specification,
+  setup SQL (image repository, compute pool, egress network rule, external access integration), a
+  placeholder-only secret script, service SQL and a deployment guide.
 - `sashiny.parse_profile()` / `Profile` validate a connection profile and derive its egress
   endpoints, Java need and runtime variables; `sashiny.connect_from_env()` builds a deployed
   app's engine from those variables.

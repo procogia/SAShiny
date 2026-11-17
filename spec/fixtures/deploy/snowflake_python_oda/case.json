@@ -1,0 +1,29 @@
+{
+  "description": "snowflake_spcs, Python app on ODA: default names, one instance, public endpoint, PASSWORD secret, egress network rule on 8591.",
+  "add_files": {".authinfo": "placeholder credential file\n"},
+  "target": "snowflake_spcs",
+  "version": "0.0.0",
+  "license_ack": true,
+  "options": {},
+  "profile": {"name": "oda", "method": "iom", "oda_region": "us1"},
+  "expected": {
+    "language": "python",
+    "files": [
+      ".dockerignore",
+      "Dockerfile",
+      "bundle/app.py",
+      "bundle/cars.sas",
+      "bundle/cars.sashiny.yml",
+      "bundle/data/cars.csv",
+      "deploy-snowflake-spcs.md",
+      "spcs/secret.sql",
+      "spcs/service-spec.yaml",
+      "spcs/service.sql",
+      "spcs/setup.sql"
+    ],
+    "excluded": [".authinfo"],
+    "env": [["SASHINY_LICENSE_ACK", "true"], ["SASHINY_PROFILE", "oda"], ["SASHINY_ODA_REGION", "us1"]],
+    "secrets": ["SASHINY_SAS_USER", "SASHINY_SAS_PASSWORD"],
+    "endpoints": ["odaws01-usw2.oda.sas.com:8591", "odaws02-usw2.oda.sas.com:8591"]
+  }
+}

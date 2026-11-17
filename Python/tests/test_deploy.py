@@ -341,3 +341,81 @@ def test_aws_doctor(monkeypatch: pytest.MonkeyPatch) -> None:
         "aws has no valid credentials (run aws configure or aws sso login)"
     ]
     assert d.doctor("aws_ecs_express", runner=lambda a, e: 0) == ["docker is not on PATH"]
+
+
+def test_snowflake_apply_runs_commands_through_runner(tmp_path: Path) -> None:
+    app = _staged_app(FIX / "snowflake_python_oda", tmp_path, {})
+    calls: list[list[str]] = []
+
+    def runner(args, env):  # type: ignore[no-untyped-def]
+        calls.append(list(args))
+        return 0
+
+    res = d.deploy(
+        app,
+        "snowflake_spcs",
+        tmp_path / "out",
+        {"name": "oda", "method": "iom", "oda_region": "us1"},
+        license_ack=True,
+        apply=True,
+        runner=runner,
+        repository_url="org-acct.registry.snowflakecomputing.com/sashiny_db/app/sashiny_repo/",
+        connection="dev",
+    )
+    out = str(res.out_dir)
+    image = (
+        "org-acct.registry.snowflakecomputing.com/sashiny_db/app/sashiny_repo/sashiny-app:latest"
+    )
+    assert calls == [
+        ["snow", "sql", "-f", f"{out}/spcs/setup.sql", "--connection", "dev"],
+        ["snow", "spcs", "image-registry", "login", "--connection", "dev"],
+        ["docker", "build", "--platform", "linux/amd64", "-t", image, out],
+        ["docker", "push", image],
+        ["snow", "sql", "-f", f"{out}/spcs/service.sql", "--connection", "dev"],
+    ]
+
+
+def test_snowflake_options_are_validated(tmp_path: Path) -> None:
+    app = _staged_app(FIX / "snowflake_python_oda", tmp_path, {})
+    prof = {"name": "oda", "method": "iom", "oda_region": "us1"}
+    with pytest.raises(ValueError, match="apply needs the options repository_url"):
+        d.deploy(
+            app,
+            "snowflake_spcs",
+            tmp_path / "o1",
+            prof,
+            license_ack=True,
+            apply=True,
+            runner=lambda a, e: 0,
+        )
+    with pytest.raises(ValueError, match="database must be 1-63 uppercase"):
+        d.deploy(
+            app, "snowflake_spcs", tmp_path / "o2", prof, license_ack=True, database="db; DROP"
+        )
+    with pytest.raises(ValueError, match="instances must be"):
+        d.deploy(app, "snowflake_spcs", tmp_path / "o3", prof, license_ack=True, instances=0)
+    vpn = {"name": "v", "method": "http", "url": "https://v.example.com", "requires_vpn": True}
+    with pytest.raises(ValueError, match="pass private_connectivity for target snowflake_spcs"):
+        d.deploy(app, "snowflake_spcs", tmp_path / "o4", vpn, license_ack=True)
+
+
+def test_snowflake_ssh_profile_has_no_secret(tmp_path: Path) -> None:
+    app = _staged_app(FIX / "snowflake_python_oda", tmp_path, {})
+    prof = {"name": "s", "method": "ssh", "host": "h.example.com", "saspath": "/opt/sas/sas"}
+    res = d.deploy(app, "snowflake_spcs", tmp_path / "o", prof, license_ack=True, public=False)
+    assert "spcs/secret.sql" not in res.files
+    spec = (res.out_dir / "spcs" / "service-spec.yaml").read_text(encoding="utf-8")
+    assert "secrets:" not in spec
+    assert "public: false" in spec
+    guide = (res.out_dir / "deploy-snowflake-spcs.md").read_text(encoding="utf-8")
+    assert "## 2. Build and push the image" in guide
+
+
+def test_snowflake_doctor(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(shutil, "which", lambda _n: None)
+    assert d.doctor("snowflake_spcs") == ["snow (Snowflake CLI) is not on PATH"]
+    monkeypatch.setattr(shutil, "which", lambda n: None if n == "docker" else "/usr/bin/snow")
+    assert d.doctor("snowflake_spcs", runner=lambda a, e: 1) == [
+        "snow has no working connection (run snow connection add)"
+    ]
+    assert d.doctor("snowflake_spcs", runner=lambda a, e: 0) == ["docker is not on PATH"]
