@@ -809,6 +809,58 @@ The apply options are `repository_url` (required; from `SHOW IMAGE REPOSITORIES`
 shows. `doctor` reports, in order: `snow` missing from `PATH`, `snow connection test` failing (no
 working connection), and `docker` missing from `PATH`.
 
+#### 6.8.4 `posit_snowflake`
+
+The target publishes the app to Posit Connect inside the Posit Team Native App
+([egress](https://docs.posit.co/partnerships/snowflake/posit-team/networking/egress.html),
+[publishing from outside Snowflake](https://docs.posit.co/partnerships/snowflake/posit-team/connect/publish-outside-snowflake.html)).
+Posit manages the runtime, and the app is ordinary Connect content. The target reuses the §6.7
+publisher and writes no container. It writes `bundle/`, `snowflake/egress.sql` and
+`deploy-posit-snowflake.md`.
+
+The Native App's containers reach SAS only through an external access integration. Its Connect
+integration is `<application>_CONNECT_EGRESS_EXTERNAL_ACCESS`, which allows the rule
+`<application>_APP_DATA.CONFIGURATION.<application>_CONNECT_EGRESS_NETWORK_RULE`. `egress.sql`:
+- describes the integration;
+- creates a network rule in `<application>_APP_DATA.CONFIGURATION` for the profile's endpoints;
+- sets the integration's allowed rules to the Connect rule plus the new rule. `SET` replaces the
+  list, so the file says to keep any other rule the description shows.
+
+There are two kinds of rule:
+- Public: one rule `<application>_SASHINY_SAS_EGRESS`, `TYPE = HOST_PORT`, with all endpoints.
+- With `private_connectivity`: a private rule allows one host, so there is one rule per endpoint,
+  `<application>_SASHINY_SAS_PRIVATE_<n>` (`n` from 1), `TYPE = PRIVATE_HOST_PORT`. Each needs a
+  provisioned private endpoint first.
+
+**Options.**
+
+| Option | Default | Meaning |
+|---|---|---|
+| `application` | `POSIT_TEAM` | The installed application name (identifier, as in §6.8.3) |
+| `private_connectivity` | false | as for `snowflake_spcs`; the private-network option of this target |
+
+**Guide.** The guide shows server registration for the app's language only: `rsconnect add ...
+--snowflake-connection-name` for Python, or `rsconnect::addServer()` and
+`rsconnect::connectSPCSUser()` for R. For `iom` profiles it notes that Java 17 must be available in
+the Connect runtime image; the target does not verify this. The exact bytes are fixed by
+`spec/fixtures/deploy/posit_*`.
+
+**Apply.** `apply` publishes `<out_dir>/bundle` with the §6.7 publisher (`publish` / `sas_publish`):
+- `title` goes to the publisher.
+- The server is the `server` option (a registered server nickname). Without it, `CONNECT_SERVER` and
+  `CONNECT_API_KEY` must both be set; otherwise `apply` fails with
+  `apply needs the option server or the environment variables CONNECT_SERVER and CONNECT_API_KEY`.
+- The plain environment of §6.8 is set in the process only for the publish call, and its names are
+  sent with `--environment` / `envVars`, so Connect stores the values.
+- `sas_credentials` is `"env"` when the profile has secrets, and `"server"` for SSH.
+- Each package publishes apps in its own language. Applying an R app from Python fails with
+  `apply for an R app must run in R (SAShiny::sas_deploy)`. Applying a Python app from R fails with
+  `apply for a Python app must run in Python (sashiny.deploy.deploy)`.
+
+`doctor` reports, in order:
+1. the Connect publisher missing (`rsconnect-python` or the R package 'rsconnect');
+2. `CONNECT_SERVER` or `CONNECT_API_KEY` unset (names only).
+
 ---
 
 ## 7. Dataset upload conversion

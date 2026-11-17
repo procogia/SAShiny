@@ -380,3 +380,51 @@ test_that("snowflake output for an ssh profile has no secret", {
   expect_false(grepl("secrets:", spec, fixed = TRUE))
   expect_true(grepl("public: false", spec, fixed = TRUE))
 })
+
+test_that("posit_snowflake apply reuses sas_publish (spec section 6.8.4)", {
+  app <- az_app()
+  calls <- new.env()
+  local_mocked_bindings(.sashiny_rsconnect = function() list(
+    deployApp = function(...) {
+      args <- list(...)
+      args$profile_at_deploy <- Sys.getenv("SASHINY_PROFILE")
+      calls$deploy <- args
+      "deployed"
+    }
+  ))
+  withr::local_envvar(
+    SASHINY_SAS_USER = "me", SASHINY_SAS_PASSWORD = "pw", SASHINY_PROFILE = NA,
+    CONNECT_SERVER = NA, CONNECT_API_KEY = NA
+  )
+  res <- sas_deploy(app, "posit_snowflake", tempfile("ps-out-"), az_oda,
+    license_ack = TRUE, apply = TRUE, server = "spcs", title = "Cars"
+  )
+  expect_equal(calls$deploy$server, "spcs")
+  expect_equal(calls$deploy$appTitle, "Cars")
+  expect_equal(calls$deploy$envVars, c(
+    "SASHINY_LICENSE_ACK", "SASHINY_PROFILE", "SASHINY_ODA_REGION",
+    "SASHINY_SAS_USER", "SASHINY_SAS_PASSWORD"
+  ))
+  expect_equal(calls$deploy$profile_at_deploy, "oda")
+  expect_equal(Sys.getenv("SASHINY_PROFILE", unset = NA), NA_character_)
+  expect_true(endsWith(res$commands[[1]][[2]], "bundle"))
+})
+
+test_that("posit_snowflake apply errors", {
+  withr::local_envvar(CONNECT_SERVER = NA, CONNECT_API_KEY = NA)
+  expect_error(
+    sas_deploy(az_app(), "posit_snowflake", tempfile(), az_oda, license_ack = TRUE, apply = TRUE),
+    "apply needs the option server or the environment variables", fixed = TRUE
+  )
+  py <- tempfile("pyapp-")
+  dir.create(py)
+  writeLines("import shiny", file.path(py, "app.py"))
+  expect_error(
+    sas_deploy(py, "posit_snowflake", tempfile(), az_oda, license_ack = TRUE, apply = TRUE, server = "s"),
+    "apply for a Python app must run in Python", fixed = TRUE
+  )
+  withr::local_envvar(CONNECT_API_KEY = "k3y-value")
+  problems <- sas_deploy_doctor("posit_snowflake")
+  expect_true("CONNECT_SERVER not set; or pass server" %in% problems)
+  expect_false(any(grepl("k3y-value", problems, fixed = TRUE)))
+})

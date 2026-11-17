@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 from pathlib import Path
 from typing import Any
@@ -419,3 +420,93 @@ def test_snowflake_doctor(monkeypatch: pytest.MonkeyPatch) -> None:
         "snow has no working connection (run snow connection add)"
     ]
     assert d.doctor("snowflake_spcs", runner=lambda a, e: 0) == ["docker is not on PATH"]
+
+
+def test_posit_snowflake_apply_reuses_publish(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app = _staged_app(FIX / "posit_python_oda", tmp_path, {})
+    monkeypatch.setenv("SASHINY_SAS_USER", "me")
+    monkeypatch.setenv("SASHINY_SAS_PASSWORD", "pw")
+    monkeypatch.delenv("SASHINY_PROFILE", raising=False)
+    seen: list[tuple[list[str], dict[str, str]]] = []
+
+    def runner(args, env):  # type: ignore[no-untyped-def]
+        seen.append((list(args), dict(env)))
+        return 0
+
+    res = d.deploy(
+        app,
+        "posit_snowflake",
+        tmp_path / "out",
+        {"name": "oda", "method": "iom", "oda_region": "us1"},
+        license_ack=True,
+        apply=True,
+        runner=runner,
+        server="spcs",
+        title="Cars",
+    )
+    ((args, env),) = seen
+    assert args[:3] == ["rsconnect", "deploy", "shiny"]
+    assert args[3].endswith("bundle")
+    assert args[args.index("--name") + 1] == "spcs"
+    names = [args[i + 1] for i, a in enumerate(args) if a == "--environment"]
+    assert names == [
+        "SASHINY_LICENSE_ACK",
+        "SASHINY_PROFILE",
+        "SASHINY_ODA_REGION",
+        "SASHINY_SAS_USER",
+        "SASHINY_SAS_PASSWORD",
+    ]
+    assert env["SASHINY_PROFILE"] == "oda"
+    assert "pw" not in args
+    assert "SASHINY_PROFILE" not in os.environ
+    assert res.commands == [args]
+
+
+def test_posit_snowflake_apply_errors(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("CONNECT_SERVER", raising=False)
+    monkeypatch.delenv("CONNECT_API_KEY", raising=False)
+    prof = {"name": "oda", "method": "iom", "oda_region": "us1"}
+    app = _staged_app(FIX / "posit_python_oda", tmp_path, {})
+    with pytest.raises(ValueError, match="apply needs the option server or the environment"):
+        d.deploy(
+            app,
+            "posit_snowflake",
+            tmp_path / "o1",
+            prof,
+            license_ack=True,
+            apply=True,
+            runner=lambda a, e: 0,
+        )
+    r_app = tmp_path / "rapp"
+    r_app.mkdir()
+    (r_app / "app.R").write_text("library(shiny)\n", encoding="utf-8")
+    with pytest.raises(ValueError, match=r"apply for an R app must run in R"):
+        d.deploy(
+            r_app,
+            "posit_snowflake",
+            tmp_path / "o2",
+            prof,
+            license_ack=True,
+            apply=True,
+            runner=lambda a, e: 0,
+            server="spcs",
+        )
+    with pytest.raises(ValueError, match="application must be 1-63 uppercase"):
+        d.deploy(
+            app,
+            "posit_snowflake",
+            tmp_path / "o3",
+            prof,
+            license_ack=True,
+            application="posit-team",
+        )
+
+
+def test_posit_snowflake_doctor_names_only(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("CONNECT_SERVER", raising=False)
+    monkeypatch.setenv("CONNECT_API_KEY", "k3y-value")
+    problems = d.doctor("posit_snowflake")
+    assert "CONNECT_SERVER not set; or pass server" in problems
+    assert not any("k3y-value" in p for p in problems)

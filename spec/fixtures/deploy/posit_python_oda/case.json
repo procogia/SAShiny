@@ -1,0 +1,24 @@
+{
+  "description": "posit_snowflake, Python app on ODA: Connect bundle, HOST_PORT egress rule added to the Posit Team Connect integration, Java note for IOM.",
+  "add_files": {".authinfo": "placeholder credential file\n"},
+  "target": "posit_snowflake",
+  "version": "0.0.0",
+  "license_ack": true,
+  "options": {},
+  "profile": {"name": "oda", "method": "iom", "oda_region": "us1"},
+  "expected": {
+    "language": "python",
+    "files": [
+      "bundle/app.py",
+      "bundle/cars.sas",
+      "bundle/cars.sashiny.yml",
+      "bundle/data/cars.csv",
+      "deploy-posit-snowflake.md",
+      "snowflake/egress.sql"
+    ],
+    "excluded": [".authinfo"],
+    "env": [["SASHINY_LICENSE_ACK", "true"], ["SASHINY_PROFILE", "oda"], ["SASHINY_ODA_REGION", "us1"]],
+    "secrets": ["SASHINY_SAS_USER", "SASHINY_SAS_PASSWORD"],
+    "endpoints": ["odaws01-usw2.oda.sas.com:8591", "odaws02-usw2.oda.sas.com:8591"]
+  }
+}

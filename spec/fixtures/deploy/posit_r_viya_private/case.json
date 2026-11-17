@@ -1,0 +1,23 @@
+{
+  "description": "posit_snowflake, R app on a VPN-only Viya profile: private_connectivity gives one PRIVATE_HOST_PORT rule per host; custom application name.",
+  "add_files": {},
+  "target": "posit_snowflake",
+  "version": "0.0.0",
+  "license_ack": true,
+  "options": {"application": "POSIT_PROD", "private_connectivity": true},
+  "profile": {"name": "procogia_viya", "method": "http", "url": "https://viya.example.com", "requires_vpn": true},
+  "expected": {
+    "language": "r",
+    "files": [
+      "bundle/app.R",
+      "bundle/report.sas",
+      "bundle/report.sashiny.yml",
+      "deploy-posit-snowflake.md",
+      "snowflake/egress.sql"
+    ],
+    "excluded": [],
+    "env": [["SASHINY_LICENSE_ACK", "true"], ["SASHINY_PROFILE", "viya"], ["SASHINY_VIYA_URL", "https://viya.example.com"]],
+    "secrets": ["SASHINY_SAS_USER", "SASHINY_SAS_PASSWORD"],
+    "endpoints": ["viya.example.com:443"]
+  }
+}
