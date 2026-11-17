@@ -281,3 +281,53 @@ test_that("azure doctor reports a failed login by name", {
   skip_if_not(nzchar(Sys.which("az")), "az is not installed")
   expect_equal(sas_deploy_doctor("azure_container_apps", function(a, e) 1L), "az is not logged in (run az login)")
 })
+
+test_that("aws apply runs docker and aws through the runner (spec section 6.8.2)", {
+  calls <- list()
+  runner <- function(args, env) {
+    calls[[length(calls) + 1L]] <<- args
+    0L
+  }
+  image <- "1.dkr.ecr.us-east-1.amazonaws.com/sashiny-app:v1"
+  res <- sas_deploy(az_app(), "aws_ecs_express", tempfile("aws-out-"), az_oda,
+    license_ack = TRUE, apply = TRUE, runner = runner,
+    image_uri = image, vpc_id = "vpc-1", public_subnet_ids = c("subnet-a", "subnet-b"),
+    private_subnet_ids = "subnet-c,subnet-d", certificate_arn = "arn:aws:acm:us-east-1:1:certificate/x",
+    sas_user_secret_arn = "arn:aws:secretsmanager:us-east-1:1:secret:u",
+    sas_password_secret_arn = "arn:aws:secretsmanager:us-east-1:1:secret:p"
+  )
+  expect_equal(calls[[1]], c("docker", "build", "--platform", "linux/amd64", "-t", image, res$out_dir))
+  expect_equal(calls[[2]], c("docker", "push", image))
+  expect_equal(calls[[3]][1:5], c("aws", "cloudformation", "deploy", "--stack-name", "sashiny-app"))
+  expect_true("PublicSubnetIds=subnet-a,subnet-b" %in% calls[[3]])
+  expect_equal(res$commands, calls)
+})
+
+test_that("aws apply and options are validated", {
+  expect_error(
+    sas_deploy(az_app(), "aws_ecs_express", tempfile(), az_oda,
+      license_ack = TRUE, apply = TRUE, runner = function(a, e) 0L
+    ),
+    "apply needs the options image_uri, vpc_id", fixed = TRUE
+  )
+  expect_error(
+    sas_deploy(az_app(), "aws_ecs_express", tempfile(), az_oda, license_ack = TRUE, desired_count = 11),
+    "desired_count must be"
+  )
+  vpn <- list(name = "v", method = "http", url = "https://v.example.com", requires_vpn = TRUE)
+  expect_error(
+    sas_deploy(az_app(), "aws_ecs_express", tempfile(), vpn, license_ack = TRUE),
+    "pass private_network for target aws_ecs_express", fixed = TRUE
+  )
+})
+
+test_that("aws output for an ssh profile has no secrets", {
+  prof <- list(name = "s", method = "ssh", host = "h.example.com", saspath = "/opt/sas/sas")
+  res <- sas_deploy(az_app(), "aws_ecs_express", tempfile(), prof, license_ack = TRUE)
+  text <- paste(readLines(file.path(res$out_dir, "infra", "template.yaml")), collapse = "\n")
+  expect_false(grepl("SecretArn", text, fixed = TRUE))
+  expect_true(grepl("FromPort: 22\n", text, fixed = TRUE))
+  guide <- paste(readLines(file.path(res$out_dir, "deploy-aws.md")), collapse = "\n")
+  expect_false(grepl("secretsmanager", guide, fixed = TRUE))
+  expect_true(grepl("## 1. Build and push the image", guide, fixed = TRUE))
+})

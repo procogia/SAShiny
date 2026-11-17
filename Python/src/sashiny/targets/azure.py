@@ -13,7 +13,7 @@ from typing import Any
 
 from ..deploy import DeployResult, Runner, Target, _Context, _generate_container, register
 
-__all__ = ["bicep", "generate"]
+__all__ = ["bicep", "generate", "validate_app_name"]
 
 _APP_NAME = re.compile(r"^[a-z][a-z0-9-]{1,31}$")
 _MAX_REPLICAS = 30
@@ -27,12 +27,17 @@ def _secret_param(var: str) -> str:
     return "sasUserSecretUri" if var.endswith("USER") else "sasPasswordSecretUri"
 
 
-def _options(ctx: _Context) -> tuple[str, int, str | None]:
-    name = ctx.options.get("app_name", "sashiny-app")
+def validate_app_name(name: object) -> str:
+    """Return ``name`` if it is a valid ``app_name`` (spec §6.8.1), else raise ``ValueError``."""
     if not isinstance(name, str) or not _APP_NAME.match(name) or name.endswith("-"):
         raise ValueError(
             "app_name must be 2-32 lowercase letters, digits or '-', starting with a letter"
         )
+    return name
+
+
+def _options(ctx: _Context) -> tuple[str, int, str | None]:
+    name = validate_app_name(ctx.options.get("app_name", "sashiny-app"))
     replicas = ctx.options.get("max_replicas", 1)
     if (
         isinstance(replicas, bool)

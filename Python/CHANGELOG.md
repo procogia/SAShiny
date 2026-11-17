@@ -16,6 +16,9 @@ All notable changes to the Python library are documented here. The format follow
 - Deployment target `azure_container_apps` (spec §6.8.1): a Bicep template (sticky sessions,
   WebSockets, managed identity, Key Vault secret references, optional VNet subnet), a parameters
   file and a deployment guide.
+- Deployment target `aws_ecs_express` (spec §6.8.2): a CloudFormation template for ECS on Fargate
+  behind an Application Load Balancer, with cookie stickiness, a one-hour idle timeout for
+  WebSockets, Secrets Manager secret references and SAS egress rules, plus a deployment guide.
 - `sashiny.parse_profile()` / `Profile` validate a connection profile and derive its egress
   endpoints, Java need and runtime variables; `sashiny.connect_from_env()` builds a deployed
   app's engine from those variables.

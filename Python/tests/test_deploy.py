@@ -264,3 +264,80 @@ def test_azure_doctor(monkeypatch: pytest.MonkeyPatch) -> None:
         "az is not logged in (run az login)"
     ]
     assert d.doctor("azure_container_apps", runner=lambda a, e: 0) == []
+
+
+def test_aws_apply_runs_commands_through_runner(tmp_path: Path) -> None:
+    app = _staged_app(FIX / "aws_python_oda", tmp_path, {})
+    calls: list[list[str]] = []
+
+    def runner(args, env):  # type: ignore[no-untyped-def]
+        calls.append(list(args))
+        return 0
+
+    image = "1.dkr.ecr.us-east-1.amazonaws.com/sashiny-app:v1"
+    res = d.deploy(
+        app,
+        "aws_ecs_express",
+        tmp_path / "out",
+        {"name": "oda", "method": "iom", "oda_region": "us1"},
+        license_ack=True,
+        apply=True,
+        runner=runner,
+        image_uri=image,
+        vpc_id="vpc-1",
+        public_subnet_ids=["subnet-a", "subnet-b"],
+        private_subnet_ids="subnet-c,subnet-d",
+        certificate_arn="arn:aws:acm:us-east-1:1:certificate/x",
+        sas_user_secret_arn="arn:aws:secretsmanager:us-east-1:1:secret:u",  # noqa: S106
+        sas_password_secret_arn="arn:aws:secretsmanager:us-east-1:1:secret:p",  # noqa: S106
+    )
+    out = str(res.out_dir)
+    assert calls[0] == ["docker", "build", "--platform", "linux/amd64", "-t", image, out]
+    assert calls[1] == ["docker", "push", image]
+    assert calls[2][:5] == ["aws", "cloudformation", "deploy", "--stack-name", "sashiny-app"]
+    assert "PublicSubnetIds=subnet-a,subnet-b" in calls[2]
+    assert "SasPasswordSecretArn=arn:aws:secretsmanager:us-east-1:1:secret:p" in calls[2]
+    assert res.commands == calls
+
+
+def test_aws_apply_and_options_are_validated(tmp_path: Path) -> None:
+    app = _staged_app(FIX / "aws_python_oda", tmp_path, {})
+    prof = {"name": "oda", "method": "iom", "oda_region": "us1"}
+    with pytest.raises(ValueError, match="apply needs the options image_uri, vpc_id"):
+        d.deploy(
+            app,
+            "aws_ecs_express",
+            tmp_path / "o1",
+            prof,
+            license_ack=True,
+            apply=True,
+            runner=lambda a, e: 0,
+        )
+    with pytest.raises(ValueError, match="desired_count must be"):
+        d.deploy(app, "aws_ecs_express", tmp_path / "o2", prof, license_ack=True, desired_count=11)
+    vpn = {"name": "v", "method": "http", "url": "https://v.example.com", "requires_vpn": True}
+    with pytest.raises(ValueError, match="pass private_network for target aws_ecs_express"):
+        d.deploy(app, "aws_ecs_express", tmp_path / "o3", vpn, license_ack=True)
+
+
+def test_aws_ssh_profile_has_no_secrets(tmp_path: Path) -> None:
+    app = _staged_app(FIX / "aws_python_oda", tmp_path, {})
+    prof = {"name": "s", "method": "ssh", "host": "h.example.com", "saspath": "/opt/sas/sas"}
+    res = d.deploy(app, "aws_ecs_express", tmp_path / "o", prof, license_ack=True)
+    text = (res.out_dir / "infra" / "template.yaml").read_text(encoding="utf-8")
+    assert "SecretArn" not in text
+    assert "Secrets:" not in text
+    assert "FromPort: 22\n" in text
+    guide = (res.out_dir / "deploy-aws.md").read_text(encoding="utf-8")
+    assert "secretsmanager" not in guide
+    assert "## 1. Build and push the image" in guide
+
+
+def test_aws_doctor(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(shutil, "which", lambda _n: None)
+    assert d.doctor("aws_ecs_express") == ["aws (AWS CLI) is not on PATH"]
+    monkeypatch.setattr(shutil, "which", lambda n: None if n == "docker" else "/usr/bin/aws")
+    assert d.doctor("aws_ecs_express", runner=lambda a, e: 255) == [
+        "aws has no valid credentials (run aws configure or aws sso login)"
+    ]
+    assert d.doctor("aws_ecs_express", runner=lambda a, e: 0) == ["docker is not on PATH"]

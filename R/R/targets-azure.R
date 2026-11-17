@@ -13,16 +13,22 @@
   if (endsWith(var, "USER")) "sasUserSecretUri" else "sasPasswordSecretUri"
 }
 
-#' Validate the Azure options and return `list(name, replicas, subnet)`.
+#' Validate an `app_name` option (spec section 6.8.1) and return it.
 #' @noRd
-.sashiny_az_options <- function(options) {
-  name <- options$app_name %||% "sashiny-app"
-  if (!is.character(name) || length(name) != 1L || !grepl("^[a-z][a-z0-9-]{1,31}$", name) ||
-    endsWith(name, "-")) {
+.sashiny_app_name <- function(name) {
+  if (!is.character(name) || length(name) != 1L || is.na(name) ||
+    !grepl("^[a-z][a-z0-9-]{1,31}$", name) || endsWith(name, "-")) {
     stop("app_name must be 2-32 lowercase letters, digits or '-', starting with a letter",
       call. = FALSE
     )
   }
+  name
+}
+
+#' Validate the Azure options and return `list(name, replicas, subnet)`.
+#' @noRd
+.sashiny_az_options <- function(options) {
+  name <- .sashiny_app_name(options$app_name %||% "sashiny-app")
   replicas <- options$max_replicas %||% 1L
   if (!is.numeric(replicas) || length(replicas) != 1L || is.na(replicas) ||
     replicas != round(replicas) || replicas < 1 || replicas > 30) {

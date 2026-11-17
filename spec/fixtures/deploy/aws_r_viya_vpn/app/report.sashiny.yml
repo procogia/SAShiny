@@ -1,0 +1,6 @@
+sashiny: 1
+program: report.sas
+title: Report
+outputs:
+  log:
+    type: log
