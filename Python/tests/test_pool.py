@@ -209,7 +209,11 @@ def test_pool_close_during_inflight_run_does_not_resurrect() -> None:
 
     t = threading.Thread(target=run)
     t.start()
-    # Wait until the slow engine has actually started, then close the pool.
+    # Wait until the worker has created its session (max_size=1 and no min_size,
+    # so it is created lazily) and the slow engine has started, then close.
+    deadline = time.monotonic() + 5.0
+    while not pool._sessions and time.monotonic() < deadline:
+        time.sleep(0.01)
     pool._sessions[0].engine._started.wait(timeout=5.0)
     pool.close()
     t.join()
