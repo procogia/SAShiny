@@ -6,6 +6,8 @@ All notable changes to the Python library are documented here. The format follow
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-17
+
 ### Added
 
 - Deployment targets (spec §6.8): `sashiny.deploy.deploy()` writes deployment artifacts for an

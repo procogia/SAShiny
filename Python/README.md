@@ -2,7 +2,7 @@
 
 Python library for SAShiny. Use an unchanged SAS program as the server of a Shiny for Python app.
 
-> Status: beta (0.1.7). The contract is specified in
+> Status: beta (0.3.0). The contract is specified in
 > [`spec/CONTRACT.md`](https://github.com/procogia/SAShiny/blob/main/spec/CONTRACT.md).
 
 SAS 9.4, SAS Viya and SAS ODA (OnDemand for Academics) connections are available.
