@@ -121,8 +121,9 @@
 #' `needs_java_runtime` (default `TRUE`), `apply` and `doctor`.
 #' @noRd
 .sashiny_register_target <- function(target) {
-  target$private_network_option <- target$private_network_option %||% "private_network"
-  target$needs_java_runtime <- target$needs_java_runtime %||% TRUE
+  # Runs while the package loads, before utils.R (and its `%||%`) is collated.
+  if (is.null(target$private_network_option)) target$private_network_option <- "private_network"
+  if (is.null(target$needs_java_runtime)) target$needs_java_runtime <- TRUE
   assign(target$id, target, envir = .sashiny_targets)
   invisible(target)
 }
