@@ -46,5 +46,13 @@ When adding a fixture, write the expected output by hand from CONTRACT.md first,
 | `errors.json` | `generate()` error order and messages (VPN, licence, language, port, target, unsafe host) | Error message starts with `expected_error`; `null` means no error |
 | `<case>/case.json`, `<case>/app/`, `<case>/expected/` | One `generate()` run: copy `app/` to a temporary folder, add `add_files`, generate with `version` | Result fields match `expected`; every file under `expected/` matches the generated file byte for byte |
 
+The `streamlit_*` cases are Python only (spec §6.8.5); the R package skips them.
+
+### Streamlit fixtures (`streamlit/`)
+
+| Path | Pins down (CONTRACT.md §6.9) | Pass condition |
+|---|---|---|
+| `widgets.json` | The Streamlit widget, keyword arguments, options and labels for every input type and widget variant | `widget_spec(input, today, loaded)` matches `expected` (dates as ISO strings); Python only |
+
 Credential files are never committed. A case lists them in `add_files`, and the test creates them in
 its temporary copy of `app/`.

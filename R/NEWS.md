@@ -23,6 +23,8 @@
 * Deployment target `posit_snowflake` (spec section 6.8.4): publishes to Posit
   Connect in the Posit Team Native App with `sas_publish()`, and writes the
   egress SQL that lets Connect reach SAS (public or private connectivity).
+* Deployment target `streamlit_snowflake` (spec section 6.8.5) is Python only:
+  `sas_deploy()` lists it and explains that the Python package generates it.
 * `sas_profile()` validates a connection profile and derives its egress
   endpoints, Java need and runtime variables. `sas_connect_env()` builds a
   deployed app's engine from those variables.
