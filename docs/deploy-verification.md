@@ -25,15 +25,18 @@ That proves the files are well formed. It does not prove that the platform accep
 
 ## Record
 
-| Target | Status | Date | Platform and region | SAS profile | Image digest or bundle id | SAShiny commit | Result and notes | By |
+Testing is split by platform. Igor covers the container, Azure, AWS and Databricks targets;
+Shreya covers the three Snowflake targets, which share one Snowflake account setup.
+
+| Target | Tester | Status | Date | Platform and region | SAS profile | Image digest or bundle id | SAShiny commit | Result and notes |
 |---|---|---|---|---|---|---|---|---|
-| `container` | generated only | | | | | | | |
-| `azure_container_apps` | generated only | | | | | | | |
-| `aws_ecs_express` | generated only | | | | | | | |
-| `snowflake_spcs` | generated only | | | | | | | |
-| `posit_snowflake` | generated only | | | | | | | |
-| `streamlit_snowflake` | generated only | | | | | | | |
-| `databricks_apps` | generated only | | | | | | | |
+| `container` | Igor (@igor-procogia) | generated only | | | | | | |
+| `azure_container_apps` | Igor (@igor-procogia) | generated only | | | | | | |
+| `aws_ecs_express` | Igor (@igor-procogia) | generated only | | | | | | |
+| `snowflake_spcs` | Shreya (@shreya-sharma-procogia) | generated only | | | | | | |
+| `posit_snowflake` | Shreya (@shreya-sharma-procogia) | generated only | | | | | | |
+| `streamlit_snowflake` | Shreya (@shreya-sharma-procogia) | generated only | | | | | | |
+| `databricks_apps` | Igor (@igor-procogia) | generated only | | | | | | |
 
 When a deployment passes every step, change its status to **verified**. If any step fails, set it to
 **failed** and open an issue.
