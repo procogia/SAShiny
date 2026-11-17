@@ -683,6 +683,65 @@ fixed by `spec/fixtures/deploy/azure_*`.
 The apply options are `resource_group`, `acr_name`, `image_tag` (default `latest`) and the two
 secret URIs. `doctor` reports `az` missing from `PATH`, or `az account show` failing (not logged in).
 
+#### 6.8.2 `aws_ecs_express`
+
+The target deploys the `container` image to Amazon ECS on Fargate behind an Application Load
+Balancer. [ECS Express Mode](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/express-service-overview.html)
+([`AWS::ECS::ExpressGatewayService`](https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-resource-ecs-expressgatewayservice.html))
+does not expose target-group stickiness or the load balancer idle timeout. Shiny needs both, so the
+template declares the standard ECS and Elastic Load Balancing resources instead, and the generated
+guide says so. The target writes the `container` artifacts, plus `infra/template.yaml`
+(CloudFormation) and `deploy-aws.md`.
+
+**Options:**
+
+| Option | Default | Meaning |
+|---|---|---|
+| `port` | 8000 | as for `container` |
+| `app_name` | `sashiny-app` | as for `azure_container_apps`; it names the cluster, service, load balancer and target group |
+| `desired_count` | 1 | Number of tasks, 1–10 |
+| `private_network` | false | `true` confirms that the private subnets route to the SAS network (VPN or Transit Gateway); the private-network option of this target |
+
+The template:
+- declares an internet-facing ALB in `PublicSubnetIds`, with an HTTPS listener using `CertificateArn`
+  and the attribute `idle_timeout.timeout_seconds` set to `3600` (WebSockets);
+- declares a target group of type `ip` with a health check on `/` and `lb_cookie` stickiness for
+  86400 s;
+- declares a Fargate service (2 vCPU / 4 GiB, `X86_64`, container user `10001`) in
+  `PrivateSubnetIds` without public IP addresses;
+- declares a log group, a task role, and an execution role. When the profile has secrets, the
+  execution role may read only the two secret ARNs.
+
+The service security group allows inbound traffic on the port from the load balancer only. Outbound,
+it allows TCP 443 to `0.0.0.0/0` (AWS APIs, and the SAS endpoints on port 443), and each other
+distinct SAS port to the parameter `SasEgressCidr` (default `0.0.0.0/0`), in ascending port order.
+`SasEgressCidr` is declared only when there is such a port. The load balancer accepts TCP 443 from
+anywhere. With `private_network: true`, `deploy-aws.md` adds a paragraph on routing the private
+subnets to the SAS network.
+
+The plain environment of §6.8 is written as the container's `Environment`, with values in single
+quotes. The secrets are written as `Secrets` whose `ValueFrom` is a parameter holding a Secrets
+Manager ARN (`SasUserSecretArn`, `SasPasswordSecretArn`), with no default. For an SSH profile, the
+secret parameters, the execution-role policy and `Secrets` are left out. The exact bytes are fixed
+by `spec/fixtures/deploy/aws_*`.
+
+`apply` runs, in order. The deployer logs Docker in to ECR first, as the guide shows:
+1. `docker build --platform linux/amd64 -t <image_uri> <out_dir>`
+2. `docker push <image_uri>`
+3. `aws cloudformation deploy --stack-name <stack_name> --template-file <out_dir>/infra/template.yaml
+   --capabilities CAPABILITY_IAM --parameter-overrides ImageUri=<image_uri> VpcId=<vpc_id>
+   PublicSubnetIds=<ids> PrivateSubnetIds=<ids> CertificateArn=<arn> [SasUserSecretArn=<arn>
+   SasPasswordSecretArn=<arn>]`
+
+The apply options are:
+- `image_uri`, `vpc_id`, `public_subnet_ids`, `private_subnet_ids` and `certificate_arn`, all
+  required;
+- `stack_name`, default `app_name`;
+- for profiles with secrets, `sas_user_secret_arn` and `sas_password_secret_arn`.
+
+Subnet ids may be a list, joined with `,`. `doctor` reports, in order: `aws` missing from `PATH`,
+`aws sts get-caller-identity` failing (no credentials), and `docker` missing from `PATH`.
+
 ---
 
 ## 7. Dataset upload conversion

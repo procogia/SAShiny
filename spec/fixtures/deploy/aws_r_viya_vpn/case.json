@@ -1,0 +1,30 @@
+{
+  "description": "aws_ecs_express, R app on a VPN-only Viya profile: private_network satisfies the private-network rule; custom name, port and task count; only port 443 egress.",
+  "add_files": {},
+  "target": "aws_ecs_express",
+  "version": "0.0.0",
+  "license_ack": true,
+  "options": {
+    "port": 3838,
+    "app_name": "sas-reports",
+    "desired_count": 2,
+    "private_network": true
+  },
+  "profile": {"name": "procogia_viya", "method": "http", "url": "https://viya.example.com", "requires_vpn": true},
+  "expected": {
+    "language": "r",
+    "files": [
+      ".dockerignore",
+      "Dockerfile",
+      "bundle/app.R",
+      "bundle/report.sas",
+      "bundle/report.sashiny.yml",
+      "deploy-aws.md",
+      "infra/template.yaml"
+    ],
+    "excluded": [],
+    "env": [["SASHINY_LICENSE_ACK", "true"], ["SASHINY_PROFILE", "viya"], ["SASHINY_VIYA_URL", "https://viya.example.com"]],
+    "secrets": ["SASHINY_SAS_USER", "SASHINY_SAS_PASSWORD"],
+    "endpoints": ["viya.example.com:443"]
+  }
+}

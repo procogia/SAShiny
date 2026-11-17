@@ -12,6 +12,10 @@
 * Deployment target `azure_container_apps` (spec section 6.8.1): a Bicep
   template (sticky sessions, WebSockets, managed identity, Key Vault secret
   references, optional VNet subnet), a parameters file and a deployment guide.
+* Deployment target `aws_ecs_express` (spec section 6.8.2): a CloudFormation
+  template for ECS on Fargate behind an Application Load Balancer, with cookie
+  stickiness, a one-hour idle timeout for WebSockets, Secrets Manager secret
+  references and SAS egress rules, plus a deployment guide.
 * `sas_profile()` validates a connection profile and derives its egress
   endpoints, Java need and runtime variables. `sas_connect_env()` builds a
   deployed app's engine from those variables.

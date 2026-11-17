@@ -6,6 +6,6 @@ Importing this package registers every platform target with
 
 from __future__ import annotations
 
-from . import azure
+from . import aws, azure
 
-__all__ = ["azure"]
+__all__ = ["aws", "azure"]
