@@ -428,3 +428,66 @@ test_that("the download button is namespaced and the placeholder has no id", {
     }
   )
 })
+
+test_that("the Run button is a task button with the contract's run label", {
+  skip_on_cran()
+  skip_if_not_installed("shiny")
+  skip_if_not(.sashiny_has_task_button(), "bslib >= 0.7.0 not installed")
+  contract <- fake_contract()
+  contract$data$ui$run_label <- "Build tables"
+  html <- as.character(sas_program_ui("mod", contract, today = as.Date("2026-11-11")))
+  expect_match(html, "bslib-task-button", fixed = TRUE)
+  expect_match(html, "id=\"mod-run\"", fixed = TRUE)
+  expect_match(html, "Build tables", fixed = TRUE)
+  expect_match(html, "Running...", fixed = TRUE)
+})
+
+test_that("the Run button falls back to an action button without bslib task buttons", {
+  skip_on_cran()
+  skip_if_not_installed("shiny")
+  local_mocked_bindings(.sashiny_has_task_button = function() FALSE)
+  html <- as.character(sas_program_ui("mod", fake_contract(), today = as.Date("2026-11-11")))
+  expect_false(grepl("bslib-task-button", html, fixed = TRUE))
+  expect_match(html, "action-button", fixed = TRUE)
+  expect_match(html, "id=\"mod-run\"", fixed = TRUE)
+})
+
+test_that("a click during a run is ignored and the Run card shows running...", {
+  skip_on_cran()
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("promises")
+  skip_if_not_installed("later")
+  skip_if_not_installed("callr")
+  contract <- sas_contract(file.path(.sashiny_fixtures(), "contracts", "valid",
+                                     "minimal", "contract.sashiny.yml"))
+  engine <- .sashiny_engine_mock()
+  done <- sas_engine_run(engine, contract, list())
+  # Pretend the app is running so the module uses its ExtendedTask, and hold
+  # each background run open until the test resolves it.
+  started <- 0L
+  resolvers <- list()
+  local_mocked_bindings(isRunning = function() TRUE, .package = "shiny")
+  local_mocked_bindings(
+    .sashiny_portable_engine = function(engine) engine,
+    .sashiny_run_bg_promise = function(...) {
+      started <<- started + 1L
+      promises::promise(function(resolve, reject) resolvers[[length(resolvers) + 1L]] <<- resolve)
+    }
+  )
+  shiny::testServer(
+    sas_program_server, args = list(contract = contract, engine = engine), {
+      session$setInputs(run = 1)
+      expect_identical(started, 1L)
+      expect_identical(output$status, "running...")
+      session$setInputs(run = 2)
+      session$setInputs(run = 3)
+      resolvers[[1]](done)
+      for (i in 1:20) later::run_now(0.01)
+      session$flushReact()
+      # The two extra clicks were ignored, not queued behind the first run.
+      expect_identical(started, 1L)
+      expect_identical(result()$status, "success")
+      expect_match(output$status, "status: success", fixed = TRUE)
+    }
+  )
+})

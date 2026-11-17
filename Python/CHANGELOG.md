@@ -64,6 +64,8 @@ All notable changes to the Python library are documented here. The format follow
 - The demo Docker image defaults to the `oda` profile (the removed `offline` profile stopped the
   app from starting) and installs the `upload` and `plotnine` extras the demo needs (plotnine
   is the default chart backend). The documented demo run commands add `--extra plotnine`.
+- The Run button is a task button (#108): it shows "Running..." and stays disabled until the
+  run finishes, so it is clear that a run is in progress.
 
 ## [0.2.0]
 

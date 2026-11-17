@@ -544,7 +544,10 @@ def program_ui(
     for iid, spec in _ordered_inputs(contract):
         controls.extend([_input_ui(iid, spec, today), _help(spec)])
     settings = contract.data.get("ui") or {}
-    controls.append(ui.input_action_button("run", settings.get("run_label", "Run")))
+    # A task button shows a busy state and is disabled until the run finishes.
+    controls.append(
+        ui.input_task_button("run", settings.get("run_label", "Run"), label_busy="Running...")
+    )
     outputs = [_output_card(oid, spec) for oid, spec in contract.data["outputs"].items()]
     if any(is_paired(spec) for spec in contract.data["outputs"].values()):
         # Module-wide SAS / SAShiny toggle (spec §8.6); empty when the server turns it off.
@@ -635,6 +638,8 @@ def program_server(  # noqa: PLR0913, PLR0917 - Shiny module signature + overrid
         except Exception:  # unknown or not-yet-initialised input
             return None
 
+    # Keep the Run task button busy and disabled until the run finishes.
+    @ui.bind_task_button(button_id="run")
     @reactive.extended_task
     async def run_task(snapshot: tuple[dict[str, Any], dict[str, Any]] | Result) -> Result:
         # Run the engine off the event loop so a slow SAS run never blocks other

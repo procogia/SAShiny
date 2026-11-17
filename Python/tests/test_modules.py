@@ -30,6 +30,16 @@ def test_program_ui_has_one_card_per_output() -> None:
     assert "cars-status" in html
 
 
+def test_program_ui_run_button_is_a_task_button() -> None:
+    # A task button shows a busy state and is disabled until the run finishes.
+    contract = sashiny.load(ROOT / "examples" / "general" / "cars_explorer.sashiny.yml")
+    html = str(modules.program_ui("cars", contract))
+    assert "bslib-task-button" in html
+    assert 'id="cars-run"' in html
+    assert "Summarise" in html
+    assert "Running..." in html
+
+
 def test_program_ui_top_layout_and_override() -> None:
     contract = sashiny.load(ROOT / "examples" / "general" / "cars_explorer.sashiny.yml")
     contract.data["ui"]["layout"] = "top"
