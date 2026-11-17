@@ -6,6 +6,15 @@ All notable changes to the Python library are documented here. The format follow
 
 ## [Unreleased]
 
+### Fixed
+
+- The `container` deployment image now builds and runs (spec §6.8). The Python image is based on
+  `python:3.12-slim-bookworm`, because current `python:3.12-slim` (Debian trixie) has no Java 17.
+  The R image installs R packages as Linux binaries from its base image's repository instead of
+  compiling them from CRAN source, and adds `libpython3-dev` (for reticulate) and `ggplot2` (for
+  charts). Its build now fails when a package is missing. The Azure, AWS and Snowflake container
+  targets share this Dockerfile and get the same fixes.
+
 ## [0.3.0] - 2026-11-17
 
 ### Added

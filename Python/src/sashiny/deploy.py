@@ -127,7 +127,7 @@ def dockerfile(language: str, needs_java: bool, port: int, version: str) -> str:
         )
         return (
             head
-            + "FROM python:3.12-slim\n"
+            + "FROM python:3.12-slim-bookworm\n"
             + java
             + "RUN pip install --no-cache-dir "
             + f'"sashiny[shiny,saspy,upload,plotnine]=={version}"\n'
@@ -144,15 +144,18 @@ def dockerfile(language: str, needs_java: bool, port: int, version: str) -> str:
         + "RUN apt-get update \\\n"
         + " && apt-get install -y --no-install-recommends \\\n"
         + java_line
-        + "      python3 python3-venv curl libcurl4-openssl-dev libssl-dev \\\n"
+        + "      python3 python3-venv libpython3-dev curl libcurl4-openssl-dev libssl-dev \\\n"
         + " && rm -rf /var/lib/apt/lists/*\n"
         + "RUN python3 -m venv /opt/saspy \\\n"
         + ' && /opt/saspy/bin/pip install --no-cache-dir "saspy>=5.100" "pandas>=2.0"\n'
         + "ENV RETICULATE_PYTHON=/opt/saspy/bin/python\n"
-        + 'RUN Rscript -e \'install.packages(c("remotes", "shiny", "bslib", "callr", '
-        + '"later", "promises", "reticulate"), repos = "https://cloud.r-project.org")\' \\\n'
+        + 'RUN Rscript -e \'pkgs <- c("remotes", "shiny", "bslib", "callr", "later", '
+        + '"promises", "reticulate", "ggplot2"); install.packages(pkgs); '
+        + "stopifnot(all(vapply(pkgs, requireNamespace, TRUE, quietly = TRUE)), "
+        + 'packageVersion("reticulate") >= "1.45.0")\' \\\n'
         + " && Rscript -e 'remotes::install_github(\"procogia/SAShiny/R@r-v"
-        + f'{version}", upgrade = "never")\'\n'
+        + f'{version}", upgrade = "never"); '
+        + 'stopifnot(requireNamespace("SAShiny", quietly = TRUE))\'\n'
         + tail
         + "HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \\\n"
         + f'  CMD curl -fsS "http://127.0.0.1:{port}/" > /dev/null || exit 1\n'

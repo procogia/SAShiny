@@ -85,6 +85,10 @@ A non-root `Dockerfile` with a health check. Use it for any container host
 (Kubernetes, Cloud Run, an on-premises Docker host). The other container
 targets build on it.
 
+The images target `linux/amd64`. On an ARM machine (Apple silicon), build with
+`docker build --platform linux/amd64 -t my-app .`: some Python packages have no
+ARM Linux wheels and the image has no compiler.
+
 ### `azure_container_apps`
 
 A Bicep template that sets up:

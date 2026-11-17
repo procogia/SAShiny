@@ -74,7 +74,7 @@
     }
     return(paste0(
       head,
-      "FROM python:3.12-slim\n",
+      "FROM python:3.12-slim-bookworm\n",
       java,
       sprintf("RUN pip install --no-cache-dir \"sashiny[shiny,saspy,upload,plotnine]==%s\"\n", version),
       tail,
@@ -90,15 +90,21 @@
     "RUN apt-get update \\\n",
     " && apt-get install -y --no-install-recommends \\\n",
     if (needs_java) "      openjdk-17-jre-headless \\\n" else "",
-    "      python3 python3-venv curl libcurl4-openssl-dev libssl-dev \\\n",
+    "      python3 python3-venv libpython3-dev curl libcurl4-openssl-dev libssl-dev \\\n",
     " && rm -rf /var/lib/apt/lists/*\n",
     "RUN python3 -m venv /opt/saspy \\\n",
     " && /opt/saspy/bin/pip install --no-cache-dir \"saspy>=5.100\" \"pandas>=2.0\"\n",
     "ENV RETICULATE_PYTHON=/opt/saspy/bin/python\n",
-    "RUN Rscript -e 'install.packages(c(\"remotes\", \"shiny\", \"bslib\", \"callr\", ",
-    "\"later\", \"promises\", \"reticulate\"), repos = \"https://cloud.r-project.org\")' \\\n",
+    "RUN Rscript -e 'pkgs <- c(\"remotes\", \"shiny\", \"bslib\", \"callr\", \"later\", ",
+    "\"promises\", \"reticulate\", \"ggplot2\"); install.packages(pkgs); ",
+    "stopifnot(all(vapply(pkgs, requireNamespace, TRUE, quietly = TRUE)), ",
+    "packageVersion(\"reticulate\") >= \"1.45.0\")' \\\n",
     sprintf(
-      " && Rscript -e 'remotes::install_github(\"procogia/SAShiny/R@r-v%s\", upgrade = \"never\")'\n",
+      paste0(
+        " && Rscript -e 'remotes::install_github(\"procogia/SAShiny/R@r-v%s\", ",
+        "upgrade = \"never\"); ",
+        "stopifnot(requireNamespace(\"SAShiny\", quietly = TRUE))'\n"
+      ),
       version
     ),
     tail,

@@ -30,7 +30,8 @@ Shreya covers the three Snowflake targets, which share one Snowflake account set
 
 | Target | Tester | Status | Date | Platform and region | SAS profile | Image digest or bundle id | SAShiny commit | Result and notes |
 |---|---|---|---|---|---|---|---|---|
-| `container` | Igor (@igor-procogia) | generated only | | | | | | |
+| `container` (Python) | Igor (@igor-procogia) | verified | 2026-11-17 | Local Docker 27.3.1, `linux/amd64` (emulated on Apple silicon) | ODA `us1` (IOM) | `sha256:459722c8d98f` | PyPI `sashiny` 0.3.0; Dockerfile from branch `fix/deploy-container-images` | Steps 1–7 pass: two runs (`69e84800`, `e28ea426`) with a reload between, SAS log timestamps match each run, no secret value in the container logs. Docker has no secret store, so `docker inspect` shows the SAS credentials to anyone with Docker access on the host; use the platform's secret store in production. |
+| `container` (R) | Igor (@igor-procogia) | failed | 2026-11-17 | Local Docker 27.3.1, `linux/amd64` (emulated on Apple silicon) | ODA `us1` (IOM) | | branch `fix/deploy-container-images` | Step 1 fails as generated: the image installs `procogia/SAShiny/R@r-v<VERSION>` and no `r-v*` tag exists. With `R/` installed from source instead, the image passed a live ODA run. Re-verify after the first R release tag. |
 | `azure_container_apps` | Igor (@igor-procogia) | generated only | | | | | | |
 | `aws_ecs_express` | Igor (@igor-procogia) | generated only | | | | | | |
 | `snowflake_spcs` | Shreya (@shreya-sharma-procogia) | generated only | | | | | | |

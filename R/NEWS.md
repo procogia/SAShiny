@@ -1,5 +1,21 @@
 # SAShiny (development version)
 
+## Fixes
+
+* The `container` deployment image now builds and runs (spec section 6.8).
+  The Python image is based on `python:3.12-slim-bookworm`, because current
+  `python:3.12-slim` (Debian trixie) has no Java 17. The R image installs R
+  packages as Linux binaries from its base image's repository instead of
+  compiling them from CRAN source, which failed for lack of system libraries.
+  It also adds `libpython3-dev` (reticulate could not load Python, so every
+  run failed) and `ggplot2` (charts did not render). The build now fails when
+  a package is missing; before, `install.packages()` only warned and the image
+  shipped broken. The Azure, AWS and Snowflake container targets share this
+  Dockerfile and get the same fixes.
+* `sas_app()` serves Bootstrap 5 when 'bslib' is installed. It served
+  Bootstrap 3, which the program modules' 'bslib' cards and sidebar layout do
+  not support, so the layout broke.
+
 ## New features
 
 * Deployment targets (spec section 6.8). `sas_deploy()` writes deployment
