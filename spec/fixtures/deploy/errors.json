@@ -1,0 +1,68 @@
+{
+  "description": "generate() errors for deployment targets (CONTRACT.md 6.8). Each case runs on the app directory given; the error message must start with expected_error.",
+  "cases": [
+    {
+      "name": "vpn_profile_without_private_network",
+      "app": "vpn_rejected/app",
+      "target": "container",
+      "license_ack": true,
+      "options": {},
+      "profile": {"name": "procogia_viya", "method": "http", "url": "https://viya.example.com", "requires_vpn": true},
+      "expected_error": "profile procogia_viya requires a private network"
+    },
+    {
+      "name": "vpn_profile_with_private_network",
+      "app": "vpn_rejected/app",
+      "target": "container",
+      "license_ack": true,
+      "options": {"private_network": true},
+      "profile": {"name": "procogia_viya", "method": "http", "url": "https://viya.example.com", "requires_vpn": true},
+      "expected_error": null
+    },
+    {
+      "name": "no_license_ack",
+      "app": "vpn_rejected/app",
+      "target": "container",
+      "license_ack": false,
+      "options": {},
+      "profile": {"name": "oda", "method": "iom", "oda_region": "us1"},
+      "expected_error": "deploying requires license_ack = TRUE"
+    },
+    {
+      "name": "no_language",
+      "app": "container_generated_python/app",
+      "target": "container",
+      "license_ack": true,
+      "options": {},
+      "profile": {"name": "oda", "method": "iom", "oda_region": "us1"},
+      "expected_error": "cannot detect the app language"
+    },
+    {
+      "name": "bad_port",
+      "app": "vpn_rejected/app",
+      "target": "container",
+      "license_ack": true,
+      "options": {"port": 0},
+      "profile": {"name": "oda", "method": "iom", "oda_region": "us1"},
+      "expected_error": "port must be"
+    },
+    {
+      "name": "unknown_target",
+      "app": "vpn_rejected/app",
+      "target": "heroku",
+      "license_ack": true,
+      "options": {},
+      "profile": {"name": "oda", "method": "iom", "oda_region": "us1"},
+      "expected_error": "unknown deployment target"
+    },
+    {
+      "name": "unsafe_host",
+      "app": "vpn_rejected/app",
+      "target": "container",
+      "license_ack": true,
+      "options": {},
+      "profile": {"name": "evil", "method": "iom", "iomhost": "h.example.com\"; rm -rf /"},
+      "expected_error": "profile evil: "
+    }
+  ]
+}

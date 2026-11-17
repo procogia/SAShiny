@@ -429,6 +429,215 @@ language's official Connect client (`rsconnect` for R, `rsconnect-python` for Py
 - The in-app "Publish" control is opt-in. It MUST be hidden when the app itself runs on Posit Connect
   (environment variable `RSTUDIO_PRODUCT` equal to `CONNECT`, or `CONNECT_SERVER_URL`/`CONNECT_CONTENT_GUID` set).
 
+### 6.8 Deployment targets
+
+A **deployment target** turns an app directory into deployment artifacts for one hosting platform. Both
+languages provide the same targets through `sas_deploy()` (R) and `sashiny.deploy.deploy()` (Python), and
+list them with `sas_deploy_targets()` / `sashiny.deploy.targets()`.
+
+**Target ids:** `container`, `azure_container_apps`, `aws_ecs_express`, `snowflake_spcs`,
+`posit_snowflake`, `streamlit_snowflake`, `databricks_apps`.
+
+**Phases.**
+- `generate` writes artifacts to an output directory. It MUST NOT touch the network or run any external
+  program. Its output is fully determined by the app directory, the profile and the options.
+- `apply` is a separate, explicit step (`apply = TRUE`). It runs the platform CLI through a command
+  runner that tests can replace. It MUST NOT print secret values.
+- `doctor` checks local prerequisites (CLI on `PATH`, login state, required environment variables). It
+  reports names and exit statuses only, never values.
+
+**Connection profile.** A target receives a SAS connection profile with these fields:
+
+| Field | Values | Meaning |
+|---|---|---|
+| `name` | string | Profile id (for messages) |
+| `method` | `iom`, `http`, `ssh` | saspy access method |
+| `oda_region` | `us1`, `us2`, `eu1`, `ap1`, `ap2` | ODA only. Selects the ODA IOM hosts of §6.6 |
+| `iomhost`, `iomport` | host, port (default 8591) | SAS 9.4 IOM |
+| `url` | `https://...` or `http://...` | SAS Viya |
+| `host`, `saspath` | host, path of the SAS executable | SAS 9.4 SSH |
+| `requires_vpn` | `true` / `false` (default `false`) | The SAS host is reachable only over a private network |
+
+Other fields (for example `label`, `authkey`, `encoding`) are ignored. A profile is invalid, with an
+error starting with `profile <name>: `, when:
+- `method` is missing or not one of the three values;
+- `oda_region` is given with a method other than `iom`, or is not a known region;
+- an `iom` profile has neither `oda_region` nor `iomhost`;
+- `iomport` is not an integer from 1 to 65535;
+- an `http` profile has no `url` starting with `https://` or `http://`;
+- an `ssh` profile lacks `host` or `saspath`;
+- `requires_vpn` is not a boolean;
+- a host, URL or path contains whitespace, a control character, `"`, `'`, `\`, `$` or `` ` ``
+  (`saspath` may contain spaces). Such values could not be written safely into generated files.
+
+A profile with `oda_region` is ODA. Its **kind** is `oda`; other `iom` and `ssh` profiles are `sas94`,
+and `http` profiles are `viya`. Its **egress endpoints**, the `host:port` pairs the app must reach,
+are derived as follows:
+
+| Profile | Endpoints |
+|---|---|
+| ODA (`oda_region`) | each ODA host of the region, port 8591, in the order of §6.6 |
+| `iom` | `iomhost:iomport` |
+| `http` | the URL host, with the URL port, or 443 for `https` and 80 for `http` |
+| `ssh` | `host:22` |
+
+**Java.** A profile with method `iom` (including ODA) needs Java 17 in the runtime. A target whose
+runtime cannot provide Java MUST reject `iom` profiles with an error naming the target and the profile.
+
+**Private networks.** When `requires_vpn` is `true`, a target MUST fail unless the caller passes the
+target's private-network option. The error starts with `profile <name> requires a private network`.
+For `container` that option is `private_network = TRUE`: the caller confirms the host the image runs
+on can reach the SAS host. Platform targets use their own option, for example a subnet id, or a
+confirmation that PrivateLink is configured.
+
+**Errors.** `generate` checks, in this order:
+1. the target id, with an error starting with `unknown deployment target`;
+2. the licence;
+3. the profile;
+4. the private network;
+5. the options, for example `port must be an integer from 1 to 65535`;
+6. the language.
+
+Errors never include option or environment values that could be secrets.
+
+**Runtime environment.** Every target configures two kinds of environment variables in the deployed
+app. The first are plain settings, in this order:
+1. `SASHINY_LICENSE_ACK=true`. `generate` MUST fail unless the deployer passes `license_ack = TRUE`,
+   with an error starting with `deploying requires license_ack = TRUE`.
+2. `SASHINY_PROFILE`: the profile kind (`oda`, `viya` or `sas94`).
+3. The connection settings of the kind:
+
+| Kind | Variables, in order |
+|---|---|
+| `oda` | `SASHINY_ODA_REGION` |
+| `viya` | `SASHINY_VIYA_URL` |
+| `sas94` (`iom`) | `SASHINY_SAS94_HOST`, `SASHINY_SAS94_PORT` |
+| `sas94` (`ssh`) | `SASHINY_SAS94_HOST`, `SASHINY_SAS94_SASPATH` |
+
+The second are secrets, which appear only by name: `SASHINY_SAS_USER` and `SASHINY_SAS_PASSWORD`,
+for `iom` and `http` profiles (§6.7). Their values come from the platform's secret store. SSH uses
+key-based login and has no secrets.
+
+A deployed app builds its engine from these variables with `sas_connect_env()` (R) or
+`sashiny.connect_from_env()` (Python). These read the variables above and call `sas_connect()` /
+`sashiny.connect()` with them. The licence is acknowledged through `SASHINY_LICENSE_ACK` (§6.6).
+
+**Bundle.** The files deployed from the app directory are the §6.7 bundle. Credential files are always
+excluded, and the excluded names are reported. Files under a directory named `.git`, `.Rproj.user`,
+`.venv`, `__pycache__`, `rsconnect` or `rsconnect-python`, at any depth, are skipped and not reported.
+Paths are POSIX paths relative to the app directory, sorted by their UTF-8 bytes. The same rules apply
+to `publish` (§6.7). Generated artifacts MUST NOT contain secret values, credentials or API keys.
+
+**Language.** An app directory with `app.py` is a `python` app; one with `app.R` is an `r` app. With
+both, the caller must pass the language. With neither, the caller must pass the language, and the
+target adds a **generated app** to the bundle that serves every `*.sashiny.yml` contract in the
+directory on a session pool built from the environment (`max_size = 2`). The error for a missing
+language starts with `cannot detect the app language`. The generated app files are:
+
+`app.py`:
+```python
+# Generated by SAShiny (CONTRACT.md 6.8). Serves every contract in this folder.
+from pathlib import Path
+
+import sashiny
+
+HERE = Path(__file__).resolve().parent
+CONTRACTS = sorted(HERE.rglob("*.sashiny.yml"))
+app = sashiny.app(CONTRACTS, sashiny.Pool(sashiny.connect_from_env, max_size=2), title="SAShiny")
+```
+
+`app.R`:
+```r
+# Generated by SAShiny (CONTRACT.md 6.8). Serves every contract in this folder.
+library(SAShiny)
+
+contracts <- sort(list.files(".", pattern = "[.]sashiny[.]yml$", recursive = TRUE, full.names = TRUE))
+sas_app(contracts, sas_pool(sas_connect_env, max_size = 2L), title = "SAShiny")
+```
+
+**Output layout.** `generate` writes into the output directory, which it creates and which MUST be
+empty or absent:
+- `bundle/`: the bundle files, plus the generated app when there is one;
+- the target's own artifacts (for `container`, the `Dockerfile`).
+
+The result lists the written files (POSIX paths relative to the output directory, sorted by UTF-8
+bytes) and the excluded credential files. It also lists the plain environment variables in order,
+the secret names, and the egress endpoints. Generated text files use LF line endings and end with a
+newline.
+
+**Web serving.** Shiny needs WebSockets and session affinity. Every target that fronts the app with a
+load balancer MUST enable both, or document why the platform provides them by default.
+
+**Container image (`container` target).** The `container` target writes a `Dockerfile` (next to
+`bundle/`) for one app, in language `r` or `python`, and a `.dockerignore`. The other container-based
+targets build on it. The image installs the SAShiny release equal to the generating package's
+version (`<VERSION>`): the PyPI release for Python, and the git tag `r-v<VERSION>` of
+`procogia/SAShiny` for R, which every R release creates. Options: `port` (integer 1–65535, default
+8000) and `language`.
+
+The image MUST:
+- run as a non-root user;
+- listen on `port`;
+- declare a `HEALTHCHECK` on `/`;
+- install Java 17 only when the profile's method is `iom`;
+- copy only `bundle/`;
+- contain no environment values except `PORT`.
+
+The deployment platform sets the runtime environment above.
+
+`Dockerfile`, language `python`. The `[...]` lines are present only for `iom` profiles:
+```dockerfile
+# Generated by SAShiny <VERSION> (CONTRACT.md 6.8). Do not edit by hand.
+FROM python:3.12-slim
+[RUN apt-get update \]
+[ && apt-get install -y --no-install-recommends openjdk-17-jre-headless \]
+[ && rm -rf /var/lib/apt/lists/*]
+RUN pip install --no-cache-dir "sashiny[shiny,saspy,upload,plotnine]==<VERSION>"
+RUN useradd --create-home --uid 10001 sashiny
+WORKDIR /app
+COPY --chown=sashiny:sashiny bundle/ /app/
+USER sashiny
+ENV PORT=<PORT>
+EXPOSE <PORT>
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:<PORT>/', timeout=4)"
+CMD ["sh", "-c", "exec shiny run app.py --host 0.0.0.0 --port \"$PORT\""]
+```
+
+`Dockerfile`, language `r`. The `openjdk-17-jre-headless \` line is present only for `iom` profiles:
+```dockerfile
+# Generated by SAShiny <VERSION> (CONTRACT.md 6.8). Do not edit by hand.
+FROM rocker/r-ver:4.5.2
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      [openjdk-17-jre-headless \]
+      python3 python3-venv curl libcurl4-openssl-dev libssl-dev \
+ && rm -rf /var/lib/apt/lists/*
+RUN python3 -m venv /opt/saspy \
+ && /opt/saspy/bin/pip install --no-cache-dir "saspy>=5.100" "pandas>=2.0"
+ENV RETICULATE_PYTHON=/opt/saspy/bin/python
+RUN Rscript -e 'install.packages(c("remotes", "shiny", "bslib", "callr", "later", "promises", "reticulate"), repos = "https://cloud.r-project.org")' \
+ && Rscript -e 'remotes::install_github("procogia/SAShiny/R@r-v<VERSION>", upgrade = "never")'
+RUN useradd --create-home --uid 10001 sashiny
+WORKDIR /app
+COPY --chown=sashiny:sashiny bundle/ /app/
+USER sashiny
+ENV PORT=<PORT>
+EXPOSE <PORT>
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+  CMD curl -fsS "http://127.0.0.1:<PORT>/" > /dev/null || exit 1
+CMD ["sh", "-c", "exec Rscript -e \"shiny::runApp('/app', host = '0.0.0.0', port = as.integer(Sys.getenv('PORT')))\""]
+```
+
+`.dockerignore` (both languages):
+```
+*
+!bundle/
+```
+
+The exact bytes are fixed by `spec/fixtures/deploy/`, with `<VERSION>` replaced by `0.0.0` in the
+fixtures. A fixture case passes `version = "0.0.0"`, which `generate` accepts for testing only.
+
 ---
 
 ## 7. Dataset upload conversion

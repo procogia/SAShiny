@@ -37,3 +37,14 @@ When adding a fixture, write the expected output by hand from CONTRACT.md first,
 | `recording_key.json` | The recording key text and its SHA-256 (§8.3) |
 
 `key_text` in `recording_key.json` is hand-written from §8.3. `key` is its SHA-256.
+
+### Deployment fixtures (`deploy/`)
+
+| Path | Pins down (CONTRACT.md §6.8) | Pass condition |
+|---|---|---|
+| `profiles.json` | Profile validation, kind, egress endpoints, Java need, plain env vars and secret names | Valid cases match `expected` exactly (env order included); invalid cases raise an error starting with `expected_error` |
+| `errors.json` | `generate()` error order and messages (VPN, licence, language, port, target, unsafe host) | Error message starts with `expected_error`; `null` means no error |
+| `<case>/case.json`, `<case>/app/`, `<case>/expected/` | One `generate()` run: copy `app/` to a temporary folder, add `add_files`, generate with `version` | Result fields match `expected`; every file under `expected/` matches the generated file byte for byte |
+
+Credential files are never committed. A case lists them in `add_files`, and the test creates them in
+its temporary copy of `app/`.

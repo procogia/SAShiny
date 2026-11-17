@@ -1,0 +1,6 @@
+sashiny: 1
+program: demo.sas
+title: Demo
+outputs:
+  log:
+    type: log

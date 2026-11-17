@@ -1,0 +1,23 @@
+{
+  "description": "container target, folder with contracts but no app file: the generated Python app is added; SSH profile (no Java, no secrets).",
+  "add_files": {},
+  "target": "container",
+  "version": "0.0.0",
+  "license_ack": true,
+  "options": {"language": "python"},
+  "profile": {"name": "sas94_ssh", "method": "ssh", "host": "sas94.example.com", "saspath": "/opt/sas/bin/sas_u8"},
+  "expected": {
+    "language": "python",
+    "files": [
+      ".dockerignore",
+      "Dockerfile",
+      "bundle/app.py",
+      "bundle/sub/b.sas",
+      "bundle/sub/b.sashiny.yml"
+    ],
+    "excluded": [],
+    "env": [["SASHINY_LICENSE_ACK", "true"], ["SASHINY_PROFILE", "sas94"], ["SASHINY_SAS94_HOST", "sas94.example.com"], ["SASHINY_SAS94_SASPATH", "/opt/sas/bin/sas_u8"]],
+    "secrets": [],
+    "endpoints": ["sas94.example.com:22"]
+  }
+}

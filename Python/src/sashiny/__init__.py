@@ -12,6 +12,7 @@ from .contract import Contract, Issue, default_module_id, load, validate
 from .engines import Engine, SaspyEngine, connect, load_profiles
 from .lint import lint
 from .pool import Pool
+from .profiles import Profile, connect_from_env, parse_profile
 from .publish import publish
 from .result import LogLine, Result, TableResult
 from .run import run
@@ -25,6 +26,7 @@ __all__ = [
     "Issue",
     "LogLine",
     "Pool",
+    "Profile",
     "Result",
     "SaspyEngine",
     "TableResult",
@@ -34,11 +36,14 @@ __all__ = [
     "app",
     "chart_backends",
     "connect",
+    "connect_from_env",
     "default_module_id",
+    "deploy",
     "json_values",
     "lint",
     "load",
     "load_profiles",
+    "parse_profile",
     "publish",
     "render_chart",
     "render_values",
@@ -62,6 +67,12 @@ def __getattr__(name: str) -> Any:
 
         globals()["app"] = _app
         return _app
+    if name == "deploy":
+        from importlib import import_module  # noqa: PLC0415 - keep import time low
+
+        _deploy = import_module(f"{__name__}.deploy")
+        globals()["deploy"] = _deploy
+        return _deploy
     if name == "modules":
         from importlib import import_module  # noqa: PLC0415 - optional dependency
 

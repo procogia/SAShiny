@@ -18,3 +18,8 @@ SASPy
 saspy
 STDIO
 Viya
+dockerignore
+HEALTHCHECK
+egress
+PrivateLink
+Dockerfile

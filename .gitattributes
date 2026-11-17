@@ -4,6 +4,11 @@
 *.sas text eol=lf
 spec/fixtures/wrapper/**/expected_*.sas text eol=lf
 
+# Deployment fixtures are compared byte for byte with generated artifacts
+# (spec/CONTRACT.md section 6.8).
+spec/fixtures/deploy/** text eol=lf
+R/inst/spec/fixtures/deploy/** text eol=lf
+
 # This fixture is intentionally CRLF with a BOM and no final newline
 # (spec/fixtures/README.md). Do not normalise it.
 spec/fixtures/wrapper/program_entry/program.sas -text
