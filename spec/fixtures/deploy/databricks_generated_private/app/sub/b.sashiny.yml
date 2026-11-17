@@ -1,0 +1,6 @@
+sashiny: 1
+program: b.sas
+title: B
+outputs:
+  log:
+    type: log

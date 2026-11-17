@@ -1,4 +1,4 @@
-"""Conformance tests for deployment targets (spec §6.8, spec/fixtures/deploy)."""
+"""Conformance tests for deployment targets (spec Â§6.8, spec/fixtures/deploy)."""
 
 from __future__ import annotations
 
@@ -510,3 +510,96 @@ def test_posit_snowflake_doctor_names_only(monkeypatch: pytest.MonkeyPatch) -> N
     problems = d.doctor("posit_snowflake")
     assert "CONNECT_SERVER not set; or pass server" in problems
     assert not any("k3y-value" in p for p in problems)
+
+
+def test_databricks_rejects_r_iom_and_ssh(tmp_path: Path) -> None:
+    app = tmp_path / "app"
+    app.mkdir()
+    (app / "app.R").write_text("library(shiny)\n", encoding="utf-8")
+    viya = {"name": "v", "method": "http", "url": "https://v.example.com"}
+    with pytest.raises(ValueError, match="does not support language r"):
+        d.deploy(app, "databricks_apps", tmp_path / "o1", viya, license_ack=True)
+    oda = {"name": "oda", "method": "iom", "oda_region": "us1"}
+    with pytest.raises(ValueError, match="cannot provide Java 17"):
+        d.deploy(app, "databricks_apps", tmp_path / "o2", oda, license_ack=True, language="python")
+    ssh = {"name": "s", "method": "ssh", "host": "h.example.com", "saspath": "/opt/sas/sas"}
+    with pytest.raises(ValueError, match="supports only http"):
+        d.deploy(app, "databricks_apps", tmp_path / "o3", ssh, license_ack=True, language="python")
+    with pytest.raises(ValueError, match="app_name must be"):
+        d.deploy(
+            app,
+            "databricks_apps",
+            tmp_path / "o4",
+            viya,
+            license_ack=True,
+            language="python",
+            app_name="Bad",
+        )
+
+
+def test_databricks_apply_runs_cli_through_runner(tmp_path: Path) -> None:
+    app = _staged_app(FIX / "databricks_python_viya", tmp_path, {})
+    calls: list[list[str]] = []
+
+    def runner(args, env):  # type: ignore[no-untyped-def]
+        calls.append(list(args))
+        return 0
+
+    viya = {"name": "v", "method": "http", "url": "https://viya.example.com"}
+    with pytest.raises(ValueError, match="source_code_path"):
+        d.deploy(
+            app,
+            "databricks_apps",
+            tmp_path / "o1",
+            viya,
+            license_ack=True,
+            apply=True,
+            runner=runner,
+            source_code_path="Users/me/app",
+        )
+    path = "/Workspace/Users/me/sashiny-app"
+    res = d.deploy(
+        app,
+        "databricks_apps",
+        tmp_path / "out",
+        viya,
+        license_ack=True,
+        apply=True,
+        runner=runner,
+        source_code_path=path,
+        create=True,
+        databricks_profile="dev",
+    )
+    out = str(res.out_dir)
+    assert calls == [
+        [
+            "databricks",
+            "apps",
+            "create",
+            "--json",
+            f"@{out}/databricks/app.json",
+            "--profile",
+            "dev",
+        ],
+        ["databricks", "sync", f"{out}/bundle", path, "--profile", "dev"],
+        [
+            "databricks",
+            "apps",
+            "deploy",
+            "sashiny-app",
+            "--source-code-path",
+            path,
+            "--profile",
+            "dev",
+        ],
+    ]
+
+
+def test_databricks_doctor(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(shutil, "which", lambda _n: None)
+    assert d.doctor("databricks_apps") == ["databricks (Databricks CLI) is not on PATH"]
+    monkeypatch.setattr(shutil, "which", lambda _n: "/usr/bin/databricks")
+    assert d.doctor("databricks_apps", runner=lambda a, e: 1) == [
+        "databricks has no configured profile (run databricks auth login)"
+    ]
+    assert d.doctor("databricks_apps", runner=lambda a, e: 0) == []

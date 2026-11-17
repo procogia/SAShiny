@@ -1,0 +1,26 @@
+{
+  "description": "databricks_apps, Python app on Viya: app.yaml with DATABRICKS_APP_PORT and secret resources via valueFrom, pinned requirements, apps create JSON.",
+  "add_files": {".authinfo": "placeholder credential file\n"},
+  "target": "databricks_apps",
+  "version": "0.0.0",
+  "license_ack": true,
+  "options": {},
+  "profile": {"name": "viya", "method": "http", "url": "https://viya.example.com"},
+  "expected": {
+    "language": "python",
+    "files": [
+      "bundle/app.py",
+      "bundle/app.yaml",
+      "bundle/cars.sas",
+      "bundle/cars.sashiny.yml",
+      "bundle/data/cars.csv",
+      "bundle/requirements.txt",
+      "databricks/app.json",
+      "deploy-databricks.md"
+    ],
+    "excluded": [".authinfo"],
+    "env": [["SASHINY_LICENSE_ACK", "true"], ["SASHINY_PROFILE", "viya"], ["SASHINY_VIYA_URL", "https://viya.example.com"]],
+    "secrets": ["SASHINY_SAS_USER", "SASHINY_SAS_PASSWORD"],
+    "endpoints": ["viya.example.com:443"]
+  }
+}

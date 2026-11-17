@@ -1,0 +1,22 @@
+{
+  "name": "sas-reports",
+  "description": "SAShiny app",
+  "resources": [
+    {
+      "name": "sas-user",
+      "secret": {
+        "scope": "sas-prod",
+        "key": "sas-user",
+        "permission": "READ"
+      }
+    },
+    {
+      "name": "sas-password",
+      "secret": {
+        "scope": "sas-prod",
+        "key": "sas-password",
+        "permission": "READ"
+      }
+    }
+  ]
+}
