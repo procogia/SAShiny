@@ -16,6 +16,10 @@
   template for ECS on Fargate behind an Application Load Balancer, with cookie
   stickiness, a one-hour idle timeout for WebSockets, Secrets Manager secret
   references and SAS egress rules, plus a deployment guide.
+* Deployment target `snowflake_spcs` (spec section 6.8.3): a Snowpark
+  Container Services specification, setup SQL (image repository, compute pool,
+  egress network rule, external access integration), a placeholder-only secret
+  script, service SQL and a deployment guide.
 * `sas_profile()` validates a connection profile and derives its egress
   endpoints, Java need and runtime variables. `sas_connect_env()` builds a
   deployed app's engine from those variables.

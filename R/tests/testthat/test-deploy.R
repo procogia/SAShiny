@@ -331,3 +331,52 @@ test_that("aws output for an ssh profile has no secrets", {
   expect_false(grepl("secretsmanager", guide, fixed = TRUE))
   expect_true(grepl("## 1. Build and push the image", guide, fixed = TRUE))
 })
+
+test_that("snowflake apply runs snow and docker through the runner (spec section 6.8.3)", {
+  calls <- list()
+  runner <- function(args, env) {
+    calls[[length(calls) + 1L]] <<- args
+    0L
+  }
+  res <- sas_deploy(az_app(), "snowflake_spcs", tempfile("sf-out-"), az_oda,
+    license_ack = TRUE, apply = TRUE, runner = runner,
+    repository_url = "org-acct.registry.snowflakecomputing.com/sashiny_db/app/sashiny_repo/",
+    connection = "dev"
+  )
+  out <- res$out_dir
+  image <- "org-acct.registry.snowflakecomputing.com/sashiny_db/app/sashiny_repo/sashiny-app:latest"
+  expect_equal(calls, list(
+    c("snow", "sql", "-f", paste0(out, "/spcs/setup.sql"), "--connection", "dev"),
+    c("snow", "spcs", "image-registry", "login", "--connection", "dev"),
+    c("docker", "build", "--platform", "linux/amd64", "-t", image, out),
+    c("docker", "push", image),
+    c("snow", "sql", "-f", paste0(out, "/spcs/service.sql"), "--connection", "dev")
+  ))
+})
+
+test_that("snowflake options are validated", {
+  expect_error(
+    sas_deploy(az_app(), "snowflake_spcs", tempfile(), az_oda,
+      license_ack = TRUE, apply = TRUE, runner = function(a, e) 0L
+    ),
+    "apply needs the options repository_url", fixed = TRUE
+  )
+  expect_error(
+    sas_deploy(az_app(), "snowflake_spcs", tempfile(), az_oda, license_ack = TRUE, database = "db; DROP"),
+    "database must be 1-63 uppercase"
+  )
+  vpn <- list(name = "v", method = "http", url = "https://v.example.com", requires_vpn = TRUE)
+  expect_error(
+    sas_deploy(az_app(), "snowflake_spcs", tempfile(), vpn, license_ack = TRUE),
+    "pass private_connectivity for target snowflake_spcs", fixed = TRUE
+  )
+})
+
+test_that("snowflake output for an ssh profile has no secret", {
+  prof <- list(name = "s", method = "ssh", host = "h.example.com", saspath = "/opt/sas/sas")
+  res <- sas_deploy(az_app(), "snowflake_spcs", tempfile(), prof, license_ack = TRUE, public = FALSE)
+  expect_false("spcs/secret.sql" %in% res$files)
+  spec <- paste(readLines(file.path(res$out_dir, "spcs", "service-spec.yaml")), collapse = "\n")
+  expect_false(grepl("secrets:", spec, fixed = TRUE))
+  expect_true(grepl("public: false", spec, fixed = TRUE))
+})

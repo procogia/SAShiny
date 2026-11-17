@@ -1,0 +1,38 @@
+{
+  "description": "snowflake_spcs, R app on a VPN-only Viya profile: private_connectivity satisfies the private-network rule; custom names, two instances (affinity warning), endpoint grant.",
+  "add_files": {},
+  "target": "snowflake_spcs",
+  "version": "0.0.0",
+  "license_ack": true,
+  "options": {
+    "port": 3838,
+    "service_name": "SAS_REPORTS",
+    "database": "ANALYTICS",
+    "schema": "SHINY",
+    "compute_pool": "SAS_POOL",
+    "instance_family": "CPU_X64_M",
+    "instances": 2,
+    "grant_role": "ANALYST",
+    "private_connectivity": true
+  },
+  "profile": {"name": "procogia_viya", "method": "http", "url": "https://viya.example.com", "requires_vpn": true},
+  "expected": {
+    "language": "r",
+    "files": [
+      ".dockerignore",
+      "Dockerfile",
+      "bundle/app.R",
+      "bundle/report.sas",
+      "bundle/report.sashiny.yml",
+      "deploy-snowflake-spcs.md",
+      "spcs/secret.sql",
+      "spcs/service-spec.yaml",
+      "spcs/service.sql",
+      "spcs/setup.sql"
+    ],
+    "excluded": [],
+    "env": [["SASHINY_LICENSE_ACK", "true"], ["SASHINY_PROFILE", "viya"], ["SASHINY_VIYA_URL", "https://viya.example.com"]],
+    "secrets": ["SASHINY_SAS_USER", "SASHINY_SAS_PASSWORD"],
+    "endpoints": ["viya.example.com:443"]
+  }
+}

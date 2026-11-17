@@ -742,6 +742,73 @@ The apply options are:
 Subnet ids may be a list, joined with `,`. `doctor` reports, in order: `aws` missing from `PATH`,
 `aws sts get-caller-identity` failing (no credentials), and `docker` missing from `PATH`.
 
+#### 6.8.3 `snowflake_spcs`
+
+The target runs the `container` image as a Snowpark Container Services service
+([specification reference](https://docs.snowflake.com/en/developer-guide/snowpark-container-services/specification-reference),
+[network communications](https://docs.snowflake.com/en/developer-guide/snowpark-container-services/service-network-communications)).
+A public endpoint is reached through Snowflake sign-in. Ingress supports WebSockets and closes a
+connection after 90 s without traffic; Shiny's WebSocket heartbeat keeps it open. Snowflake does not
+document session affinity between service instances, so the default is one instance. When
+`instances` is more than 1, the guide warns that sessions may move between instances.
+
+The target writes the `container` artifacts plus these files:
+- `spcs/service-spec.yaml`: the service specification;
+- `spcs/setup.sql`: the database, schema, image repository, compute pool, egress network rule and
+  external access integration;
+- `spcs/service.sql`: the service, the optional endpoint grant and `SHOW ENDPOINTS`;
+- `spcs/secret.sql`, only for profiles with secrets: the credentials secret, with placeholders
+  only;
+- `deploy-snowflake-spcs.md`: the deployment guide.
+
+Images are built for `linux/amd64`.
+
+**Options.** Identifiers are 1–63 characters: uppercase letters, digits and `_`, starting with a
+letter.
+
+| Option | Default | Meaning |
+|---|---|---|
+| `port` | 8000 | as for `container` |
+| `service_name` | `SASHINY_APP` | Service name (identifier) |
+| `database` | `SASHINY_DB` | Database (identifier) |
+| `schema` | `APP` | Schema (identifier) |
+| `compute_pool` | `SASHINY_POOL` | Compute pool (identifier) |
+| `instance_family` | `CPU_X64_S` | Compute pool instance family (identifier) |
+| `instances` | 1 | Service instances and pool nodes, 1–10 |
+| `public` | true | Whether the endpoint is public |
+| `grant_role` | none | Role (identifier) granted the service role `<service>!ALL_ENDPOINTS_USAGE` |
+| `private_connectivity` | false | `true` confirms private connectivity to SAS (for example AWS PrivateLink or Azure Private Link) is configured; the private-network option of this target |
+
+**Derived names.**
+- The image repository is `SASHINY_REPO`.
+- The image is `/<database>/<schema>/sashiny_repo/<image>:latest`, in lower case, where `<image>` is
+  the service name in lower case with `_` replaced by `-`.
+- The secret, network rule and integration are `<service>_SAS_CREDENTIALS`, `<service>_SAS_EGRESS`
+  and `<service>_SAS_ACCESS`.
+
+The specification has one container `app` and one endpoint `app` on the port:
+- The plain environment of §6.8 is written as `env`, with values in single quotes.
+- Each secret is read from the credentials secret (`TYPE = PASSWORD`) with `secretKeyRef`:
+  `username` for `SASHINY_SAS_USER` and `password` for `SASHINY_SAS_PASSWORD`.
+- The readiness probe is on `/`.
+
+The network rule is `TYPE = HOST_PORT`, `MODE = EGRESS`, with the profile's endpoints in order.
+`service.sql` repeats the specification, without its comment line, inside
+`FROM SPECIFICATION $$ ... $$`. The exact bytes are fixed by `spec/fixtures/deploy/snowflake_*`.
+
+`apply` runs, in order. Each `snow` command gets `--connection <connection>` when the option is
+given:
+1. `snow sql -f <out_dir>/spcs/setup.sql`
+2. `snow spcs image-registry login`
+3. `docker build --platform linux/amd64 -t <repository_url>/<image>:latest <out_dir>`
+4. `docker push <repository_url>/<image>:latest`
+5. `snow sql -f <out_dir>/spcs/service.sql`
+
+The apply options are `repository_url` (required; from `SHOW IMAGE REPOSITORIES`) and
+`connection`. `apply` does not run `secret.sql`; the deployer runs it by hand first, as the guide
+shows. `doctor` reports, in order: `snow` missing from `PATH`, `snow connection test` failing (no
+working connection), and `docker` missing from `PATH`.
+
 ---
 
 ## 7. Dataset upload conversion
