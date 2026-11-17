@@ -28,6 +28,9 @@
 * Deployment target `databricks_apps` (spec section 6.8.6) is Python only, as
   Databricks Apps does not run R; `sas_deploy()` rejects R apps with a clear
   message.
+* New vignette "Deploying SAShiny apps" and RStudio / Positron addin
+  "Deploy SAShiny app..." (`sas_deploy_addin()`), which generates deployment
+  files; applying stays an explicit second step.
 * `sas_profile()` validates a connection profile and derives its egress
   endpoints, Java need and runtime variables. `sas_connect_env()` builds a
   deployed app's engine from those variables.

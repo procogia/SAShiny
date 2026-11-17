@@ -16,6 +16,12 @@ uv pip install sashiny
 # sashiny[streamlit]
 ```
 
+## Deploy
+
+`sashiny.deploy.deploy()` generates deployment files for containers, Azure Container Apps,
+Amazon ECS, Snowflake (SPCS, Posit Team, Streamlit), and Databricks Apps. See
+[docs/deployment.md](https://github.com/procogia/SAShiny/blob/main/Python/docs/deployment.md).
+
 ## Streamlit front end
 
 `sashiny.streamlit_app.streamlit_app` renders the same contracts as a Streamlit app (spec §6.9),

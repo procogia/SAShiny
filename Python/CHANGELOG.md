@@ -34,6 +34,9 @@ All notable changes to the Python library are documented here. The format follow
 - Deployment target `databricks_apps` (spec §6.8.6): Shiny for Python on Databricks Apps for SAS
   Viya (http) profiles: `app.yaml` (`DATABRICKS_APP_PORT`, secret resources via `valueFrom`),
   pinned `requirements.txt`, the `apps create` JSON and a deployment guide. R apps are rejected.
+- Deployment docs (`docs/deployment.md`), a manual verification checklist
+  (`docs/deploy-verification.md`) and a CI job that generates every target and lints the output
+  (hadolint, `az bicep build`, cfn-lint, yamllint).
 - `sashiny.parse_profile()` / `Profile` validate a connection profile and derive its egress
   endpoints, Java need and runtime variables; `sashiny.connect_from_env()` builds a deployed
   app's engine from those variables.

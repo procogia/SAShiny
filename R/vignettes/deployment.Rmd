@@ -1,0 +1,158 @@
+---
+title: "Deploying SAShiny apps"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Deploying SAShiny apps}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+`sas_deploy()` turns an app directory into deployment files for one hosting
+platform (spec section 6.8). It works in two steps:
+
+1. **Generate** (offline). It writes the bundle (your app without credential
+   files) and the platform's files, such as a `Dockerfile`, a template, SQL
+   and a step-by-step guide.
+2. **Apply** (optional, `apply = TRUE`). It runs the platform's CLI with the
+   commands the guide lists.
+
+Programs still run only on a live, licensed 'SAS' system. Every deployment
+needs `license_ack = TRUE`: you confirm that the deployed app runs programs only
+on a 'SAS' system you are licensed to use.
+
+This vignette does not connect to 'SAS' or to any cloud. The chunks that run
+only write files to a temporary folder.
+
+## Targets
+
+```{r}
+library(SAShiny)
+sas_deploy_targets()
+```
+
+## The connection profile
+
+The profile says how the deployed app reaches 'SAS'. It decides:
+
+- the egress endpoints the platform must allow;
+- whether the image needs Java 17 (IOM: ODA and 'SAS' 9.4);
+- the runtime environment variables.
+
+Secrets appear by name only: `SASHINY_SAS_USER` and `SASHINY_SAS_PASSWORD`.
+Their values come from the platform's secret store.
+
+```{r}
+p <- sas_profile(list(method = "http", url = "https://viya.example.com"), name = "viya")
+p$endpoints
+p$env
+p$secrets
+```
+
+A profile with `requires_vpn = TRUE` fails unless you pass the target's
+private-network option. You confirm that the network route exists; SAShiny
+does not create it.
+
+## Generate a container
+
+```{r}
+app <- file.path(tempdir(), "sashiny-deploy-vignette")
+dir.create(app, showWarnings = FALSE)
+file.copy(system.file("examples", "minimal", c("minimal.sas", "minimal.sashiny.yml"),
+  package = "SAShiny"
+), app, overwrite = TRUE)
+out <- tempfile("sashiny-container-")
+res <- sas_deploy(app, "container", out, profile = p, language = "r", license_ack = TRUE)
+res$files
+cat(readLines(file.path(out, "Dockerfile"), n = 4), sep = "\n")
+```
+
+In RStudio or Positron, the addin **Deploy SAShiny app...** does the same from
+a form. It only generates files; applying stays an explicit second step.
+
+## Platforms
+
+Every target that fronts the app with a load balancer enables WebSockets and
+session affinity, which Shiny needs. Each generated guide lists the exact
+commands, with `<...>` placeholders.
+
+### `container`
+
+A non-root `Dockerfile` with a health check. Use it for any container host
+(Kubernetes, Cloud Run, an on-premises Docker host). The other container
+targets build on it.
+
+### `azure_container_apps`
+
+A Bicep template that sets up:
+
+- external ingress with WebSockets (`transport: auto`) and sticky sessions;
+- a managed identity that pulls from Azure Container Registry;
+- Key Vault secret references;
+- optional VNet integration (`infrastructure_subnet_id`).
+
+`apply` runs `az acr build` and `az deployment group create`. For a custom
+domain, add a CNAME record and an `asuid` TXT record, then bind the host name
+with `az containerapp hostname bind`.
+
+### `aws_ecs_express`
+
+ECS Express Mode does not expose target-group stickiness or the load balancer
+idle timeout, so the CloudFormation template declares standard ECS (Fargate)
+and Application Load Balancer resources:
+
+- cookie stickiness;
+- a one-hour idle timeout for WebSockets;
+- an HTTPS listener with an ACM certificate;
+- private task subnets;
+- Secrets Manager ARNs.
+
+`apply` builds and pushes the image and runs `aws cloudformation deploy`. For a
+custom domain, point a Route 53 alias or CNAME record at the load balancer.
+
+### `snowflake_spcs`
+
+Runs the container in Snowpark Container Services. The generated files are a
+service specification, setup SQL (image repository, compute pool, egress
+network rule, external access integration), a secret script with placeholders
+only, and service SQL.
+
+Users sign in with Snowflake. Ingress supports WebSockets and closes idle
+connections after 90 seconds; Shiny's heartbeat keeps them open. Snowflake does
+not document session affinity between instances, so the default is one
+instance.
+
+### `posit_snowflake`
+
+Publishes to Posit Connect inside the Posit Team Native App with
+`sas_publish()`. Posit manages the runtime. The target writes the SQL that adds
+a 'SAS' network rule to the app's Connect external access integration. Use it
+when you are already licensed for Posit Team in Snowflake.
+
+### `streamlit_snowflake` and `databricks_apps` (Python only)
+
+These platforms run Python only and cannot install Java. The Python package
+generates them for 'SAS Viya' (http) profiles. In R, `sas_deploy()` rejects
+them with a clear message; use a container target instead.
+
+## Comparison
+
+| Target | Languages | 'SAS' profiles | User sign-in | Cost model |
+|---|---|---|---|---|
+| `container` | R, Python | all | your host | your host |
+| `azure_container_apps` | R, Python | all | Azure ingress (add Easy Auth) | per replica-second |
+| `aws_ecs_express` | R, Python | all | ALB (add Cognito or OIDC) | Fargate task-hours plus load balancer |
+| `snowflake_spcs` | R, Python | all | Snowflake | compute pool node-hours |
+| `posit_snowflake` | R, Python | all (IOM needs Java in the Connect image) | Posit Connect | Posit Team licence plus Snowflake compute |
+| `streamlit_snowflake` | Python | Viya | Snowflake | compute pool node-hours plus warehouse |
+| `databricks_apps` | Python | Viya | Databricks | app compute-hours |
+
+A target is "generated only" until a real deployment is recorded in
+`docs/deploy-verification.md` in the source repository.
+
+```{r, include = FALSE}
+unlink(c(app, out), recursive = TRUE)
+```
