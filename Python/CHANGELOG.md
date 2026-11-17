@@ -13,6 +13,9 @@ All notable changes to the Python library are documented here. The format follow
   non-root `Dockerfile` with a health check; Java 17 only for IOM profiles). Generating never
   touches the network; `apply=True` and `sashiny.deploy.doctor()` run platform tools through a
   replaceable runner. Credential files are never bundled; generated files hold secret names only.
+- Deployment target `azure_container_apps` (spec §6.8.1): a Bicep template (sticky sessions,
+  WebSockets, managed identity, Key Vault secret references, optional VNet subnet), a parameters
+  file and a deployment guide.
 - `sashiny.parse_profile()` / `Profile` validate a connection profile and derive its egress
   endpoints, Java need and runtime variables; `sashiny.connect_from_env()` builds a deployed
   app's engine from those variables.

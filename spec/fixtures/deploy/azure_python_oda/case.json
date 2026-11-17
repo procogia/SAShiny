@@ -1,0 +1,27 @@
+{
+  "description": "azure_container_apps, Python app on ODA: Key Vault secret references, sticky sessions, no VNet.",
+  "add_files": {".authinfo": "placeholder credential file\n"},
+  "target": "azure_container_apps",
+  "version": "0.0.0",
+  "license_ack": true,
+  "options": {},
+  "profile": {"name": "oda", "method": "iom", "oda_region": "us1"},
+  "expected": {
+    "language": "python",
+    "files": [
+      ".dockerignore",
+      "Dockerfile",
+      "bundle/app.py",
+      "bundle/cars.sas",
+      "bundle/cars.sashiny.yml",
+      "bundle/data/cars.csv",
+      "deploy-azure.md",
+      "infra/main.bicep",
+      "infra/main.parameters.json"
+    ],
+    "excluded": [".authinfo"],
+    "env": [["SASHINY_LICENSE_ACK", "true"], ["SASHINY_PROFILE", "oda"], ["SASHINY_ODA_REGION", "us1"]],
+    "secrets": ["SASHINY_SAS_USER", "SASHINY_SAS_PASSWORD"],
+    "endpoints": ["odaws01-usw2.oda.sas.com:8591", "odaws02-usw2.oda.sas.com:8591"]
+  }
+}

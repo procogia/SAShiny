@@ -154,3 +154,113 @@ def test_connect_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     engine = sashiny.connect_from_env(license_ack=True)
     assert engine.backend == "sas94-iom"
     assert engine.cfg["iomport"] == 8592  # type: ignore[index]
+
+
+def test_azure_apply_runs_commands_through_runner(tmp_path: Path) -> None:
+    app = _staged_app(FIX / "azure_python_oda", tmp_path, {})
+    calls: list[list[str]] = []
+
+    def runner(args, env):  # type: ignore[no-untyped-def]
+        calls.append(list(args))
+        return 0
+
+    res = d.deploy(
+        app,
+        "azure_container_apps",
+        tmp_path / "out",
+        {"name": "oda", "method": "iom", "oda_region": "us1"},
+        license_ack=True,
+        apply=True,
+        runner=runner,
+        resource_group="rg1",
+        acr_name="myacr",
+        image_tag="v1",
+        sas_user_secret_uri="https://kv.vault.azure.net/secrets/sashiny-sas-user",  # noqa: S106
+        sas_password_secret_uri="https://kv.vault.azure.net/secrets/sashiny-sas-password",  # noqa: S106
+    )
+    out = str(res.out_dir)
+    assert calls[0] == [
+        "az",
+        "acr",
+        "build",
+        "--registry",
+        "myacr",
+        "--image",
+        "sashiny-app:v1",
+        out,
+    ]
+    assert calls[1][:6] == ["az", "deployment", "group", "create", "--resource-group", "rg1"]
+    assert "acrName=myacr" in calls[1]
+    assert res.commands == calls
+
+
+def test_azure_apply_requires_options_and_stops_on_failure(tmp_path: Path) -> None:
+    app = _staged_app(FIX / "azure_python_oda", tmp_path, {})
+    prof = {"name": "oda", "method": "iom", "oda_region": "us1"}
+    with pytest.raises(ValueError, match="apply needs the options resource_group, acr_name"):
+        d.deploy(
+            app,
+            "azure_container_apps",
+            tmp_path / "o1",
+            prof,
+            license_ack=True,
+            apply=True,
+            runner=lambda a, e: 0,
+        )
+    with pytest.raises(RuntimeError, match="exit status 1"):
+        d.deploy(
+            app,
+            "azure_container_apps",
+            tmp_path / "o2",
+            prof,
+            license_ack=True,
+            apply=True,
+            runner=lambda a, e: 1,
+            resource_group="rg",
+            acr_name="a",
+            sas_user_secret_uri="u",  # noqa: S106
+            sas_password_secret_uri="p",  # noqa: S106
+        )
+
+
+def test_azure_options_are_validated(tmp_path: Path) -> None:
+    app = _staged_app(FIX / "azure_python_oda", tmp_path, {})
+    prof = {"name": "oda", "method": "iom", "oda_region": "us1"}
+    with pytest.raises(ValueError, match="app_name must be"):
+        d.deploy(
+            app,
+            "azure_container_apps",
+            tmp_path / "o1",
+            prof,
+            license_ack=True,
+            app_name="Bad_Name",
+        )
+    with pytest.raises(ValueError, match="max_replicas must be"):
+        d.deploy(
+            app, "azure_container_apps", tmp_path / "o2", prof, license_ack=True, max_replicas=0
+        )
+    vpn = {"name": "v", "method": "http", "url": "https://v.example.com", "requires_vpn": True}
+    with pytest.raises(
+        ValueError, match=r"^profile v requires a private network; pass infrastructure_subnet_id"
+    ):
+        d.deploy(app, "azure_container_apps", tmp_path / "o3", vpn, license_ack=True)
+
+
+def test_azure_ssh_profile_has_no_secrets(tmp_path: Path) -> None:
+    app = _staged_app(FIX / "azure_python_oda", tmp_path, {})
+    prof = {"name": "s", "method": "ssh", "host": "h.example.com", "saspath": "/opt/sas/sas"}
+    res = d.deploy(app, "azure_container_apps", tmp_path / "o", prof, license_ack=True)
+    bicep = (res.out_dir / "infra" / "main.bicep").read_text(encoding="utf-8")
+    assert "secrets:" not in bicep
+    assert "SecretUri" not in bicep
+    assert "keyvault" not in (res.out_dir / "deploy-azure.md").read_text(encoding="utf-8")
+
+
+def test_azure_doctor(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(shutil, "which", lambda _n: None)
+    assert d.doctor("azure_container_apps") == ["az (Azure CLI) is not on PATH"]
+    monkeypatch.setattr(shutil, "which", lambda _n: "/usr/bin/az")
+    assert d.doctor("azure_container_apps", runner=lambda a, e: 1) == [
+        "az is not logged in (run az login)"
+    ]
+    assert d.doctor("azure_container_apps", runner=lambda a, e: 0) == []

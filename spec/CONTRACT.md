@@ -638,6 +638,51 @@ CMD ["sh", "-c", "exec Rscript -e \"shiny::runApp('/app', host = '0.0.0.0', port
 The exact bytes are fixed by `spec/fixtures/deploy/`, with `<VERSION>` replaced by `0.0.0` in the
 fixtures. A fixture case passes `version = "0.0.0"`, which `generate` accepts for testing only.
 
+#### 6.8.1 `azure_container_apps`
+
+The target deploys the `container` image to Azure Container Apps
+([Bicep reference](https://learn.microsoft.com/en-us/azure/templates/microsoft.app/containerapps),
+[sticky sessions](https://learn.microsoft.com/en-us/azure/container-apps/sticky-sessions)). It writes the
+`container` artifacts, plus `infra/main.bicep`, `infra/main.parameters.json` and `deploy-azure.md`.
+
+**Options:**
+
+| Option | Default | Meaning |
+|---|---|---|
+| `port` | 8000 | as for `container` |
+| `app_name` | `sashiny-app` | Container App name: 2–32 characters, lowercase letters, digits and `-`, starting with a letter |
+| `max_replicas` | 1 | 1–30 |
+| `infrastructure_subnet_id` | none | Subnet resource id for VNet integration; the private-network option of this target |
+
+The template:
+- uses API version `2025-07-01`;
+- sets external ingress on the port, with transport `auto` (WebSockets) and `stickySessions.affinity: 'sticky'`;
+- sets single-revision mode and min replicas 1, with 2 vCPU and 4 GiB per replica;
+- pulls the image from an existing Azure Container Registry with a user-assigned managed identity
+  that has the `AcrPull` role;
+- adds a Log Analytics workspace.
+
+The plain environment of §6.8 is written as container `env` values. Each secret name maps to a
+Container App secret (lower case, `_` becomes `-`, for example `SASHINY_SAS_USER` →
+`sashiny-sas-user`) that references a Key Vault secret URI. The URI is a template parameter with no
+default (`sasUserSecretUri`, `sasPasswordSecretUri`), and the managed identity reads it. With
+`infrastructure_subnet_id`, the environment gets `vnetConfiguration.infrastructureSubnetId`.
+
+For an SSH profile there are no secrets, so the `secrets` block and the secret URI parameters are
+left out. `main.parameters.json` is a standard deployment parameters file that sets only the
+non-secret parameters the options determine: `appName`, `port`, `maxReplicas` and, when given,
+`infrastructureSubnetId`. The deployer supplies the rest on the command line: `acrName`, `imageTag`
+and the secret URIs. `deploy-azure.md` lists the exact commands with placeholders. The exact bytes are
+fixed by `spec/fixtures/deploy/azure_*`.
+
+`apply` runs, in order:
+1. `az acr build --registry <acr> --image <app_name>:<image_tag> <out_dir>`
+2. `az deployment group create --resource-group <rg> --template-file <out_dir>/infra/main.bicep
+   --parameters @<out_dir>/infra/main.parameters.json acrName=<acr> imageTag=<image_tag> ...`
+
+The apply options are `resource_group`, `acr_name`, `image_tag` (default `latest`) and the two
+secret URIs. `doctor` reports `az` missing from `PATH`, or `az account show` failing (not logged in).
+
 ---
 
 ## 7. Dataset upload conversion
