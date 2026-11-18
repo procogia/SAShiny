@@ -2,13 +2,13 @@
 FROM rocker/r-ver:4.5.2
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
-      python3 python3-venv curl libcurl4-openssl-dev libssl-dev \
+      python3 python3-venv libpython3-dev curl libcurl4-openssl-dev libssl-dev \
  && rm -rf /var/lib/apt/lists/*
 RUN python3 -m venv /opt/saspy \
  && /opt/saspy/bin/pip install --no-cache-dir "saspy>=5.100" "pandas>=2.0"
 ENV RETICULATE_PYTHON=/opt/saspy/bin/python
-RUN Rscript -e 'install.packages(c("remotes", "shiny", "bslib", "callr", "later", "promises", "reticulate"), repos = "https://cloud.r-project.org")' \
- && Rscript -e 'remotes::install_github("procogia/SAShiny/R@r-v0.0.0", upgrade = "never")'
+RUN Rscript -e 'pkgs <- c("remotes", "shiny", "bslib", "callr", "later", "promises", "reticulate", "ggplot2"); install.packages(pkgs); stopifnot(all(vapply(pkgs, requireNamespace, TRUE, quietly = TRUE)), packageVersion("reticulate") >= "1.45.0")' \
+ && Rscript -e 'remotes::install_github("procogia/SAShiny/R@r-v0.0.0", upgrade = "never"); stopifnot(requireNamespace("SAShiny", quietly = TRUE))'
 RUN useradd --create-home --uid 10001 sashiny
 WORKDIR /app
 COPY --chown=sashiny:sashiny bundle/ /app/

@@ -72,7 +72,7 @@ sas_app <- function(contracts, engine, title = "SAShiny", publish = FALSE,
   if (show_publish) {
     tabs <- c(tabs, list(shiny::tabPanel("Publish", .sashiny_publish_ui("sashiny_publish"))))
   }
-  ui <- do.call(shiny::navbarPage, c(list(title), tabs))
+  ui <- .sashiny_app_page(title, tabs)
 
   server <- function(input, output, session) {
     for (i in seq_along(loaded)) {
@@ -84,4 +84,16 @@ sas_app <- function(contracts, engine, title = "SAShiny", publish = FALSE,
   }
 
   shiny::shinyApp(ui, server)
+}
+
+#' The app's page: a navbar with one tab per program.
+#'
+#' The program modules use 'bslib' components (cards, a sidebar layout, a task
+#' button) whenever 'bslib' is installed, and those need Bootstrap 5. A plain
+#' `navbarPage()` serves Bootstrap 3, so the page asks for Bootstrap 5 under the
+#' same condition.
+#' @noRd
+.sashiny_app_page <- function(title, tabs) {
+  theme <- if (requireNamespace("bslib", quietly = TRUE)) bslib::bs_theme(version = 5) else NULL
+  do.call(shiny::navbarPage, c(list(title), tabs, list(theme = theme)))
 }

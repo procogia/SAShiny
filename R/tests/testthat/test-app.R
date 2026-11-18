@@ -14,6 +14,17 @@ test_that("sas_app builds a multi-program app", {
   expect_s3_class(app, "shiny.appobj")
 })
 
+test_that("the app page serves Bootstrap 5 when bslib is installed", {
+  skip_on_cran()
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
+  page <- .sashiny_app_page("SAShiny", list(shiny::tabPanel("One", "x")))
+  deps <- htmltools::findDependencies(page)
+  bootstrap <- Filter(function(d) identical(d$name, "bootstrap"), deps)
+  expect_length(bootstrap, 1L)
+  expect_true(package_version(bootstrap[[1]]$version) >= "5.0.0")
+})
+
 test_that("sas_app accepts paths", {
   skip_on_cran()
   skip_if_not_installed("shiny")

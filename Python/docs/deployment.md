@@ -50,6 +50,11 @@ keeps them open. Snowflake does not document session affinity, so the default is
 The Streamlit in Snowflake and Databricks Apps runtimes install Python packages only. They cannot
 provide Java, so they accept only SAS Viya (http) profiles. There is no R equivalent (issue #116).
 
+The container images target `linux/amd64`. On an ARM machine (Apple silicon), build with
+`docker build --platform linux/amd64 -t my-app .`: some Python packages have no ARM Linux wheels
+and the image has no compiler. `deploy/check-container-images.sh` builds and smoke-tests both
+images from a checkout.
+
 ## Comparison
 
 | Target | Languages | SAS profiles | User sign-in | Cost model |

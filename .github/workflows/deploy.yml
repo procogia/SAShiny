@@ -3,12 +3,28 @@ name: deploy
 # Generates every deployment target (spec §6.8) on examples/general and lints
 # the output. No cloud credentials: nothing is deployed. The byte-exact golden
 # comparison runs in the R and Python test suites.
+# The container-images job builds and starts the generated Python and R images,
+# since a well-formed Dockerfile can still fail to build or to run.
 on:
   push:
     branches: [main]
-    paths: ["spec/**", "Python/src/sashiny/**", "examples/general/**", ".github/workflows/deploy.yml"]
+    paths:
+      - "spec/**"
+      - "Python/src/sashiny/**"
+      - "R/R/**"
+      - "R/DESCRIPTION"
+      - "examples/general/**"
+      - "deploy/check-container-images.sh"
+      - ".github/workflows/deploy.yml"
   pull_request:
-    paths: ["spec/**", "Python/src/sashiny/**", "examples/general/**", ".github/workflows/deploy.yml"]
+    paths:
+      - "spec/**"
+      - "Python/src/sashiny/**"
+      - "R/R/**"
+      - "R/DESCRIPTION"
+      - "examples/general/**"
+      - "deploy/check-container-images.sh"
+      - ".github/workflows/deploy.yml"
 
 permissions:
   contents: read
@@ -45,3 +61,14 @@ jobs:
         run: |
           uvx yamllint -d "{extends: relaxed, rules: {line-length: {max: 120}}}" \
             $(find "$RUNNER_TEMP/deploy" spec/fixtures/deploy -name service-spec.yaml -o -name app.yaml)
+
+  container-images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - name: Build and smoke-test the generated container images
+        run: bash deploy/check-container-images.sh "$RUNNER_TEMP/images"
