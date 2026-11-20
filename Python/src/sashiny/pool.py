@@ -19,7 +19,7 @@ from typing import Any
 
 from .contract import Contract
 from .engines import Engine
-from .errors import ValuesError
+from .errors import EngineError, ValuesError
 from .result import Result
 
 __all__ = ["Pool", "PoolExhausted", "PoolSession"]
@@ -89,7 +89,7 @@ class Pool(Engine):
 
             if isinstance(engine, ProcPythonEngine):
                 # One PROC PYTHON job is one session (spec §6.5).
-                raise TypeError("an in-session (PROC PYTHON) engine cannot be pooled")
+                raise EngineError("an in-session (PROC PYTHON) engine cannot be pooled")
             self.engine: Engine | None = check_engine(engine)
             self._factory: Callable[[], Engine] | None = None
         else:

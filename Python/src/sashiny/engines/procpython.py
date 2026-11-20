@@ -30,8 +30,15 @@ from pathlib import Path
 from typing import Any
 
 from ..contract import Contract
+from ..errors import EngineError, LicenseError
 from ..result import Result
-from .saspy import LICENSE_MESSAGE, SESSION_SETUP_CODE, SaspyEngine, license_acknowledged
+from .saspy import (
+    LICENSE_MESSAGE,
+    SESSION_SETUP_CODE,
+    EngineRuntimeError,
+    SaspyEngine,
+    license_acknowledged,
+)
 
 __all__ = ["ProcPythonEngine", "connect_in_session"]
 
@@ -68,7 +75,7 @@ class _InSessionSAS:
                 path = self.sas.symget("_sashiny_work")
             text = str(path).strip()
             if not text or not _SAFE_PATH.match(text):
-                raise RuntimeError(f"cannot use the WORK path {text!r}")
+                raise EngineRuntimeError(f"cannot use the WORK path {text!r}")
             self._work = Path(text)
         return self._work
 
@@ -139,7 +146,7 @@ class ProcPythonEngine(SaspyEngine):
     def __init__(self, sas: Any, *, license_ack: bool | None = None, own_session: bool = False):
         """Wrap the PROC PYTHON ``SAS`` object; nothing is submitted until the first run."""
         if sas is None or not callable(getattr(sas, "submit", None)):
-            raise TypeError("connect_in_session() needs the SAS object of PROC PYTHON")
+            raise EngineError("connect_in_session() needs the SAS object of PROC PYTHON")
         # Not SaspyEngine.__init__: there is no saspy configuration to validate.
         self.backend = "in-session"
         self.cfg: dict[str, Any] = {}
@@ -158,13 +165,13 @@ class ProcPythonEngine(SaspyEngine):
 
     def _session(self) -> Any:
         if self._dead:
-            raise RuntimeError(DEAD_MESSAGE)
+            raise EngineRuntimeError(DEAD_MESSAGE)
         generation = getattr(self._run_generation, "value", None)
         if generation is not None and generation != self._generation:
-            raise RuntimeError("run was cancelled (timeout)")
+            raise EngineRuntimeError("run was cancelled (timeout)")
         if self._sas is None:
             if not license_acknowledged(self.license_ack):
-                raise RuntimeError(LICENSE_MESSAGE)
+                raise LicenseError(LICENSE_MESSAGE)
             self._sas = _InSessionSAS(self._callback)
             self._sas.submit(SESSION_SETUP_CODE, results="TEXT")
         return self._sas
