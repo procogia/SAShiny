@@ -373,6 +373,19 @@ The engine reads the log of the main submission:
 
 A timeout MUST abort the SAS session. The pool MUST then discard and replace that session.
 
+**Session lifetime.**
+- An engine owns one SAS session and reuses it across runs. Each run resets WORK (§6.2). The session
+  is replaced only after an engine error or a timeout, and the replacement starts lazily, on the next
+  run.
+- A pool is `N` persistent workers. Each worker owns one SAS session for its lifetime; a run uses a
+  free worker; a timeout or engine error discards that worker.
+- In a Shiny app, a run never blocks the event loop. Other sessions in the same process keep
+  updating while a run is in flight, for single engines and pools. Ending the browser session cancels
+  its in-flight run.
+
+These rules are observable with the mock engine and a fake session (the session object is created
+once per worker), so they are tested without SAS.
+
 When every pooled session is busy, a pool MUST wait for a free session up to a configurable
 `acquire_timeout` (default 30 seconds) rather than failing immediately. If no session becomes free
 within the timeout, the run returns an error `Result` with `metadata.engine_error` set to

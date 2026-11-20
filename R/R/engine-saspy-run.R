@@ -313,6 +313,7 @@ print.sashiny_engine_saspy <- function(x, ...) {
 
 #' @export
 sas_engine_close.sashiny_engine_saspy <- function(engine) {
+  .sashiny_worker_close(engine)
   engine$choices <- list()
   engine$sas_version <- NULL
   if (!is.null(engine$sas)) {
@@ -347,6 +348,9 @@ sas_engine_close.sashiny_engine_saspy <- function(engine) {
 
 #' @export
 sas_engine_choices.sashiny_engine_saspy <- function(engine, contract) {
+  if (!isTRUE(engine$in_worker) && (is.null(engine$session_factory) || isTRUE(engine$use_worker))) {
+    return(.sashiny_worker_choices(engine, contract))
+  }
   inputs <- contract$data$inputs %||% list()
   tag <- .sashiny_contract_sha256(contract)
   if (!nzchar(tag)) tag <- contract$base_dir
@@ -433,74 +437,12 @@ sas_engine_run.sashiny_engine_saspy <- function(engine, contract, values, today 
     return(.sashiny_engine_error(run_id, list(engine = "saspy"),
       simpleError(.sashiny_license_message)))
   }
-  started <- .sashiny_now()
-  t0 <- Sys.time()
-  data <- contract$data
-  run <- data$run %||% list()
-  timeout <- as.numeric(run$timeout_seconds %||% 300)
-  # Enforce the whole-run deadline (spec section 2.3, section 6.5). The blocking saspy
-  # submission cannot be interrupted in-process, so a run with an explicit
-  # timeout executes in a background R process that is killed on timeout. The
-  # session is created in that process and is therefore discarded with it
-  # (spec section 6.5). Runs without an explicit timeout (and testing hooks that use
-  # a closure factory) stay in-process to preserve session reuse.
-  if (is.null(run$timeout_seconds) && !is.null(engine$session_factory)) {
-    return(.sashiny_run_saspy(engine, contract, values, today, uploads, run_id, started, t0))
+  # Spec section 6.5 (session lifetime): the SAS session lives in a persistent
+  # worker process that is reused across runs and killed on timeout.
+  if (.sashiny_uses_worker(engine, contract)) {
+    return(.sashiny_worker_run(engine, contract, values, today, uploads, run_id))
   }
-  .sashiny_run_saspy_bg(engine, contract, values, today, uploads, run_id, started, t0, timeout)
-}
-
-#' Run the saspy engine in a background process with a whole-run deadline.
-#' @noRd
-.sashiny_run_saspy_bg <- function(engine, contract, values, today, uploads, run_id, started, t0,
-                                  timeout) {
-  .sashiny_need("callr", "to enforce run.timeout_seconds")
-  result_file <- tempfile("sashiny-result-", fileext = ".rds")
-  on.exit(unlink(result_file), add = TRUE)
-  args <- list(
-    cfg = engine$cfg, cfgname = engine$cfgname, backend = engine$backend,
-    license_ack = .sashiny_license_ok(engine),
-    session_factory = engine$session_factory,
-    contract_path = contract$path, values = values, today = today,
-    uploads = uploads, run_id = run_id, result_file = result_file,
-    started = started, t0 = t0
-  )
-  # CRAN: the background process is a child R session (callr) started only
-  # for a live SAS run; it is supervised and killed on timeout. It is never
-  # started during R CMD check, which has no SAS.
-  proc <- callr::r_bg(
-    function(args) {
-      new_engine <- utils::getFromNamespace(".sashiny_new_saspy_engine", "SAShiny")
-      engine <- new_engine(args$cfg,
-        cfgname = args$cfgname,
-        session_factory = args$session_factory, license_ack = args$license_ack,
-        backend = args$backend
-      )
-      contract <- SAShiny::sas_contract(args$contract_path)
-      # Call the synchronous run body directly. Re-entering sas_engine_run()
-      # here would take the background branch again (a real engine has no
-      # session_factory), spawning an unbounded chain of nested processes.
-      run_sync <- utils::getFromNamespace(".sashiny_run_saspy", "SAShiny")
-      result <- run_sync(engine, contract, args$values, args$today, args$uploads,
-        args$run_id, args$started, args$t0)
-      saveRDS(result, args$result_file)
-      invisible(NULL)
-    },
-    args = list(args),
-    package = "SAShiny",
-    supervise = TRUE
-  )
-  proc$wait(timeout = timeout * 1000)
-  if (proc$is_alive()) {
-    proc$kill()
-    return(.sashiny_engine_error(run_id, list(engine = "saspy"),
-      simpleError(sprintf("run exceeded timeout_seconds=%g", timeout))))
-  }
-  if (!file.exists(result_file)) {
-    return(.sashiny_engine_error(run_id, list(engine = "saspy"),
-      simpleError("background run produced no result")))
-  }
-  readRDS(result_file)
+  .sashiny_run_saspy(engine, contract, values, today, uploads, run_id, .sashiny_now(), Sys.time())
 }
 
 #' The synchronous saspy run body (spec section 6.1).

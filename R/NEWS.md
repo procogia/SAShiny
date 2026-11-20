@@ -18,6 +18,11 @@
 
 ## New features
 
+* SAS sessions persist across runs (spec section 6.5, #130). Each saspy engine,
+  and each pooled session, keeps its SAS session in one long-lived worker
+  process ('callr', now in Imports). A timeout kills that worker, and the next
+  run starts a new one. In a Shiny app, runs on single engines and pools no
+  longer block other sessions.
 * Deployment targets (spec section 6.8). `sas_deploy()` writes deployment
   artifacts for an app directory, and `sas_deploy_targets()` lists the
   targets. The first is `container` (a non-root `Dockerfile` with a

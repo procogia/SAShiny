@@ -366,5 +366,6 @@ test_that("run.timeout_seconds is enforced in a background process (issue #34)",
   elapsed <- proc.time()[["elapsed"]] - started
   expect_identical(result$status, "error")
   expect_match(result$metadata$engine_error, "timeout_seconds")
-  expect_lt(elapsed, 2)
+  # Killed at the 1 s deadline; the bound allows for the worker process to start.
+  expect_lt(elapsed, 10)
 })

@@ -8,7 +8,7 @@
 # unchanged example text. A CSV report goes to tempdir().
 
 # TRUE once the persistent R worker (build prompt 1, spec section 6.5) lands.
-reuse_fixed <- FALSE
+reuse_fixed <- TRUE
 
 live_probe_contract <- function() {
   skip_if_no_demo_scenarios()

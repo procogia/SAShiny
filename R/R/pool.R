@@ -102,28 +102,8 @@ sas_pool <- function(engine, min_size = 0L, max_size = 4L,
 .sashiny_acquire <- function(pool) {
   deadline <- as.numeric(Sys.time()) + pool$acquire_timeout
   repeat {
-    if (isTRUE(pool$closed)) {
-      return(NULL)
-    }
-    now <- as.numeric(Sys.time())
-    expired <- vapply(pool$sessions, function(s) {
-      !s$in_use && (now - s$last_used) >= pool$idle_timeout
-    }, logical(1))
-    idle <- pool$sessions[expired]
-    pool$sessions <- pool$sessions[!expired]
-    for (s in idle) .sashiny_close_session(pool, s)
-    .sashiny_top_up(pool)
-    for (s in pool$sessions) {
-      if (!s$in_use) {
-        s$in_use <- TRUE
-        s$last_used <- now
-        return(s)
-      }
-    }
-    if (length(pool$sessions) < pool$max_size) {
-      s <- .sashiny_new_session(pool)
-      s$in_use <- TRUE
-      pool$sessions[[length(pool$sessions) + 1L]] <- s
+    s <- .sashiny_try_acquire(pool)
+    if (!is.null(s) || isTRUE(pool$closed)) {
       return(s)
     }
     # Every session is busy: wait for a release (spec section 6.5).
@@ -132,6 +112,36 @@ sas_pool <- function(engine, min_size = 0L, max_size = 4L,
     }
     Sys.sleep(0.05)
   }
+}
+
+#' One acquisition attempt: a free (or new) session, or NULL when all are busy.
+#' @noRd
+.sashiny_try_acquire <- function(pool) {
+  if (isTRUE(pool$closed)) {
+    return(NULL)
+  }
+  now <- as.numeric(Sys.time())
+  expired <- vapply(pool$sessions, function(s) {
+    !s$in_use && (now - s$last_used) >= pool$idle_timeout
+  }, logical(1))
+  idle <- pool$sessions[expired]
+  pool$sessions <- pool$sessions[!expired]
+  for (s in idle) .sashiny_close_session(pool, s)
+  .sashiny_top_up(pool)
+  for (s in pool$sessions) {
+    if (!s$in_use) {
+      s$in_use <- TRUE
+      s$last_used <- now
+      return(s)
+    }
+  }
+  if (length(pool$sessions) < pool$max_size) {
+    s <- .sashiny_new_session(pool)
+    s$in_use <- TRUE
+    pool$sessions[[length(pool$sessions) + 1L]] <- s
+    return(s)
+  }
+  NULL
 }
 
 #' Release a session back to the pool.
@@ -185,6 +195,51 @@ sas_engine_run.sashiny_pool <- function(engine, contract, values, today = Sys.Da
   }
   .sashiny_release(pool, session, discard = discard)
   result
+}
+
+#' Run on a pool without blocking the event loop (spec section 6.5).
+#'
+#' Acquires a free session with `later` polling (never `Sys.sleep()` on the
+#' event loop) up to `acquire_timeout`, then runs on that session's engine
+#' through `.sashiny_run_async()`. "pool exhausted" resolves as an error result.
+#' @noRd
+.sashiny_pool_promise <- function(pool, contract, values, uploads, today, run_id, session) {
+  deadline <- as.numeric(Sys.time()) + pool$acquire_timeout
+  acquire <- function() {
+    promises::promise(function(resolve, reject) {
+      try_once <- function() {
+        got <- tryCatch(.sashiny_try_acquire(pool), error = function(e) e)
+        if (inherits(got, "error")) {
+          return(resolve(.sashiny_engine_error(run_id, list(engine = "pool"), got)))
+        }
+        if (!is.null(got) || isTRUE(pool$closed) || as.numeric(Sys.time()) >= deadline) {
+          return(resolve(got))
+        }
+        later::later(try_once, 0.05)
+      }
+      try_once()
+    })
+  }
+  promises::then(acquire(), function(s) {
+    if (inherits(s, "sashiny_result")) {
+      return(s)
+    }
+    if (is.null(s)) {
+      return(.sashiny_engine_error(run_id, list(engine = "pool"),
+        simpleError(sprintf("pool exhausted: all %d sessions busy", pool$max_size))))
+    }
+    p <- .sashiny_run_async(s$engine, contract, values, uploads, today, run_id, session)
+    p <- promises::then(p, function(result) {
+      s$runs <- s$runs + 1L
+      discard <- identical(result$status, "error") && is.null(result$metadata$issues)
+      .sashiny_release(pool, s, discard = discard)
+      result
+    })
+    promises::catch(p, function(e) {
+      .sashiny_release(pool, s, discard = TRUE)
+      .sashiny_engine_error(run_id, list(engine = "pool"), e)
+    })
+  })
 }
 
 #' @export

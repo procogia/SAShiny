@@ -29,6 +29,7 @@ BugReports: https://github.com/procogia/SAShiny/issues
 Depends:
     R (>= 4.1)
 Imports:
+    callr,
     jsonlite,
     jsonvalidate,
     openssl,
@@ -38,7 +39,6 @@ Imports:
     yaml
 Suggests:
     bslib,
-    callr,
     ggplot2,
     haven,
     htmltools,
