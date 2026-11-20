@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "sashiny"
 dynamic = ["version"]
-description = "Use unchanged SAS programs as the server of Shiny applications."
+description = "Use unchanged SAS programs as the server of Shiny apps, radiant as the moon."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"

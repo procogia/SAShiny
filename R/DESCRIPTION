@@ -18,7 +18,8 @@ Description: Pairs an unmodified 'SAS' program with a declarative 'YAML'
     Programs run only on a live 'SAS' 9.4, 'SAS Viya' or 'SAS OnDemand for
     Academics' system, reached through 'SASPy'; users must hold a valid
     licence for that system and acknowledge this before a run. Apps can be
-    published to 'Posit Connect' with 'rsconnect'.
+    published to 'Posit Connect' with 'rsconnect'. The name, pronounced
+    like 'Sashini' (moon), reflects 'SAS' plus 'Shiny'.
     'SAS' is a registered trademark of SAS Institute Inc. and 'Shiny' is a
     registered trademark of Posit Software, PBC; this package is not
     affiliated with or endorsed by either company.

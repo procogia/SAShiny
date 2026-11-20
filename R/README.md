@@ -1,4 +1,7 @@
-# SAShiny (R)
+# SAShiny (R) <img src="man/figures/logo.png" align="right" height="139" alt="SAShiny logo: a crescent moon" />
+
+*Your SAS and Shiny programs, radiant as the moon.*
+Pronounced like *Sashini*, "radiant as the moon": SAS does the analysis and Shiny makes it shine.
 
 R package for SAShiny. Use an unchanged SAS program as the server of a Shiny app.
 
