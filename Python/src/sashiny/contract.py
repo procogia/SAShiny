@@ -112,6 +112,8 @@ class Contract:
     base_dir: Path
     issues: list[Issue] = field(default_factory=list)
     path: Path | None = None
+    # Fresh choices from the app cache (spec §6.4), set by the Shiny module for a run.
+    cached_choices: dict[str, list[dict[str, str]]] | None = field(default=None, compare=False)
 
 
 def load(path: str | Path) -> Contract:

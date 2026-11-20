@@ -149,6 +149,7 @@ sas_pool <- function(engine, min_size = 0L, max_size = 4L,
 .sashiny_release <- function(pool, session, discard = FALSE) {
   session$in_use <- FALSE
   session$last_used <- as.numeric(Sys.time())
+  if (discard) .sashiny_clear_choices(pool) # spec section 6.4: a session was replaced
   if (discard || session$runs >= pool$max_runs_per_session) {
     pool$sessions <- Filter(function(s) !identical(s, session), pool$sessions)
     .sashiny_close_session(pool, session)

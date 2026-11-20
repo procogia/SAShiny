@@ -1,0 +1,13 @@
+sashiny: 1
+program: program.sas
+title: Choices TTL
+inputs:
+  make:
+    type: choice
+    label: Make
+    choices_from: {dataset: sashelp.cars, value_column: make}
+outputs:
+  log:
+    type: log
+run:
+  choices_ttl_seconds: 86401

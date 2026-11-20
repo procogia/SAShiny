@@ -293,3 +293,33 @@ def test_module_chart_view_sas_and_toggle_off() -> None:
         assert card.count("<img") == 1
         assert "QUJD" in card
         assert str(session.get_output("mod-out__view").value) in ("", "None")
+
+
+def test_choices_load_once_for_many_sessions(tmp_path: Path) -> None:
+    # Spec 6.4 caching: N browser sessions of one app share one SAS query.
+    contract = sashiny.load(FIX / "contracts" / "valid" / "choice" / "contract.sashiny.yml")
+
+    class Counting(MockEngine):
+        queries = 0
+
+        def choices(self, contract: sashiny.Contract) -> dict[str, list[dict[str, str]]]:
+            Counting.queries += 1
+            return {
+                iid: [{"value": "BMW", "label": "BMW"}]
+                for iid, s in (contract.data.get("inputs") or {}).items()
+                if "choices_from" in s
+            }
+
+    engine = Counting()
+    app_ui = ui.page_fluid(modules.program_ui("mod", contract))
+
+    def server(input, output, session):
+        modules.program_server("mod", contract, engine)
+
+    app = App(app_ui, server)
+    for _ in range(3):
+        with test_server(app) as session:
+            for _ in range(10):
+                session.flush()
+                time.sleep(0.02)
+    assert Counting.queries == 1

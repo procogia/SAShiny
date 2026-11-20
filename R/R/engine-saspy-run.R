@@ -334,6 +334,7 @@ sas_engine_close.sashiny_engine_saspy <- function(engine) {
 #' reference is lost, otherwise it leaks (spec section 6.5).
 #' @noRd
 .sashiny_discard_session <- function(engine) {
+  .sashiny_clear_choices(engine)
   sas <- engine$sas
   engine$sas <- NULL
   # Session-scoped caches are invalid once the session is gone (spec section 6.4 reads
@@ -450,7 +451,9 @@ sas_engine_run.sashiny_engine_saspy <- function(engine, contract, values, today 
 .sashiny_run_saspy <- function(engine, contract, values, today, uploads, run_id, started, t0) {
   data <- contract$data
   flags <- lapply(uploads %||% list(), function(v) !is.null(v) && !isFALSE(v))
-  choices <- tryCatch(sas_engine_choices(engine, contract), error = function(e) e)
+  # Fresh choices from the app cache (spec section 6.4) skip the query.
+  choices <- contract$cached_choices %||%
+    tryCatch(sas_engine_choices(engine, contract), error = function(e) e)
   if (inherits(choices, "error")) {
       .sashiny_discard_session(engine)
     return(.sashiny_engine_error(run_id, list(engine = "saspy"), choices))

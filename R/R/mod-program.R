@@ -646,12 +646,27 @@ sas_program_server <- function(id, contract, engine, server_override = NULL, ren
     .sashiny_set_upload_limit(inputs)
     shiny::onSessionEnded(function() .sashiny_restore_upload_limit(), session)
 
-    if (any(vapply(inputs, function(s) !is.null(s$choices_from), logical(1)))) {
-      found <- tryCatch(sas_engine_choices(engine, contract), error = function(e) e)
-      if (inherits(found, "error")) {
-        choice_error(paste("could not read choices:", conditionMessage(found)))
+    # choices_from (spec section 6.4): load once per app and contract (cached
+    # with a time-to-live), in the background in a running app, so a new
+    # browser session never waits for SAS.
+    if (.sashiny_has_choices_from(contract)) {
+      apply_choices <- function(found) {
+        if (inherits(found, "error")) {
+          choice_error(paste("could not read choices:", conditionMessage(found)))
+        } else {
+          choice_error("")
+          .sashiny_update_choices(session, inputs, found)
+        }
+      }
+      cached <- .sashiny_cached_choices(engine, contract)
+      if (!is.null(cached)) {
+        apply_choices(cached)
+      } else if (shiny::isRunning() && requireNamespace("promises", quietly = TRUE) &&
+        requireNamespace("later", quietly = TRUE)) {
+        .sashiny_choices_loading(session, inputs)
+        promises::then(.sashiny_choices_async(engine, contract), apply_choices)
       } else {
-        .sashiny_update_choices(session, inputs, found)
+        apply_choices(tryCatch(.sashiny_choices(engine, contract), error = function(e) e))
       }
     }
 
@@ -698,7 +713,11 @@ sas_program_server <- function(id, contract, engine, server_override = NULL, ren
       shiny::observeEvent(input$run,
         {
           converted <- .sashiny_shiny_values(contract, function(iid) input[[iid]])
-          result(sas_engine_run(engine, contract, converted$values, uploads = converted$uploads))
+          run_contract <- contract
+          if (.sashiny_has_choices_from(contract)) {
+            run_contract$cached_choices <- .sashiny_cached_choices(engine, contract)
+          }
+          result(sas_engine_run(engine, run_contract, converted$values, uploads = converted$uploads))
         },
         ignoreNULL = !isTRUE(settings$auto_run)
       )
@@ -772,6 +791,23 @@ sas_program_server <- function(id, contract, engine, server_override = NULL, ren
       )
     } else {
       shiny::updateSelectInput(session, iid, choices = choices, selected = unlist(spec$default))
+    }
+  }
+}
+
+#' Show "Loading choices..." in each `choices_from` input until they load.
+#' @noRd
+.sashiny_choices_loading <- function(session, inputs) {
+  for (iid in names(inputs)) {
+    spec <- inputs[[iid]]
+    if (is.null(spec$choices_from)) next
+    placeholder <- c("Loading choices\u2026" = "")
+    if (identical(spec$type, "choice") && identical(spec$widget, "radio")) {
+      shiny::updateRadioButtons(session, iid, choices = placeholder)
+    } else if (identical(spec$type, "multichoice") && identical(spec$widget, "checkbox")) {
+      shiny::updateCheckboxGroupInput(session, iid, choices = placeholder)
+    } else {
+      shiny::updateSelectInput(session, iid, choices = placeholder)
     }
   }
 }

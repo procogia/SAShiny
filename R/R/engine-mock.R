@@ -105,7 +105,7 @@ sas_engine_run.sashiny_engine_mock <- function(engine, contract, values, today =
   .sashiny_require_testing()
   run_id <- run_id %||% .sashiny_run_id()
   flags <- lapply(uploads %||% list(), function(v) !is.null(v) && !isFALSE(v))
-  override <- .sashiny_choice_override(sas_engine_choices(engine, contract))
+  override <- .sashiny_choice_override(contract$cached_choices %||% sas_engine_choices(engine, contract))
   res <- sas_render_values(contract$data, values, today,
     choices_override = override, uploads = flags
   )

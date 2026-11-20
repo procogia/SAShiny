@@ -108,7 +108,8 @@ class MockEngine(Engine):
         today = today or date.today()
         run_id = run_id or str(uuid.uuid4())
         flags = {k: bool(v) for k, v in (uploads or {}).items()}
-        override = {k: [c["value"] for c in v] for k, v in self.choices(contract).items()}
+        found = getattr(contract, "cached_choices", None) or self.choices(contract)
+        override = {k: [c["value"] for c in v] for k, v in found.items()}
         macros, issues = render_values(
             contract.data, values, today, choices_override=override or None, uploads=flags
         )
