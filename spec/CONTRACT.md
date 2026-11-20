@@ -1353,6 +1353,29 @@ original SAS graph, rendered like a `plot`) and `sashiny` (the client-side chart
 - `chart_view` and `chart_toggle` are code arguments, not YAML fields; the app helpers pass them
   through to every module.
 
+### 8.7 Language accessors (non-normative)
+
+The §8.1 values are the cross-language wire format and do not change. Each package also offers data
+frame accessors. Both languages produce the same column names, types, row counts and log types.
+
+| Accessor (R / Python) | Returns |
+|---|---|
+| `sas_result_table(result, id)` / `Result.table(id)` | One row per table row, one column per §8.1 column, by `name`. Numeric columns (`formatted: false`) are doubles with SAS missing as `NA` / `NaN`; other columns are character, with missing as `NA` / `None` |
+| `sas_result_log(result)` / `Result.log_frame()` | One row per line of the run's full log (§8.2 line splitting), with columns `line` (integer, from 1), `type` and `text` |
+| `sas_result_outputs(result)` / `Result.frames()` | A named list / dict: each `table` and `chart` output as a table frame, each `log` output as a log frame (its `type` from the §8.1 `level`), and every other output's §8.1 value unchanged |
+
+- Per-column `label` and `format` are kept as column attributes: R uses `label` and `format.sas`
+  (as 'haven' does), Python uses `DataFrame.attrs["labels"]` and `attrs["formats"]`, keyed by
+  column name. `truncated` and `total_rows` are frame attributes in both languages (`attrs` in
+  Python).
+- `type` is `"ERROR"`, `"WARNING"` or `"NOTE"` for lines starting with that word (§6.5), otherwise
+  `"other"`. The status rules and this column use the same classifier, so they cannot disagree.
+- A missing output id, or an id whose output is not a table or chart, is an error that names the id.
+  So is an output that holds `{"error": ...}`. Python needs pandas, an optional extra; without it the
+  accessors raise `ImportError`, naming the extra to install.
+
+The accessors are fixed by `spec/fixtures/collect/frames.json`.
+
 ---
 
 ## 9. Known constraints (documented, not errors)

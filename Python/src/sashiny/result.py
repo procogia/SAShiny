@@ -56,6 +56,27 @@ class Result:
     log: str = ""
     metadata: dict[str, Any] = field(default_factory=dict)
 
+    def table(self, output_id: str) -> Any:
+        """Return a table or chart output as a pandas DataFrame (spec §8.7).
+
+        Needs pandas (``pip install "sashiny[frames]"``). See :func:`sashiny.frames.table`.
+        """
+        from .frames import table  # noqa: PLC0415 - keeps pandas optional
+
+        return table(self, output_id)
+
+    def log_frame(self) -> Any:
+        """Return the full log as a DataFrame with ``line``, ``type`` and ``text`` (spec §8.7)."""
+        from .frames import log_frame  # noqa: PLC0415 - keeps pandas optional
+
+        return log_frame(self)
+
+    def frames(self) -> dict[str, Any]:
+        """Return every output, with tables and logs as DataFrames (spec §8.7)."""
+        from .frames import frames  # noqa: PLC0415 - keeps pandas optional
+
+        return frames(self)
+
     @classmethod
     def new(  # noqa: PLR0913 - many optional metadata fields
         cls,
