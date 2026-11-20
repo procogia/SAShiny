@@ -21,8 +21,9 @@ jobs:
           - {os: ubuntu-latest,  r: "devel", http-user-agent: "release"}
           - {os: ubuntu-latest,  r: "release"}
           - {os: ubuntu-latest,  r: "oldrel-1"}
-          # ggplot2 >= 4 needs S7, which does not install on R 4.1 (#132): pin the last 3.x.
-          - {os: ubuntu-latest,  r: "4.1", extra: "ggplot2@3.5.2"}
+          # ggplot2 >= 4 needs S7 and 3.5.x needs Hmisc, neither of which installs on
+          # R 4.1 (#132). ggplot2 is in Suggests and its tests skip without it.
+          - {os: ubuntu-latest,  r: "4.1", drop: "ggplot2"}
           - {os: macos-latest,   r: "release"}
           - {os: windows-latest, r: "release"}
     env:
@@ -42,12 +43,13 @@ jobs:
           r-version: ${{ matrix.config.r }}
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
+      - name: Drop optional packages that do not install on this R version
+        if: matrix.config.drop != ''
+        run: sed -i '/^    ${{ matrix.config.drop }},$/d' DESCRIPTION
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           working-directory: R
-          extra-packages: |
-            any::rcmdcheck
-            ${{ matrix.config.extra }}
+          extra-packages: any::rcmdcheck
           needs: check
       - uses: r-lib/actions/check-r-package@v2
         with:
