@@ -1,0 +1,5 @@
+# Lint settings for the experiment; extends the package's ruff config.
+extend = "../../../Python/pyproject.toml"
+
+[lint.per-file-ignores]
+"tests/**" = ["D", "S101", "PLR2004", "E402"]
