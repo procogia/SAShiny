@@ -156,7 +156,7 @@ def test_merge_values_precedence_and_forms() -> None:
     assert merged == {ids[0]: "2024-03-04", "keep": 1}
     assert modules.merge_values(contract, {ids[0]: "x"}, {ids[0]: None}) == {}
     assert modules.merge_values(contract, {"a": 1}, None) == {"a": 1}
-    with pytest.raises(TypeError):
+    with pytest.raises(sashiny.errors.ValuesError):
         modules.merge_values(contract, {}, [1])  # type: ignore[arg-type]
 
 

@@ -216,7 +216,7 @@ def merge_values(
     if external is None:
         return dict(values)
     if not isinstance(external, dict):
-        raise TypeError("values() must return a dict of input values")
+        raise ValuesError("values() must return a dict of input values")
     inputs: dict[str, Any] = contract.data.get("inputs") or {}
     merged = dict(values)
     for iid, raw in external.items():
@@ -673,9 +673,9 @@ def program_server(  # noqa: PLR0913, PLR0915, PLR0917 - Shiny module: one react
     """
     check_engine(engine)
     if values is not None and not callable(values):
-        raise TypeError("values must be a reactive (or callable) returning a dict")
+        raise ValuesError("values must be a reactive (or callable) returning a dict")
     if debounce_ms < 0:
-        raise ValueError("debounce_ms must be non-negative")
+        raise ValuesError("debounce_ms must be non-negative")
     views = _chart_views(contract, chart_view)
     if server_override is not None:
         return server_override(input, output, session, contract, engine)  # type: ignore[no-any-return]

@@ -156,7 +156,7 @@
     return(converted)
   }
   if (!is.list(external) || (length(external) > 0L && is.null(names(external)))) {
-    stop("`values()` must return a named list of input values.", call. = FALSE)
+    .sashiny_abort("values", "`values()` must return a named list of input values.")
   }
   inputs <- contract$data$inputs %||% list()
   for (iid in names(external)) {
@@ -669,11 +669,11 @@ sas_program_server <- function(id, contract, engine, server_override = NULL, ren
                                hide_inputs = FALSE, debounce_ms = 500) {
   .sashiny_check_engine(engine)
   if (!is.null(values) && !is.function(values)) {
-    stop("`values` must be a reactive (or function) returning a named list.", call. = FALSE)
+    .sashiny_abort("values", "`values` must be a reactive (or function) returning a named list.")
   }
   if (!is.numeric(debounce_ms) || length(debounce_ms) != 1L || is.na(debounce_ms) ||
     debounce_ms < 0) {
-    stop("`debounce_ms` must be a single non-negative number.", call. = FALSE)
+    .sashiny_abort("values", "`debounce_ms` must be a single non-negative number.")
   }
   views <- .sashiny_chart_views(contract, chart_view)
   if (!is.null(server_override)) {
