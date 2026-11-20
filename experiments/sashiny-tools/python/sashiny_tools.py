@@ -163,7 +163,7 @@ def call(
     """
     today = today or date.today()
     try:
-        result = sashiny.run(contract, _with_defaults(contract, args, today), engine, today=today)
+        result = sashiny.run(contract, engine, _with_defaults(contract, args, today), today=today)
     except Exception as exc:
         return json.dumps({"run_id": None, "status": "error", "error": str(exc), "issues": []})
     return json.dumps(summarise(contract, result), default=str)

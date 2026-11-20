@@ -46,7 +46,7 @@ That order still works, with a deprecation warning.
 path <- system.file("examples", "minimal", "minimal.sashiny.yml", package = "SAShiny")
 \dontrun{
 # Needs a licensed 'SAS' system and saspy; not run during checks.
-engine <- sas_connect("sas94", host = "sas.example.com", license_ack = TRUE)
+engine <- sas_connect(sas_94_iom("sas.example.com"), license_ack = TRUE)
 result <- sas_run(path, engine)
 result$status
 sas_close(engine)

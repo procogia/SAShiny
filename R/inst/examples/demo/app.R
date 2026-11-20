@@ -77,14 +77,13 @@ env_or_null <- function(name) {
 # A pooled live engine for a profile, built from environment variables.
 live_engine <- function(profile) {
   factory <- switch(profile,
-    oda = function() sas_connect("oda", region = env_or_null("SASHINY_ODA_REGION") %||% "us1"),
+    oda = function() sas_connect(sas_oda(env_or_null("SASHINY_ODA_REGION") %||% "us1")),
     viya = function() {
-      sas_connect("viya",
-        url = env_or_null("SASHINY_VIYA_URL"),
+      sas_connect(sas_viya(env_or_null("SASHINY_VIYA_URL"),
         context = env_or_null("SASHINY_VIYA_CONTEXT")
-      )
+      ))
     },
-    sas94 = function() sas_connect("sas94", host = env_or_null("SASHINY_SAS94_HOST"))
+    sas94 = function() sas_connect(sas_94_iom(env_or_null("SASHINY_SAS94_HOST")))
   )
   sas_pool(factory, max_size = 2L)
 }

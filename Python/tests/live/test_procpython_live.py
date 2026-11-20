@@ -30,7 +30,7 @@ def test_procpython_matches_saspy(name: str, live_engine: sashiny.SaspyEngine) -
     if not folder:
         pytest.skip("set SASHINY_PROCPYTHON_OUT to the probe.sas output folder")
     inside = json.loads((Path(folder) / f"sashiny_parity_{name}.json").read_text(encoding="utf-8"))
-    outside = sashiny.run(FIX / name / "contract.sashiny.yml", {}, live_engine).outputs
+    outside = sashiny.run(FIX / name / "contract.sashiny.yml", live_engine, {}).outputs
     assert sorted(inside) == sorted(outside)
     for oid, value in outside.items():
         if isinstance(value, dict) and "rows" in value:

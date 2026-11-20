@@ -1,10 +1,16 @@
-"""Tests for the SAS connection selection (issue #6)."""
+"""Tests for the SAS connection selection (issue #6) and backend constructors (#130 H3).
+
+The ``connect("oda", ...)`` form is deprecated; these tests check it still works.
+"""
 
 from __future__ import annotations
 
 import pytest
 
-from sashiny.engines.saspy import ODA_HOSTS, connect
+import sashiny
+from sashiny.engines.saspy import ODA_HOSTS, connect, oda, sas94_iom, sas94_ssh, viya
+
+pytestmark = pytest.mark.filterwarnings("ignore:connect\\(profile:DeprecationWarning")
 
 
 def test_connect_oda_builds_config() -> None:
@@ -97,3 +103,39 @@ def test_env_credentials_become_saspy_keywords(monkeypatch: pytest.MonkeyPatch) 
     assert env_credentials({"saspath": "/s", "host": "h"}) == {}
     monkeypatch.delenv("SASHINY_SAS_PASSWORD")
     assert env_credentials({"iomhost": "h"}) == {}
+
+
+def test_constructors_match_the_old_form() -> None:
+    assert connect(oda("eu1")).cfg == connect("oda", region="eu1").cfg
+    assert (
+        connect(viya("https://v.example.com", context="c")).cfg
+        == connect("viya", url="https://v.example.com", context="c").cfg
+    )
+    assert connect(sas94_iom("h.example.com", port=1234)).cfg == (
+        connect("sas94", host="h.example.com", port=1234).cfg
+    )
+    ssh = connect(sas94_ssh("h.example.com", "/opt/sas", ssh_user="me"))
+    assert ssh.cfg == connect("sas94", host="h.example.com", saspath="/opt/sas", ssh_user="me").cfg
+    assert ssh.backend == "sas94-ssh"
+    assert repr(sashiny.oda("ap1")) == "<sashiny backend> oda (ap1)"
+
+
+def test_constructors_validate_their_own_arguments() -> None:
+    with pytest.raises(sashiny.EngineError, match="unknown ODA region"):
+        oda("xx9")
+    with pytest.raises(ValueError, match="must be one SAS Viya URL"):
+        viya("viya.example.com")
+    with pytest.raises(ValueError, match="host must be one"):
+        sas94_iom("")
+    with pytest.raises(ValueError, match="port must be an integer"):
+        sas94_iom("h", port=70000)
+    with pytest.raises(ValueError, match="saspath must be"):
+        sas94_ssh("h", "")
+    with pytest.raises(ValueError, match="backend must come from"):
+        connect(object())  # type: ignore[arg-type]
+
+
+@pytest.mark.filterwarnings("default")
+def test_old_form_warns() -> None:
+    with pytest.warns(DeprecationWarning, match="pass a backend"):
+        assert connect("oda").backend == "oda"

@@ -15,7 +15,7 @@ sas_pool(
 }
 \arguments{
 \item{engine}{An engine factory: a function with no arguments returning a
-\code{\link[=sas_connect]{sas_connect()}} engine, such as \code{function() sas_connect("oda")}. Each
+\code{\link[=sas_connect]{sas_connect()}} engine, such as \code{function() sas_connect(sas_oda())}. Each
 pooled session gets its own 'SAS' session. A single engine is also
 accepted and is then shared by all pooled sessions.}
 
@@ -38,6 +38,6 @@ Create a bounded session pool
 }
 \examples{
 # With min_size = 0 creating a pool starts no 'SAS' session.
-pool <- sas_pool(function() sas_connect("oda", region = "us1"), max_size = 2L)
+pool <- sas_pool(function() sas_connect(sas_oda("us1")), max_size = 2L)
 sas_close(pool)
 }

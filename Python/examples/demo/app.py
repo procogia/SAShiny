@@ -66,12 +66,14 @@ def _live_engine(profile: str) -> sashiny.Pool:
 
     def factory() -> sashiny.Engine:
         if profile == "oda":
-            return sashiny.connect("oda", region=env.get("SASHINY_ODA_REGION", "us1"))
+            return sashiny.connect(sashiny.oda(env.get("SASHINY_ODA_REGION", "us1")))
         if profile == "viya":
             return sashiny.connect(
-                "viya", url=env.get("SASHINY_VIYA_URL"), context=env.get("SASHINY_VIYA_CONTEXT")
+                sashiny.viya(
+                    env.get("SASHINY_VIYA_URL", ""), context=env.get("SASHINY_VIYA_CONTEXT")
+                )
             )
-        return sashiny.connect("sas94", host=env.get("SASHINY_SAS94_HOST"))
+        return sashiny.connect(sashiny.sas94_iom(env.get("SASHINY_SAS94_HOST", "")))
 
     return sashiny.Pool(factory, max_size=2)
 

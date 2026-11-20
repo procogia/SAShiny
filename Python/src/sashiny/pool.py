@@ -48,7 +48,7 @@ class Pool(Engine):
 
     Args:
         engine: An engine factory (a zero-argument callable such as
-            ``lambda: sashiny.connect("oda")``), giving each pooled session its
+            ``lambda: sashiny.connect(sashiny.oda())``), giving each pooled session its
             own SAS session, or a single engine instance shared by all pooled
             sessions.
         min_size: Minimum number of sessions kept warm.

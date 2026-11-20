@@ -42,24 +42,22 @@ def _connect() -> sashiny.SaspyEngine:
     java = env.get("SASHINY_JAVA")
     if profile == "oda":
         return sashiny.connect(
-            "oda", region=env.get("SASHINY_ODA_REGION", "us1"), java=java, license_ack=True
+            sashiny.oda(env.get("SASHINY_ODA_REGION", "us1"), java=java), license_ack=True
         )
     if profile == "viya":
         return sashiny.connect(
-            "viya",
-            url=env.get("SASHINY_VIYA_URL"),
-            context=env.get("SASHINY_VIYA_CONTEXT"),
+            sashiny.viya(env.get("SASHINY_VIYA_URL", ""), context=env.get("SASHINY_VIYA_CONTEXT")),
             license_ack=True,
         )
     if profile == "sas94":
-        return sashiny.connect(
-            "sas94",
-            host=env.get("SASHINY_SAS94_HOST"),
-            port=int(env.get("SASHINY_SAS94_PORT", "8591")),
-            saspath=env.get("SASHINY_SAS94_SASPATH"),
-            java=java,
-            license_ack=True,
+        host = env.get("SASHINY_SAS94_HOST", "")
+        saspath = env.get("SASHINY_SAS94_SASPATH")
+        backend = (
+            sashiny.sas94_ssh(host, saspath)
+            if saspath
+            else sashiny.sas94_iom(host, port=int(env.get("SASHINY_SAS94_PORT", "8591")), java=java)
         )
+        return sashiny.connect(backend, license_ack=True)
     raise pytest.UsageError("SASHINY_PROFILE must be oda, viya or sas94")
 
 

@@ -116,8 +116,8 @@ summarise_result <- function(contract, result) {
 call_tool <- function(contract, engine, args, today = Sys.Date()) {
   args <- lapply(args, function(v) if (is.atomic(v) && length(v) > 1L) as.list(v) else v)
   out <- tryCatch(
-    summarise_result(contract, SAShiny::sas_run(contract, .with_defaults(contract, args, today),
-      engine, today = today)),
+    summarise_result(contract, SAShiny::sas_run(contract, engine,
+      .with_defaults(contract, args, today), today = today)),
     error = function(e) list(run_id = NULL, status = "error", error = conditionMessage(e),
       issues = list())
   )
