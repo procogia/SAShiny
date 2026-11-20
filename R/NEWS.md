@@ -20,6 +20,19 @@
   Bootstrap 3, which the program modules' 'bslib' cards and sidebar layout do
   not support, so the layout broke.
 
+## Deprecations
+
+* `sas_run()` now takes the engine second: `sas_run(contract, engine, values)`,
+  where `values` defaults to the contract defaults. The old order still works,
+  with a deprecation warning (#130).
+* `sas_close()` closes engines and pools. `sas_pool_close()` and
+  `sas_pool_run()` are deprecated in favour of `sas_close()` and `sas_run()`.
+* `sashiny_lint()` is renamed `sas_lint()`; the old name is deprecated.
+* `sas_engine_close()` stays the generic for engine extensions.
+  `sas_reset_code()`, `sas_wrapper_code()`, `sas_render_values()` and
+  `sas_json_values()` are developer tools, hidden from the reference index
+  ('lifecycle' is now in Imports).
+
 ## New features
 
 * `choices_from` lists load once per app and contract, cached for the new

@@ -112,7 +112,7 @@ test_that("the mock engine is refused outside the test suite (spec section 6.6)"
   outside_tests({
     expect_error(.sashiny_engine_mock(), "internal test fixture")
     expect_error(sas_engine_run(engine, contract, list()), "internal test fixture")
-    expect_error(sas_run(contract, list(), engine), "must come from sas_connect")
+    expect_error(sas_run(contract, engine), "must come from sas_connect")
     expect_error(sas_pool(engine), "must come from sas_connect")
   })
   expect_false("sas_engine_mock" %in% getNamespaceExports("SAShiny"))

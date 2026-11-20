@@ -2,7 +2,7 @@
 % Please edit documentation in R/engine.R
 \name{sas_engine_close}
 \alias{sas_engine_close}
-\title{Close an engine}
+\title{Close an engine (extension generic)}
 \usage{
 sas_engine_close(engine)
 }
@@ -13,5 +13,7 @@ sas_engine_close(engine)
 Invisibly, \code{NULL}.
 }
 \description{
-Ends any SAS session the engine holds. Safe to call more than once.
+The S3 generic behind \code{\link[=sas_close]{sas_close()}}: engine classes implement a method to
+end their 'SAS' sessions. Users call \code{\link[=sas_close]{sas_close()}}.
 }
+\keyword{internal}

@@ -2,7 +2,8 @@
 % Please edit documentation in R/pool.R
 \name{sas_pool_run}
 \alias{sas_pool_run}
-\title{Run a contract on a pooled session}
+\alias{sas_pool_close}
+\title{Deprecated pool helpers}
 \usage{
 sas_pool_run(
   pool,
@@ -12,6 +13,8 @@ sas_pool_run(
   uploads = NULL,
   run_id = NULL
 )
+
+sas_pool_close(pool)
 }
 \arguments{
 \item{pool}{A \code{sashiny_pool} object.}
@@ -28,9 +31,11 @@ a path, a Shiny \code{fileInput} value, or \code{TRUE} for the input's \code{sam
 \item{run_id}{The run identifier (defaults to a generated UUID).}
 }
 \value{
-A \code{sashiny_result} object.
+\code{sas_pool_run()}: a \code{sashiny_result}. \code{sas_pool_close()}:
+invisibly, \code{NULL}.
 }
 \description{
-Equivalent to \code{\link[=sas_engine_run]{sas_engine_run()}} on the pool. The session is discarded if a
-submitted run errors (spec section 6.5); input validation errors keep it.
+\code{sas_pool_run()} is \code{\link[=sas_run]{sas_run()}} on a pool and \code{sas_pool_close()} is
+\code{\link[=sas_close]{sas_close()}}. They still work, with a deprecation warning.
 }
+\keyword{internal}

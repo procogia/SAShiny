@@ -104,12 +104,14 @@ sas_engine_choices.default <- function(engine, contract) {
   list()
 }
 
-#' Close an engine
+#' Close an engine (extension generic)
 #'
-#' Ends any SAS session the engine holds. Safe to call more than once.
+#' The S3 generic behind [sas_close()]: engine classes implement a method to
+#' end their 'SAS' sessions. Users call [sas_close()].
 #'
 #' @param engine An engine object.
 #' @return Invisibly, `NULL`.
+#' @keywords internal
 #' @export
 sas_engine_close <- function(engine) {
   UseMethod("sas_engine_close")

@@ -15,3 +15,4 @@ A character string of the reset SAS code.
 \description{
 Generate the reset submission (spec section 6.2)
 }
+\keyword{internal}

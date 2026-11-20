@@ -36,3 +36,4 @@ A list with \code{macros} (a named list in spec section 5.7 order) and
 Validates input values (V001-V014) and renders them into the logical text of
 each macro variable (spec sections 4-5).
 }
+\keyword{internal}

@@ -21,7 +21,7 @@
 #' @examples
 #' # With min_size = 0 creating a pool starts no 'SAS' session.
 #' pool <- sas_pool(function() sas_connect("oda", region = "us1"), max_size = 2L)
-#' sas_pool_close(pool)
+#' sas_close(pool)
 #' @export
 sas_pool <- function(engine, min_size = 0L, max_size = 4L,
                      idle_timeout = 300, max_runs_per_session = 100L,
@@ -262,25 +262,26 @@ sas_engine_close.sashiny_pool <- function(engine) {
   invisible(NULL)
 }
 
-#' Run a contract on a pooled session
+#' Deprecated pool helpers
 #'
-#' Equivalent to [sas_engine_run()] on the pool. The session is discarded if a
-#' submitted run errors (spec section 6.5); input validation errors keep it.
+#' `sas_pool_run()` is [sas_run()] on a pool and `sas_pool_close()` is
+#' [sas_close()]. They still work, with a deprecation warning.
 #'
 #' @inheritParams sas_engine_run
 #' @param pool A `sashiny_pool` object.
-#' @return A `sashiny_result` object.
+#' @return `sas_pool_run()`: a `sashiny_result`. `sas_pool_close()`:
+#'   invisibly, `NULL`.
+#' @keywords internal
 #' @export
 sas_pool_run <- function(pool, contract, values, today = Sys.Date(),
                          uploads = NULL, run_id = NULL) {
+  lifecycle::deprecate_soft("0.3.1", "sas_pool_run()", "sas_run()")
   sas_engine_run(pool, contract, values, today = today, uploads = uploads, run_id = run_id)
 }
 
-#' Close a pool, ending every pooled session
-#'
-#' @param pool A `sashiny_pool` object.
-#' @return Invisibly, `NULL`.
+#' @rdname sas_pool_run
 #' @export
 sas_pool_close <- function(pool) {
+  lifecycle::deprecate_soft("0.3.1", "sas_pool_close()", "sas_close()")
   sas_engine_close(pool)
 }

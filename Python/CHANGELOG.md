@@ -6,6 +6,12 @@ All notable changes to the Python library are documented here. The format follow
 
 ## [Unreleased]
 
+### Deprecated
+
+- `sashiny.run()` takes the engine second: `run(contract, engine, values=None)`. The old order
+  still works and emits a `DeprecationWarning` (#130). New `sashiny.close()` closes engines
+  and pools.
+
 ### Added
 
 - In-session engine for PROC PYTHON (spec §6.5, §6.6; #128):

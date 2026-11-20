@@ -2,7 +2,7 @@
 % Please edit documentation in R/lint.R
 \name{sashiny_lint}
 \alias{sashiny_lint}
-\title{Lint a contract against its program text}
+\title{Deprecated: use \code{\link[=sas_lint]{sas_lint()}}}
 \usage{
 sashiny_lint(data, program_text)
 }
@@ -12,9 +12,9 @@ sashiny_lint(data, program_text)
 \item{program_text}{The decoded SAS program text.}
 }
 \value{
-A list of \code{sashiny_issue} objects with \code{L0xx} codes.
+See \code{\link[=sas_lint]{sas_lint()}}.
 }
 \description{
-Returns advisory findings (L001-L005) by scanning the SAS program text with
-conservative, case-insensitive regular expressions.
+Deprecated: use \code{\link[=sas_lint]{sas_lint()}}
 }
+\keyword{internal}

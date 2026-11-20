@@ -10,6 +10,7 @@
 #'
 #' @param data The parsed contract data (a list).
 #' @return A character string of the reset SAS code.
+#' @keywords internal
 #' @export
 sas_reset_code <- function(data) {
   lines <- c(
@@ -32,6 +33,7 @@ sas_reset_code <- function(data) {
 #' @param program_bytes Raw bytes of the SAS program file.
 #' @param run_id The run identifier embedded in the sentinel lines.
 #' @return A character string of the complete wrapper text.
+#' @keywords internal
 #' @export
 sas_wrapper_code <- function(data, macros, program_bytes, run_id = "fixture") {
   # Strip a leading UTF-8 BOM at the byte level, so the result does not depend

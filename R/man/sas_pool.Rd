@@ -39,5 +39,5 @@ Create a bounded session pool
 \examples{
 # With min_size = 0 creating a pool starts no 'SAS' session.
 pool <- sas_pool(function() sas_connect("oda", region = "us1"), max_size = 2L)
-sas_pool_close(pool)
+sas_close(pool)
 }

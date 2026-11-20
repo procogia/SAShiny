@@ -144,7 +144,7 @@
 #' @param program_text The decoded SAS program text.
 #' @return A list of `sashiny_issue` objects with `L0xx` codes.
 #' @export
-sashiny_lint <- function(data, program_text) {
+sas_lint <- function(data, program_text) {
   issues <- list()
   text <- program_text %||% ""
 
@@ -279,4 +279,15 @@ sashiny_lint <- function(data, program_text) {
     }
 
   issues
+}
+
+#' Deprecated: use [sas_lint()]
+#'
+#' @inheritParams sas_lint
+#' @return See [sas_lint()].
+#' @keywords internal
+#' @export
+sashiny_lint <- function(data, program_text) {
+  lifecycle::deprecate_soft("0.3.1", "sashiny_lint()", "sas_lint()")
+  sas_lint(data, program_text)
 }

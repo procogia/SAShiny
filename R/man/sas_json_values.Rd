@@ -25,3 +25,4 @@ values <- sas_json_values('{"company": "a\\\\u0000b"}')
 data <- list(inputs = list(company = list(type = "text", label = "Company")))
 sas_render_values(data, values)$issues[[1]]$code
 }
+\keyword{internal}

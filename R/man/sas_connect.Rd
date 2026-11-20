@@ -86,6 +86,6 @@ engine$cfg$authkey
 # Needs an ODA account, Java, Python with saspy and credentials in
 # ~/.authinfo; not run during checks.
 engine <- sas_connect("oda", region = "us1", license_ack = TRUE)
-sas_engine_close(engine)
+sas_close(engine)
 }
 }
