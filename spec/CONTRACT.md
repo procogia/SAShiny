@@ -1,6 +1,6 @@
 # SAShiny Contract Specification — Version 1
 
-Status: **Draft 1 (phase 1)**. Spec release: **1.3**. This document is normative for both the R package and the Python library.
+Status: **Draft 1 (phase 1)**. Spec release: **1.4**. This document is normative for both the R package and the Python library.
 The key words MUST, MUST NOT, SHOULD and MAY are used as described in RFC 2119.
 
 The machine-readable structure is [`sashiny.schema.json`](sashiny.schema.json) (JSON Schema 2020-12).

@@ -8,7 +8,7 @@ __all__ = ["SPEC_RELEASE", "Info", "info"]
 
 # The spec release this library implements. CI (spec/tools/check_versions.py)
 # fails when it differs from the spec or from the R package.
-SPEC_RELEASE = "1.3"
+SPEC_RELEASE = "1.4"
 
 
 @dataclass(frozen=True)

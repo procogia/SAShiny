@@ -6,6 +6,8 @@ All notable changes to the Python library are documented here. The format follow
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-11-20
+
 ### Deprecated
 
 - `sashiny.run()` takes the engine second: `run(contract, engine, values=None)`. The old order
@@ -32,7 +34,7 @@ All notable changes to the Python library are documented here. The format follow
   `debounce_ms` (default 500) for `ui.auto_run`. `modules.merge_values()` merges
   them over UI values. See `examples/parent-filter/`.
 - Lockstep versions with the R package (spec §11): both are 0.3.1. New
-  `sashiny.info()` returns the library version, the spec release (`1.3`) and the
+  `sashiny.info()` returns the library version, the spec release (`1.4`) and the
   contract version; CI fails when the R and Python versions or spec releases differ.
 - `choices_from` lists load once per app and contract, cached for the new
   `run.choices_ttl_seconds` (default 3600), and load in the background in a Shiny app
