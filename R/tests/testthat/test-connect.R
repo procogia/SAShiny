@@ -1,3 +1,5 @@
+# Backend constructors and sas_connect() (spec section 6.6, #130 H3).
+
 # Tests for the SAS connection selection (issue #6).
 
 test_that("sas_connect oda builds the config", {
@@ -76,4 +78,33 @@ test_that("SAS credentials from the environment become saspy keyword arguments (
   expect_identical(.sashiny_env_credentials(list(saspath = "/s", host = "h")), list())
   withr::local_envvar(SASHINY_SAS_PASSWORD = NA)
   expect_identical(.sashiny_env_credentials(list(iomhost = "h")), list())
+})
+test_that("each backend constructor builds the same configuration as the old form", {
+  withr::local_options(lifecycle_verbosity = "quiet")
+  expect_identical(sas_connect(sas_oda("eu1"))$cfg, sas_connect("oda", region = "eu1")$cfg)
+  expect_identical(sas_connect(sas_viya("https://v.example.com", context = "c"))$cfg,
+    sas_connect("viya", url = "https://v.example.com", context = "c")$cfg)
+  expect_identical(sas_connect(sas_94_iom("h.example.com", port = 1234))$cfg,
+    sas_connect("sas94", host = "h.example.com", port = 1234L)$cfg)
+  expect_identical(sas_connect(sas_94_ssh("h.example.com", "/opt/sas", ssh_user = "me"))$cfg,
+    sas_connect("sas94", host = "h.example.com", saspath = "/opt/sas", ssh_user = "me")$cfg)
+  expect_identical(sas_connect(sas_94_ssh("h.example.com", "/opt/sas"))$backend, "sas94-ssh")
+})
+
+test_that("constructors validate their own arguments", {
+  expect_error(sas_oda("xx9"), "must be one of")
+  expect_error(sas_viya("viya.example.com"), "must be one 'SAS Viya' URL", class = "sashiny_error_engine")
+  expect_error(sas_viya("https://v", verify = NA), "verify must be TRUE or FALSE")
+  expect_error(sas_94_iom(""), "host must be one", class = "sashiny_error_engine")
+  expect_error(sas_94_iom("h", port = 70000), "port must be an integer")
+  expect_error(sas_94_ssh("h", ""), "saspath must be")
+  expect_error(sas_connect(list()), "backend must come from")
+  expect_error(sas_connect(sas_oda(), region = "eu1"), "go to the backend constructor")
+})
+
+test_that("the old profile form still works and is deprecated", {
+  withr::local_options(lifecycle_verbosity = "warning")
+  expect_warning(e <- sas_connect("oda", region = "us1"), class = "lifecycle_warning_deprecated")
+  expect_identical(e$backend, "oda")
+  expect_output(print(sas_oda("ap1")), "<sashiny backend> oda (ap1)", fixed = TRUE)
 })

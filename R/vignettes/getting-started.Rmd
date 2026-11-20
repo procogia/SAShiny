@@ -71,7 +71,7 @@ Choose one of the three supported systems. Building an engine does not start a
 SAS session:
 
 ```{r}
-engine <- sas_connect("oda", region = "us1")
+engine <- sas_connect(sas_oda("us1"))
 engine$backend
 ```
 
@@ -80,7 +80,7 @@ variables `SASHINY_SAS_USER` and `SASHINY_SAS_PASSWORD`). A run also needs your
 licence acknowledgement. Without it, nothing is sent to SAS:
 
 ```{r}
-engine <- sas_connect("oda", region = "us1", license_ack = FALSE)
+engine <- sas_connect(sas_oda("us1"), license_ack = FALSE)
 result <- sas_run(contract, engine, list(n_rows = 3))
 result$status
 result$metadata$engine_error
@@ -90,7 +90,7 @@ With a licensed system:
 
 ```{r, eval = FALSE}
 options(SAShiny.license_ack = TRUE) # I hold a valid licence for this system
-engine <- sas_connect("viya", url = "https://viya.example.com")
+engine <- sas_connect(sas_viya("https://viya.example.com"))
 result <- sas_run(contract, engine, list(n_rows = 3))
 result$status
 sas_close(engine)
@@ -99,7 +99,7 @@ sas_close(engine)
 ## Build and publish an app
 
 ```{r, eval = FALSE}
-pool <- sas_pool(function() sas_connect("sas94", host = "sas.example.com"), max_size = 4L)
+pool <- sas_pool(function() sas_connect(sas_94_iom("sas.example.com")), max_size = 4L)
 app <- sas_app(list(path), pool, publish = TRUE)
 shiny::runApp(app)
 ```

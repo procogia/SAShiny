@@ -168,21 +168,20 @@ sas_connect_env <- function(license_ack = NULL) {
   }
   kind <- env("SASHINY_PROFILE") %||% ""
   if (identical(kind, "oda")) {
-    return(sas_connect("oda", region = env("SASHINY_ODA_REGION") %||% "us1", license_ack = license_ack))
+    return(sas_connect(sas_oda(env("SASHINY_ODA_REGION") %||% "us1"), license_ack = license_ack))
   }
   if (identical(kind, "viya")) {
     url <- env("SASHINY_VIYA_URL")
     if (is.null(url)) .sashiny_abort("deploy", "SASHINY_VIYA_URL is required when SASHINY_PROFILE=viya")
-    return(sas_connect("viya", url = url, license_ack = license_ack))
+    return(sas_connect(sas_viya(url), license_ack = license_ack))
   }
   if (identical(kind, "sas94")) {
     host <- env("SASHINY_SAS94_HOST")
     if (is.null(host)) .sashiny_abort("deploy", "SASHINY_SAS94_HOST is required when SASHINY_PROFILE=sas94")
     port <- as.integer(env("SASHINY_SAS94_PORT") %||% "8591")
-    return(sas_connect("sas94",
-      host = host, port = port, saspath = env("SASHINY_SAS94_SASPATH"),
-      license_ack = license_ack
-    ))
+    saspath <- env("SASHINY_SAS94_SASPATH")
+    backend <- if (is.null(saspath)) sas_94_iom(host, port = port) else sas_94_ssh(host, saspath)
+    return(sas_connect(backend, license_ack = license_ack))
   }
   .sashiny_abort("deploy", "SASHINY_PROFILE must be oda, viya or sas94")
 }

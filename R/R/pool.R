@@ -8,7 +8,7 @@
 #' Create a bounded session pool
 #'
 #' @param engine An engine factory: a function with no arguments returning a
-#'   [sas_connect()] engine, such as `function() sas_connect("oda")`. Each
+#'   [sas_connect()] engine, such as `function() sas_connect(sas_oda())`. Each
 #'   pooled session gets its own 'SAS' session. A single engine is also
 #'   accepted and is then shared by all pooled sessions.
 #' @param min_size Minimum number of sessions kept warm.
@@ -20,7 +20,7 @@
 #' @return A `sashiny_pool` object (an environment).
 #' @examples
 #' # With min_size = 0 creating a pool starts no 'SAS' session.
-#' pool <- sas_pool(function() sas_connect("oda", region = "us1"), max_size = 2L)
+#' pool <- sas_pool(function() sas_connect(sas_oda("us1")), max_size = 2L)
 #' sas_close(pool)
 #' @export
 sas_pool <- function(engine, min_size = 0L, max_size = 4L,

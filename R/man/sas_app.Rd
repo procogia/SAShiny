@@ -49,7 +49,7 @@ stops.
 \dontrun{
 # Needs a licensed 'SAS' system and saspy; not run during checks.
 path <- system.file("examples", "minimal", "minimal.sashiny.yml", package = "SAShiny")
-engine <- sas_pool(function() sas_connect("oda", license_ack = TRUE), max_size = 2L)
+engine <- sas_pool(function() sas_connect(sas_oda(), license_ack = TRUE), max_size = 2L)
 shiny::runApp(sas_app(list(path), engine, publish = TRUE))
 }
 }

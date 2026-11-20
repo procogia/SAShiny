@@ -15,19 +15,16 @@ skip_unless_live <- function() {
 live_connect <- function() {
   profile <- .live_env("SASHINY_PROFILE", "")
   java <- .live_env("SASHINY_JAVA")
-  switch(profile,
-    oda = sas_connect("oda",
-      region = .live_env("SASHINY_ODA_REGION", "us1"), java = java, license_ack = TRUE
-    ),
-    viya = sas_connect("viya",
-      url = .live_env("SASHINY_VIYA_URL"), context = .live_env("SASHINY_VIYA_CONTEXT"),
-      license_ack = TRUE
-    ),
-    sas94 = sas_connect("sas94",
-      host = .live_env("SASHINY_SAS94_HOST"),
-      port = as.integer(.live_env("SASHINY_SAS94_PORT", "8591")),
-      saspath = .live_env("SASHINY_SAS94_SASPATH"), java = java, license_ack = TRUE
-    ),
+  backend <- switch(profile,
+    oda = sas_oda(.live_env("SASHINY_ODA_REGION", "us1"), java = java),
+    viya = sas_viya(.live_env("SASHINY_VIYA_URL"), context = .live_env("SASHINY_VIYA_CONTEXT")),
+    sas94 = if (is.null(.live_env("SASHINY_SAS94_SASPATH"))) {
+      sas_94_iom(.live_env("SASHINY_SAS94_HOST"),
+        port = as.integer(.live_env("SASHINY_SAS94_PORT", "8591")), java = java)
+    } else {
+      sas_94_ssh(.live_env("SASHINY_SAS94_HOST"), .live_env("SASHINY_SAS94_SASPATH"))
+    },
     stop("set SASHINY_PROFILE to oda, viya or sas94", call. = FALSE)
   )
+  sas_connect(backend, license_ack = TRUE)
 }

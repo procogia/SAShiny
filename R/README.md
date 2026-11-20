@@ -25,7 +25,7 @@ use). Before a run, acknowledge this with one of:
 
 ```r
 options(SAShiny.license_ack = TRUE)                 # per R session
-engine <- sas_connect("oda", license_ack = TRUE)    # per engine
+engine <- sas_connect(sas_oda(), license_ack = TRUE)    # per engine
 # or set SASHINY_LICENSE_ACK=true for a deployed app
 ```
 

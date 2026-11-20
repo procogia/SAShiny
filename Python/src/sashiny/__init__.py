@@ -10,12 +10,17 @@ from typing import Any
 from .charts import chart_backends, render_chart
 from .contract import Contract, Issue, default_module_id, load, validate
 from .engines import (
+    Backend,
     Engine,
     ProcPythonEngine,
     SaspyEngine,
     connect,
     connect_in_session,
     load_profiles,
+    oda,
+    sas94_iom,
+    sas94_ssh,
+    viya,
 )
 from .errors import (
     ContractError,
@@ -37,6 +42,7 @@ from .values import json_values, render_values
 from .wrapper import reset_code, wrapper_code
 
 __all__ = [
+    "Backend",
     "Contract",
     "ContractError",
     "DeployError",
@@ -69,13 +75,17 @@ __all__ = [
     "lint",
     "load",
     "load_profiles",
+    "oda",
     "parse_profile",
     "publish",
     "render_chart",
     "render_values",
     "reset_code",
     "run",
+    "sas94_iom",
+    "sas94_ssh",
     "validate",
+    "viya",
     "wrapper_code",
 ]
 

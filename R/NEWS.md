@@ -22,6 +22,10 @@
 
 ## Deprecations
 
+* One constructor per 'SAS' backend (#130): `sas_connect(sas_oda("us1"))`,
+  `sas_viya(url)`, `sas_94_iom(host)` and `sas_94_ssh(host, saspath)`. Each
+  validates only its own arguments. `sas_connect("oda", region = ...)` still
+  works, with a deprecation warning.
 * `sas_run()` now takes the engine second: `sas_run(contract, engine, values)`,
   where `values` defaults to the contract defaults. The old order still works,
   with a deprecation warning (#130).

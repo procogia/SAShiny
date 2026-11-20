@@ -16,8 +16,10 @@ import re
 import tempfile
 import threading
 import uuid
+import warnings
 from collections.abc import Callable
 from contextlib import suppress
+from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -49,6 +51,8 @@ from ..values import render_values
 from ..wrapper import reset_code, wrapper_code
 from .base import Engine
 
+_MAX_PORT = 65535
+
 
 class EngineValueError(EngineError, ValueError):
     """A saspy configuration or collection problem (an :class:`EngineError`)."""
@@ -60,13 +64,18 @@ class EngineRuntimeError(SashinyError, RuntimeError):
 
 __all__ = [
     "LICENSE_MESSAGE",
+    "Backend",
     "SaspyEngine",
     "authinfo_path",
     "backend_of",
     "connect",
     "license_acknowledged",
     "load_profiles",
+    "oda",
     "preflight",
+    "sas94_iom",
+    "sas94_ssh",
+    "viya",
 ]
 
 CONTROL = re.compile(r"[\x00-\x1f\x7f-\x9f]")
@@ -92,9 +101,139 @@ ODA_HOSTS = {
 }
 
 
-def connect(  # noqa: PLR0913 - explicit connection parameters per backend
-    profile: str,
+@dataclass(frozen=True)
+class Backend:
+    """A SAS backend for :func:`connect` (spec §6.6): its kind and saspy configuration."""
+
+    kind: str
+    cfg: dict[str, Any] = field(compare=False)
+    detail: str = ""
+
+    def __repr__(self) -> str:
+        """Show the kind and its main detail (region, URL or host)."""
+        return f"<sashiny backend> {self.kind}" + (f" ({self.detail})" if self.detail else "")
+
+
+def oda(region: str = "us1", *, java: str | None = None) -> Backend:
+    """SAS OnDemand for Academics over IOM (needs Java).
+
+    Args:
+        region: ``us1``, ``us2``, ``eu1``, ``ap1`` or ``ap2``.
+        java: Path to the Java executable (optional; auto-detected).
+
+    Returns:
+        A :class:`Backend` for :func:`connect`.
+
+    Raises:
+        EngineValueError: For an unknown region.
+
+    """
+    if region not in ODA_HOSTS:
+        raise EngineValueError(
+            f"unknown ODA region {region!r}; expected one of {sorted(ODA_HOSTS)}"
+        )
+    cfg = {
+        "java": java or _find_java(),
+        "iomhost": ODA_HOSTS[region],
+        "iomport": 8591,
+        "authkey": "oda",
+        "encoding": "utf-8",
+    }
+    return Backend("oda", cfg, region)
+
+
+def viya(url: str, *, context: str | None = None, verify: bool = True) -> Backend:
+    """SAS Viya over HTTP(S).
+
+    Args:
+        url: The Viya base URL, starting with ``https://`` or ``http://``.
+        context: The compute context name (optional).
+        verify: Verify TLS certificates (default ``True``).
+
+    Returns:
+        A :class:`Backend` for :func:`connect`.
+
+    Raises:
+        EngineValueError: If ``url`` is not an http(s) URL.
+
+    """
+    if not isinstance(url, str) or not re.match(r"^https?://", url):
+        raise EngineValueError("url must be one SAS Viya URL starting with https:// or http://")
+    cfg: dict[str, Any] = {"url": url, "authkey": "viya", "options": ["fullstimer"]}
+    if context:
+        cfg["context"] = context
+    if not verify:
+        cfg["verify"] = False
+    return Backend("viya", cfg, url)
+
+
+def sas94_iom(host: str, *, port: int = 8591, java: str | None = None) -> Backend:
+    """SAS 9.4 over IOM (needs Java).
+
+    Args:
+        host: The SAS 9.4 host name.
+        port: The IOM port (default 8591).
+        java: Path to the Java executable (optional; auto-detected).
+
+    Returns:
+        A :class:`Backend` for :func:`connect`.
+
+    Raises:
+        EngineValueError: For an empty host or a port outside 1-65535.
+
+    """
+    _check_host(host)
+    if isinstance(port, bool) or not isinstance(port, int) or not 1 <= port <= _MAX_PORT:
+        raise EngineValueError("port must be an integer from 1 to 65535")
+    cfg = {
+        "java": java or _find_java(),
+        "iomhost": host,
+        "iomport": port,
+        "authkey": "iom",
+        "encoding": "utf-8",
+    }
+    return Backend("sas94_iom", cfg, host)
+
+
+def sas94_ssh(host: str, saspath: str, *, ssh_user: str | None = None) -> Backend:
+    """SAS 9.4 over SSH (key-based login).
+
+    Args:
+        host: The SAS 9.4 host name.
+        saspath: The SAS executable path on that host.
+        ssh_user: The SSH login user (optional).
+
+    Returns:
+        A :class:`Backend` for :func:`connect`.
+
+    Raises:
+        EngineValueError: For an empty host or saspath.
+
+    """
+    _check_host(host)
+    if not isinstance(saspath, str) or not saspath:
+        raise EngineValueError("saspath must be the path of the SAS executable on the host")
+    cfg: dict[str, Any] = {
+        "saspath": saspath,
+        "ssh": _find_ssh(),
+        "host": host,
+        "encoding": "utf-8",
+        "options": ["-fullstimer"],
+    }
+    if ssh_user:
+        cfg["luser"] = ssh_user
+    return Backend("sas94_ssh", cfg, host)
+
+
+def _check_host(host: object) -> None:
+    if not isinstance(host, str) or not host:
+        raise EngineValueError("host must be one SAS 9.4 host name")
+
+
+def connect(  # noqa: PLR0913 - the deprecated keyword form keeps its parameters
+    backend: Backend | str,
     *,
+    license_ack: bool | None = None,
     region: str = "us1",
     url: str | None = None,
     context: str | None = None,
@@ -104,12 +243,11 @@ def connect(  # noqa: PLR0913 - explicit connection parameters per backend
     saspath: str | None = None,
     ssh_user: str | None = None,
     java: str | None = None,
-    license_ack: bool | None = None,
 ) -> SaspyEngine:
-    """Build a SAS engine for one of the three supported SAS systems.
+    """Build a SAS engine for one of the supported SAS systems (spec §6.6).
 
-    SAShiny runs programs only on a live SAS system: SAS 9.4 (IOM or SSH), SAS
-    Viya (HTTP) or SAS OnDemand for Academics (ODA). There is no offline mode.
+    Pass a backend: ``connect(oda("us1"))``, ``connect(viya(url))``,
+    ``connect(sas94_iom(host))`` or ``connect(sas94_ssh(host, saspath))``.
 
     **Licence responsibility.** SAS is commercial software; you are responsible
     for holding a valid licence for the system you connect to (or, for ODA, for
@@ -117,79 +255,60 @@ def connect(  # noqa: PLR0913 - explicit connection parameters per backend
     unless ``license_ack=True`` or ``SASHINY_LICENSE_ACK=true`` is set.
 
     Credentials are never passed here. They come from ``~/.authinfo`` keyed by
-    the profile's ``authkey``, or from ``SASHINY_SAS_USER`` /
+    the backend's ``authkey``, or from ``SASHINY_SAS_USER`` /
     ``SASHINY_SAS_PASSWORD`` on hosted platforms such as Posit Connect.
 
     Args:
-        profile: One of ``"oda"``, ``"viya"`` or ``"sas94"``. Required; there is
-            no default.
-        region: ODA region (``us1``/``us2``/``eu1``/``ap1``/``ap2``). Defaults
-            to ``us1``.
-        url: Viya base URL (required for ``viya``).
-        context: Viya compute context name (optional).
-        verify: Viya TLS verification (default ``True``).
-        host: SAS 9.4 host (required for ``sas94``).
-        port: SAS 9.4 IOM port (default ``8591``).
-        saspath: SAS 9.4 executable path for SSH (optional; when given, SSH is
-            used instead of IOM).
-        ssh_user: SSH login user (optional).
-        java: Path to the Java executable for IOM (optional; auto-detected when
-            omitted).
+        backend: A :class:`Backend`. The old form, a profile name ``"oda"``,
+            ``"viya"`` or ``"sas94"`` with the keyword arguments below, still
+            works and emits a :class:`DeprecationWarning`.
         license_ack: ``True`` acknowledges that you are licensed to use the SAS
             system. ``None`` defers to ``SASHINY_LICENSE_ACK``.
+        region: Deprecated form only.
+        url: Deprecated form only.
+        context: Deprecated form only.
+        verify: Deprecated form only.
+        host: Deprecated form only.
+        port: Deprecated form only.
+        saspath: Deprecated form only.
+        ssh_user: Deprecated form only.
+        java: Deprecated form only.
 
     Returns:
-        A :class:`SaspyEngine` configured for the chosen backend.
+        A :class:`SaspyEngine` configured for the backend. No session starts yet.
 
     Raises:
-        ValueError: If ``profile`` is unknown or a required parameter is missing.
+        EngineValueError: If the backend or a required parameter is invalid.
 
     """
-    if profile == "oda":
-        if region not in ODA_HOSTS:
-            raise EngineValueError(
-                f"unknown ODA region {region!r}; expected one of {sorted(ODA_HOSTS)}"
+    if isinstance(backend, str):
+        warnings.warn(
+            "connect(profile, ...) is deprecated; pass a backend: connect(sashiny.oda()), "
+            "viya(), sas94_iom() or sas94_ssh()",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        if backend == "oda":
+            backend = oda(region, java=java)
+        elif backend == "viya":
+            if not url:
+                raise EngineValueError("url is required for profile 'viya'")
+            backend = viya(url, context=context, verify=verify)
+        elif backend == "sas94":
+            if not host:
+                raise EngineValueError("host is required for profile 'sas94'")
+            backend = (
+                sas94_ssh(host, saspath, ssh_user=ssh_user)
+                if saspath
+                else sas94_iom(host, port=port, java=java)
             )
-        cfg: dict[str, Any] = {
-            "java": java or _find_java(),
-            "iomhost": ODA_HOSTS[region],
-            "iomport": 8591,
-            "authkey": "oda",
-            "encoding": "utf-8",
-        }
-    elif profile == "viya":
-        if not url:
-            raise EngineValueError("url is required for profile 'viya'")
-        cfg = {"url": url, "authkey": "viya", "options": ["fullstimer"]}
-        if context:
-            cfg["context"] = context
-        if not verify:
-            cfg["verify"] = False
-    elif profile == "sas94":
-        if not host:
-            raise EngineValueError("host is required for profile 'sas94'")
-        if saspath:
-            cfg = {
-                "saspath": saspath,
-                "ssh": _find_ssh(),
-                "host": host,
-                "encoding": "utf-8",
-                "options": ["-fullstimer"],
-            }
-            if ssh_user:
-                cfg["luser"] = ssh_user
         else:
-            cfg = {
-                "java": java or _find_java(),
-                "iomhost": host,
-                "iomport": port,
-                "authkey": "iom",
-                "encoding": "utf-8",
-            }
-    else:
-        raise EngineValueError(f"unknown profile {profile!r}; expected 'oda', 'viya' or 'sas94'")
-
-    return SaspyEngine(cfg, license_ack=license_ack)
+            raise EngineValueError(
+                f"unknown profile {backend!r}; expected 'oda', 'viya' or 'sas94'"
+            )
+    if not isinstance(backend, Backend):
+        raise EngineValueError("backend must come from oda(), viya(), sas94_iom() or sas94_ssh()")
+    return SaspyEngine(backend.cfg, license_ack=license_ack)
 
 
 def _find_java() -> str | None:

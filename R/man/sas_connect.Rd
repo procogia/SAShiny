@@ -4,48 +4,21 @@
 \alias{sas_connect}
 \title{Build a SAS engine for one of the three supported 'SAS' systems}
 \usage{
-sas_connect(
-  profile,
-  region = "us1",
-  url = NULL,
-  context = NULL,
-  verify = TRUE,
-  host = NULL,
-  port = 8591L,
-  saspath = NULL,
-  ssh_user = NULL,
-  java = NULL,
-  license_ack = NULL
-)
+sas_connect(backend, license_ack = NULL, ...)
 }
 \arguments{
-\item{profile}{One of \code{"oda"}, \code{"viya"} or \code{"sas94"}. Required; there is no
-default.}
-
-\item{region}{ODA region (\code{us1}/\code{us2}/\code{eu1}/\code{ap1}/\code{ap2}). Defaults to \code{us1}.}
-
-\item{url}{Viya base URL (required for \code{viya}).}
-
-\item{context}{Viya compute context name (optional).}
-
-\item{verify}{Viya TLS verification (default \code{TRUE}).}
-
-\item{host}{SAS 9.4 host (required for \code{sas94}).}
-
-\item{port}{SAS 9.4 IOM port (default \code{8591}).}
-
-\item{saspath}{SAS 9.4 executable path for SSH (optional; when given, SSH is
-used instead of IOM).}
-
-\item{ssh_user}{SSH login user (optional).}
-
-\item{java}{Path to the Java executable for IOM (optional; auto-detected when
-omitted).}
+\item{backend}{A backend from \code{\link[=sas_oda]{sas_oda()}}, \code{\link[=sas_viya]{sas_viya()}}, \code{\link[=sas_94_iom]{sas_94_iom()}} or
+\code{\link[=sas_94_ssh]{sas_94_ssh()}}. The old form, a profile name \code{"oda"}, \code{"viya"} or
+\code{"sas94"} with the connection arguments in \code{...}, still works with a
+deprecation warning.}
 
 \item{license_ack}{\code{TRUE} to acknowledge that you are licensed to use the
 'SAS' system you connect to (see the "Licence responsibility" section).
 \code{NULL} (the default) defers to the \code{SAShiny.license_ack} option and the
 \code{SASHINY_LICENSE_ACK} environment variable.}
+
+\item{...}{Old form only: \code{region}, \code{url}, \code{context}, \code{verify}, \code{host},
+\code{port}, \code{saspath}, \code{ssh_user} and \code{java}.}
 }
 \value{
 A \code{sashiny_engine_saspy} object configured for the chosen backend.
@@ -79,13 +52,13 @@ Connect, from the environment variables \code{SASHINY_SAS_USER} and
 \examples{
 # Builds the configuration only: no 'SAS' session is started and nothing
 # is sent over the network.
-engine <- sas_connect("oda", region = "us1")
+engine <- sas_connect(sas_oda("us1"))
 engine$backend
 engine$cfg$authkey
 \dontrun{
 # Needs an ODA account, Java, Python with saspy and credentials in
 # ~/.authinfo; not run during checks.
-engine <- sas_connect("oda", region = "us1", license_ack = TRUE)
+engine <- sas_connect(sas_oda("us1"), license_ack = TRUE)
 sas_close(engine)
 }
 }

@@ -17,6 +17,6 @@ Ends every 'SAS' session the engine or pool holds (and its worker
 processes). Safe to call more than once.
 }
 \examples{
-pool <- sas_pool(function() sas_connect("oda", region = "us1"), max_size = 2L)
+pool <- sas_pool(function() sas_connect(sas_oda("us1")), max_size = 2L)
 sas_close(pool)
 }

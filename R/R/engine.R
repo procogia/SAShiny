@@ -70,13 +70,13 @@
 #' ))
 #' # Without a licence acknowledgement nothing is sent to 'SAS': the run
 #' # returns an error result immediately.
-#' engine <- sas_connect("viya", url = "https://viya.example.com", license_ack = FALSE)
+#' engine <- sas_connect(sas_viya("https://viya.example.com"), license_ack = FALSE)
 #' result <- sas_engine_run(engine, contract, list())
 #' result$status
 #' result$metadata$engine_error
 #' \dontrun{
 #' # Needs a licensed 'SAS Viya' server and saspy; not run during checks.
-#' engine <- sas_connect("viya", url = "https://viya.example.com", license_ack = TRUE)
+#' engine <- sas_connect(sas_viya("https://viya.example.com"), license_ack = TRUE)
 #' result <- sas_engine_run(engine, contract, list())
 #' }
 #' @export
