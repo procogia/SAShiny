@@ -40,6 +40,11 @@ A Shiny app object (from \code{\link[shiny:shinyApp]{shiny::shinyApp()}}).
 \description{
 Build a multi-program Shiny app from a list of contracts
 }
+\details{
+While the app runs, \code{shiny.maxRequestSize} is set to the largest
+\code{max_size_mb} of the contracts' dataset inputs, and restored when the app
+stops.
+}
 \examples{
 \dontrun{
 # Needs a licensed 'SAS' system and saspy; not run during checks.

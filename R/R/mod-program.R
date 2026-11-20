@@ -492,45 +492,22 @@
 # CRAN: the previous `shiny.maxRequestSize` option is saved so it can be
 # restored when the module session ends (restore options you change). Stored
 # in an environment (not a locked binding) so it can be reassigned at runtime.
-.sashiny_upload_state <- new.env(parent = emptyenv())
-.sashiny_upload_state$saved <- FALSE
-.sashiny_upload_state$prev_max_request_size <- NULL
-
-#' Raise Shiny's upload cap to the largest declared `max_size_mb` (spec section 7).
+#' The upload cap in bytes for a set of contracts: the largest declared
+#' `max_size_mb` of their dataset inputs (default 50), or `NULL` with none.
 #'
 #' Shiny's default `shiny.maxRequestSize` is 5 MiB, which would reject valid
 #' datasets up to the contract's (larger) limit with an HTTP 413 before the
-#' module ever sees them (issue #54). Raise it to the largest declared limit so
-#' the transport accepts files the contract allows; per-input limits are still
-#' enforced by `read_upload` (V014).
+#' module ever sees them (issue #54). Per-input limits are still enforced by
+#' `read_upload` (V014).
 #' @noRd
-.sashiny_set_upload_limit <- function(inputs) {
-  limits <- vapply(inputs, function(s) {
-    if (identical(s$type, "dataset")) as.numeric(s$max_size_mb %||% 50) else NA_real_
-  }, numeric(1))
+.sashiny_upload_limit <- function(contracts) {
+  limits <- unlist(lapply(contracts, function(contract) {
+    vapply(contract$data$inputs %||% list(), function(s) {
+      if (identical(s$type, "dataset")) as.numeric(s$max_size_mb %||% 50) else NA_real_
+    }, numeric(1))
+  }))
   limits <- limits[!is.na(limits)]
-  if (length(limits) == 0L) {
-    return(invisible(NULL))
-  }
-  max_mb <- max(limits)
-  if (!isTRUE(.sashiny_upload_state$saved)) {
-    .sashiny_upload_state$prev_max_request_size <- getOption("shiny.maxRequestSize")
-    .sashiny_upload_state$saved <- TRUE
-  }
-  options(shiny.maxRequestSize = max_mb * 1024 * 1024)
-  invisible(NULL)
-}
-
-#' Restore `shiny.maxRequestSize` to its previous value.
-#' @noRd
-.sashiny_restore_upload_limit <- function() {
-  if (isTRUE(.sashiny_upload_state$saved)) {
-    # options(x = NULL) removes the option when it was unset before.
-    options(shiny.maxRequestSize = .sashiny_upload_state$prev_max_request_size)
-    .sashiny_upload_state$prev_max_request_size <- NULL
-    .sashiny_upload_state$saved <- FALSE
-  }
-  invisible(NULL)
+  if (length(limits) == 0L) NULL else max(limits) * 1024 * 1024
 }
 
 # ---------------------------------------------------------------- module
@@ -617,14 +594,16 @@ sas_program_ui <- function(id, contract, ui_override = NULL, today = Sys.Date())
 #'   original 'SAS' graph, or a named list of paired output id to view.
 #' @param chart_toggle Whether to show the 'SAS' / 'SAShiny' toggles (default
 #'   `TRUE`). With `FALSE` each paired card shows only its default view.
-#' @details In a running app (with 'callr' and 'later' installed) a run of a
-#'   [sas_connect()] engine executes in a background R
-#'   process that loads the installed 'SAShiny', so a slow 'SAS' run does not
-#'   block other browser sessions. That process starts its own 'SAS' session
-#'   and ends it after the run, and is killed when `run.timeout_seconds`
-#'   passes or the browser session ends. A [sas_pool()] or a custom engine
-#'   cannot be sent to another process, so it runs in the app process and
-#'   blocks it for the duration of the run.
+#' @details In a running app, runs do not block other browser sessions: each
+#'   [sas_connect()] engine and each [sas_pool()] session keeps its 'SAS'
+#'   session in a persistent worker process (spec section 6.5). Ending the
+#'   browser session cancels its in-flight run.
+#'
+#'   This function never changes global options. In your own app, set
+#'   `options(shiny.maxRequestSize = )` to at least the largest `max_size_mb`
+#'   of your contracts' dataset inputs (Shiny's default is 5 MiB);
+#'   [sas_app()] does this for you. Each input's own `max_size_mb` is still
+#'   enforced on every upload (V014).
 #' @return A list of reactives: `result`, `status`, `log`.
 #' @export
 sas_program_server <- function(id, contract, engine, server_override = NULL, render = NULL,
@@ -639,12 +618,6 @@ sas_program_server <- function(id, contract, engine, server_override = NULL, ren
     inputs <- contract$data$inputs %||% list()
     settings <- contract$data$ui %||% list()
     choice_error <- shiny::reactiveVal("")
-
-    # Raise Shiny's upload cap to the largest declared max_size_mb so valid
-    # files up to the contract limit are accepted (spec section 7; issue #54).
-    # Restore the option when the session ends (CRAN policy).
-    .sashiny_set_upload_limit(inputs)
-    shiny::onSessionEnded(function() .sashiny_restore_upload_limit(), session)
 
     # choices_from (spec section 6.4): load once per app and contract (cached
     # with a time-to-live), in the background in a running app, so a new

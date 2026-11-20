@@ -43,12 +43,14 @@ A list of reactives: \code{result}, \code{status}, \code{log}.
 The server for a SAS program module
 }
 \details{
-In a running app (with 'callr' and 'later' installed) a run of a
-\code{\link[=sas_connect]{sas_connect()}} engine executes in a background R
-process that loads the installed 'SAShiny', so a slow 'SAS' run does not
-block other browser sessions. That process starts its own 'SAS' session
-and ends it after the run, and is killed when \code{run.timeout_seconds}
-passes or the browser session ends. A \code{\link[=sas_pool]{sas_pool()}} or a custom engine
-cannot be sent to another process, so it runs in the app process and
-blocks it for the duration of the run.
+In a running app, runs do not block other browser sessions: each
+\code{\link[=sas_connect]{sas_connect()}} engine and each \code{\link[=sas_pool]{sas_pool()}} session keeps its 'SAS'
+session in a persistent worker process (spec section 6.5). Ending the
+browser session cancels its in-flight run.
+
+This function never changes global options. In your own app, set
+\code{options(shiny.maxRequestSize = )} to at least the largest \code{max_size_mb}
+of your contracts' dataset inputs (Shiny's default is 5 MiB);
+\code{\link[=sas_app]{sas_app()}} does this for you. Each input's own \code{max_size_mb} is still
+enforced on every upload (V014).
 }
