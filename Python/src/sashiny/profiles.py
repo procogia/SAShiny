@@ -15,6 +15,7 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from .engines.saspy import ODA_HOSTS, SaspyEngine, connect
+from .errors import DeployError
 
 __all__ = ["Profile", "connect_from_env", "parse_profile"]
 
@@ -173,13 +174,13 @@ def connect_from_env(*, license_ack: bool | None = None) -> SaspyEngine:
     if kind == "viya":
         url = env.get("SASHINY_VIYA_URL")
         if not url:
-            raise ValueError("SASHINY_VIYA_URL is required when SASHINY_PROFILE=viya")
+            raise DeployError("SASHINY_VIYA_URL is required when SASHINY_PROFILE=viya")
         return connect("viya", url=url, license_ack=license_ack)
     if kind == "sas94":
         host = env.get("SASHINY_SAS94_HOST")
         if not host:
-            raise ValueError("SASHINY_SAS94_HOST is required when SASHINY_PROFILE=sas94")
+            raise DeployError("SASHINY_SAS94_HOST is required when SASHINY_PROFILE=sas94")
         saspath = env.get("SASHINY_SAS94_SASPATH") or None
         port = int(env.get("SASHINY_SAS94_PORT", str(_DEFAULT_IOM_PORT)))
         return connect("sas94", host=host, port=port, saspath=saspath, license_ack=license_ack)
-    raise ValueError("SASHINY_PROFILE must be oda, viya or sas94")
+    raise DeployError("SASHINY_PROFILE must be oda, viya or sas94")

@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from .errors import DeployError
 from .profiles import Profile, parse_profile
 from .publish import bundle_files
 
@@ -102,7 +103,7 @@ def _package_version() -> str:
 def _port(options: Mapping[str, Any]) -> int:
     port = options.get("port", 8000)
     if isinstance(port, bool) or not isinstance(port, int) or not 1 <= port <= _MAX_PORT:
-        raise ValueError("port must be an integer from 1 to 65535")
+        raise DeployError("port must be an integer from 1 to 65535")
     return port
 
 
@@ -214,11 +215,11 @@ def _language(app_dir: Path, requested: str | None) -> tuple[str, bool]:
     has_r = (app_dir / "app.R").is_file()
     if requested is not None:
         if requested not in ("python", "r"):
-            raise ValueError("language must be 'python' or 'r'")
+            raise DeployError("language must be 'python' or 'r'")
         return requested, not (has_py if requested == "python" else has_r)
     if has_py != has_r:
         return ("python" if has_py else "r"), False
-    raise ValueError(
+    raise DeployError(
         "cannot detect the app language: the folder has "
         + ("both app.py and app.R" if has_py else "neither app.py nor app.R")
         + "; pass language='python' or language='r'"
@@ -229,7 +230,7 @@ def _lookup(target: str) -> Target:
     _load_targets()
     spec = _REGISTRY.get(target)
     if spec is None:
-        raise ValueError(
+        raise DeployError(
             f"unknown deployment target {target!r}; expected one of {sorted(_REGISTRY)}"
         )
     return spec
@@ -246,20 +247,20 @@ def _validate(  # noqa: PLR0913 - the checks of spec §6.8, in order
 ) -> tuple[_Context, bool]:
     """Run the §6.8 checks in order: licence, profile, private network, options, language."""
     if not license_ack:
-        raise ValueError(
+        raise DeployError(
             "deploying requires license_ack = TRUE: confirm the deployed app runs programs only "
             "on a SAS system you are licensed to use"
         )
     if profile is None:
-        raise ValueError("a SAS connection profile is required")
+        raise DeployError("a SAS connection profile is required")
     prof = profile if isinstance(profile, Profile) else parse_profile(dict(profile))
     if prof.requires_vpn and not options.get(spec.private_network_option):
-        raise ValueError(
+        raise DeployError(
             f"profile {prof.name} requires a private network; pass "
             f"{spec.private_network_option} for target {spec.id}"
         )
     if prof.needs_java and not spec.needs_java_runtime:
-        raise ValueError(
+        raise DeployError(
             f"target {spec.id} cannot provide Java 17, which profile {prof.name} (iom) needs; "
             "use an http (Viya) profile"
         )
@@ -268,7 +269,7 @@ def _validate(  # noqa: PLR0913 - the checks of spec §6.8, in order
     root = Path(app_dir).resolve()
     language, generated_app = _language(root, options.get("language"))
     if language not in spec.languages:
-        raise ValueError(f"target {spec.id} does not support language {language}")
+        raise DeployError(f"target {spec.id} does not support language {language}")
     return _Context(
         root, prof, language, dict(options), version or _package_version()
     ), generated_app
@@ -277,7 +278,7 @@ def _validate(  # noqa: PLR0913 - the checks of spec §6.8, in order
 def _write(root: Path, out: Path, artifacts: Mapping[str, str]) -> tuple[list[str], list[str]]:
     """Copy the bundle and write the artifacts; return (written files, excluded files)."""
     if out.exists() and any(out.iterdir()):
-        raise ValueError(f"out_dir must be empty or absent: {out}")
+        raise DeployError(f"out_dir must be empty or absent: {out}")
     files, excluded = bundle_files(root)
     written: list[str] = []
     for rel in files:
@@ -361,7 +362,7 @@ def deploy(  # noqa: PLR0913 - the documented deploy surface
     )
     if apply:
         if spec.apply is None:
-            raise ValueError(f"target {target} has no apply step; follow its generated docs")
+            raise DeployError(f"target {target} has no apply step; follow its generated docs")
         result.commands = spec.apply(ctx, result, runner or subprocess_runner)
     return result
 

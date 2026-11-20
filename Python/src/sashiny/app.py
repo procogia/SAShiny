@@ -14,6 +14,7 @@ from .collect import is_paired
 from .contract import Contract, default_module_id, load
 from .engines import Engine
 from .engines.base import check_engine
+from .errors import ValuesError
 from .modules import program_server, program_ui
 from .publish import on_connect
 
@@ -68,7 +69,7 @@ def app(  # noqa: PLR0913 - the §8.6 chart settings are keyword-only options
     seen: dict[str, int] = {}
     for i, mid in enumerate(ids):
         if mid in seen:
-            raise ValueError(
+            raise ValuesError(
                 f"duplicate module id {mid!r}: contracts {seen[mid]} and {i} resolve to the same id"
             )
         seen[mid] = i
@@ -77,7 +78,7 @@ def app(  # noqa: PLR0913 - the §8.6 chart settings are keyword-only options
         used = {oid for v in views if isinstance(v, dict) for oid in v}
         unknown = [oid for oid in chart_view if oid not in used]
         if unknown:
-            raise ValueError(f"chart_view names outputs that are not paired: {', '.join(unknown)}")
+            raise ValuesError(f"chart_view names outputs that are not paired: {', '.join(unknown)}")
 
     panels = [
         ui.nav_panel(contract.data.get("title", f"Program {i}"), program_ui(ids[i], contract))

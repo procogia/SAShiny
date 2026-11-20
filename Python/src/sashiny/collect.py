@@ -22,6 +22,8 @@ import re
 from collections.abc import Iterable, Sequence
 from typing import Any, Literal
 
+from .errors import ValuesError
+
 __all__ = [
     "CSV_MAX_ROWS",
     "DOWNLOAD_MIME",
@@ -154,9 +156,9 @@ def extract_plots(html: str, select: int | None = None) -> list[dict[str, str]]:
     if select is None:
         return plots
     if select < 1:
-        raise ValueError(f"select={select} but graph positions are 1-based")
+        raise ValuesError(f"select={select} but graph positions are 1-based")
     if select > len(plots):
-        raise ValueError(f"select={select} but the run produced {len(plots)} graph(s)")
+        raise ValuesError(f"select={select} but the run produced {len(plots)} graph(s)")
     return [plots[select - 1]]
 
 
@@ -321,7 +323,7 @@ def select_columns(
     by_name = {str(m["name"]).upper(): m for m in meta}
     missing = [c for c in wanted if c.upper() not in by_name]
     if missing:
-        raise ValueError(f"column(s) not found: {', '.join(missing)}")
+        raise ValuesError(f"column(s) not found: {', '.join(missing)}")
     return [by_name[c.upper()] for c in wanted]
 
 

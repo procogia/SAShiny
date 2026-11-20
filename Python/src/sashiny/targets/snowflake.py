@@ -11,6 +11,7 @@ import shutil
 from dataclasses import dataclass
 
 from ..deploy import DeployResult, Runner, Target, _Context, _generate_container, register
+from ..errors import DeployError
 
 __all__ = ["generate", "service_spec"]
 
@@ -44,7 +45,7 @@ def _ident(options: dict[str, object], key: str, default: str | None) -> str | N
     if value is None:
         return None
     if not isinstance(value, str) or not _IDENT.match(value):
-        raise ValueError(
+        raise DeployError(
             f"{key} must be 1-63 uppercase letters, digits or '_', starting with a letter"
         )
     return value
@@ -58,10 +59,10 @@ def _names(ctx: _Context) -> _Names:
         or not isinstance(instances, int)
         or not 1 <= instances <= _MAX_INSTANCES
     ):
-        raise ValueError("instances must be an integer from 1 to 10")
+        raise DeployError("instances must be an integer from 1 to 10")
     public = o.get("public", True)
     if not isinstance(public, bool):
-        raise ValueError("public must be TRUE or FALSE")
+        raise DeployError("public must be TRUE or FALSE")
     return _Names(
         service=str(_ident(o, "service_name", "SASHINY_APP")),
         database=str(_ident(o, "database", "SASHINY_DB")),
@@ -290,7 +291,7 @@ def _snow(args: list[str], connection: object) -> list[str]:
 def _apply(ctx: _Context, result: DeployResult, runner: Runner) -> list[list[str]]:
     opts = ctx.options
     if not opts.get("repository_url"):
-        raise ValueError("apply needs the options repository_url")
+        raise DeployError("apply needs the options repository_url")
     n = _names(ctx)
     out = str(result.out_dir)
     image = f"{str(opts['repository_url']).rstrip('/')}/{n.image}:latest"

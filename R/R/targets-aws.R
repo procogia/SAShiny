@@ -20,7 +20,7 @@
   count <- options$desired_count %||% 1L
   if (!is.numeric(count) || length(count) != 1L || is.na(count) || count != round(count) ||
     count < 1 || count > 10) {
-    stop("desired_count must be an integer from 1 to 10", call. = FALSE)
+    .sashiny_abort("deploy", "desired_count must be an integer from 1 to 10")
   }
   list(name = name, count = as.integer(count))
 }
@@ -393,7 +393,7 @@
     if (length(ctx$profile$secrets)) need <- c(need, "sas_user_secret_arn", "sas_password_secret_arn")
     missing <- need[vapply(need, function(k) is.null(o[[k]]) || !any(nzchar(o[[k]])), TRUE)]
     if (length(missing)) {
-      stop("apply needs the options ", paste(missing, collapse = ", "), call. = FALSE)
+      .sashiny_abort("deploy", "apply needs the options ", paste(missing, collapse = ", "))
     }
     name <- .sashiny_aws_options(o)$name
     out <- result$out_dir
@@ -424,9 +424,9 @@
     for (cmd in commands) {
       status <- runner(cmd, character(0))
       if (!identical(as.integer(status), 0L)) {
-        stop(sprintf(
+        .sashiny_abort("deploy", sprintf(
           "command failed with exit status %s: %s", status, paste(cmd[1:3], collapse = " ")
-        ), call. = FALSE)
+        ))
       }
     }
     commands

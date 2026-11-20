@@ -11,6 +11,7 @@ import math
 from typing import TYPE_CHECKING, Any
 
 from .collect import log_level, split_log
+from .errors import ValuesError
 
 if TYPE_CHECKING:
     from .result import Result
@@ -45,7 +46,7 @@ def _output(result: Result, output_id: str) -> Any:
         raise KeyError(f"no output '{output_id}' in this result")
     value = result.outputs[output_id]
     if isinstance(value, dict) and set(value) == {"error"}:
-        raise ValueError(f"output '{output_id}' could not be collected: {value['error']}")
+        raise ValuesError(f"output '{output_id}' could not be collected: {value['error']}")
     return value
 
 
@@ -101,7 +102,7 @@ def table(result: Result, output_id: str) -> Any:
     """
     value = _output(result, output_id)
     if not _is_table(value):
-        raise ValueError(f"output '{output_id}' is not a table or chart")
+        raise ValuesError(f"output '{output_id}' is not a table or chart")
     return _table_frame(value)
 
 

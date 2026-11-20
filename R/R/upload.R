@@ -10,8 +10,9 @@
 #' Signal an upload error (reported as V014).
 #' @noRd
 .sashiny_upload_error <- function(...) {
+  # `sashiny_upload_error` is the class the engines catch to report V014.
   stop(structure(
-    class = c("sashiny_upload_error", "error", "condition"),
+    class = c("sashiny_upload_error", "sashiny_error_upload", "sashiny_error", "error", "condition"),
     list(message = paste0(...), call = NULL)
   ))
 }

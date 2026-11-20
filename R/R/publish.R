@@ -155,27 +155,23 @@ sas_publish <- function(app_dir, title = NULL, name = NULL, account = NULL, serv
                         env_vars = character(0), launch_browser = FALSE, ...) {
   sas_credentials <- match.arg(sas_credentials)
   if (!isTRUE(license_ack)) {
-    stop(
+    .sashiny_abort("deploy",
       "publishing requires license_ack = TRUE: confirm that the deployed app runs ",
-      "programs only on a 'SAS' system you are licensed to use",
-      call. = FALSE
-    )
+      "programs only on a 'SAS' system you are licensed to use")
   }
   app_dir <- normalizePath(app_dir, winslash = "/", mustWork = TRUE)
   if (!file.exists(file.path(app_dir, "app.R"))) {
-    stop("app_dir must contain app.R: ", app_dir, call. = FALSE)
+    .sashiny_abort("deploy", "app_dir must contain app.R: ", app_dir)
   }
   vars <- c("SASHINY_LICENSE_ACK", env_vars)
   if (identical(sas_credentials, "env")) {
     missing <- c("SASHINY_SAS_USER", "SASHINY_SAS_PASSWORD")
     missing <- missing[!nzchar(Sys.getenv(missing))]
     if (length(missing) > 0L) {
-      stop(
+      .sashiny_abort("deploy",
         "sas_credentials = \"env\" needs ", paste(missing, collapse = " and "),
         " set in this session (for example in ~/.Renviron); or use ",
-        "sas_credentials = \"server\"",
-        call. = FALSE
-      )
+        "sas_credentials = \"server\"")
     }
     vars <- c(vars, "SASHINY_SAS_USER", "SASHINY_SAS_PASSWORD")
   }

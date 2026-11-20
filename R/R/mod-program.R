@@ -94,7 +94,7 @@
         }
       )
     },
-    stop("unknown input type ", spec$type, call. = FALSE)
+    .sashiny_abort("values", "unknown input type ", spec$type)
   )
   shiny::tagList(control, if (!is.null(spec$help)) shiny::helpText(spec$help))
 }
@@ -318,7 +318,7 @@
     finally = grDevices::dev.off(device)
   )
   if (!file.exists(tmp) || file.info(tmp)$size == 0) {
-    stop("the chart produced no image", call. = FALSE)
+    .sashiny_abort("values", "the chart produced no image")
   }
   openssl::base64_encode(readBin(tmp, "raw", n = file.info(tmp)$size))
 }
@@ -434,27 +434,21 @@
   views <- c("sashiny", "sas")
   if (is.character(chart_view) && length(chart_view) == 1L && is.null(names(chart_view))) {
     if (!(chart_view %in% views)) {
-      stop("chart_view must be 'sashiny' or 'sas', not '", chart_view, "'", call. = FALSE)
+      .sashiny_abort("values", "chart_view must be 'sashiny' or 'sas', not '", chart_view, "'")
     }
     return(stats::setNames(rep(chart_view, length(paired)), paired))
   }
   if (!(is.list(chart_view) || is.character(chart_view)) || is.null(names(chart_view))) {
-    stop("chart_view must be 'sashiny', 'sas' or a named list of output id to view",
-      call. = FALSE
-    )
+    .sashiny_abort("values", "chart_view must be 'sashiny', 'sas' or a named list of output id to view")
   }
   given <- vapply(chart_view, function(v) as.character(v)[[1L]], character(1))
   unknown <- setdiff(names(given), paired)
   if (length(unknown) > 0L) {
-    stop("chart_view names outputs that are not paired: ", paste(unknown, collapse = ", "),
-      call. = FALSE
-    )
+    .sashiny_abort("values", "chart_view names outputs that are not paired: ", paste(unknown, collapse = ", "))
   }
   bad <- names(given)[!(given %in% views)]
   if (length(bad) > 0L) {
-    stop("chart_view must map outputs to 'sashiny' or 'sas': ", paste(bad, collapse = ", "),
-      call. = FALSE
-    )
+    .sashiny_abort("values", "chart_view must map outputs to 'sashiny' or 'sas': ", paste(bad, collapse = ", "))
   }
   out <- stats::setNames(rep("sashiny", length(paired)), paired)
   out[names(given)] <- given

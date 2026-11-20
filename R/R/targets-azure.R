@@ -18,9 +18,7 @@
 .sashiny_app_name <- function(name) {
   if (!is.character(name) || length(name) != 1L || is.na(name) ||
     !grepl("^[a-z][a-z0-9-]{1,31}$", name) || endsWith(name, "-")) {
-    stop("app_name must be 2-32 lowercase letters, digits or '-', starting with a letter",
-      call. = FALSE
-    )
+    .sashiny_abort("deploy", "app_name must be 2-32 lowercase letters, digits or '-', starting with a letter")
   }
   name
 }
@@ -32,12 +30,12 @@
   replicas <- options$max_replicas %||% 1L
   if (!is.numeric(replicas) || length(replicas) != 1L || is.na(replicas) ||
     replicas != round(replicas) || replicas < 1 || replicas > 30) {
-    stop("max_replicas must be an integer from 1 to 30", call. = FALSE)
+    .sashiny_abort("deploy", "max_replicas must be an integer from 1 to 30")
   }
   subnet <- options$infrastructure_subnet_id
   if (!is.null(subnet) && (!is.character(subnet) || length(subnet) != 1L ||
     !startsWith(subnet, "/subscriptions/") || grepl("[[:space:]'\"\\\\$`]", subnet))) {
-    stop("infrastructure_subnet_id must be a subnet resource id", call. = FALSE)
+    .sashiny_abort("deploy", "infrastructure_subnet_id must be a subnet resource id")
   }
   list(name = name, replicas = as.integer(replicas), subnet = subnet)
 }
@@ -362,7 +360,7 @@
     if (length(ctx$profile$secrets)) need <- c(need, "sas_user_secret_uri", "sas_password_secret_uri")
     missing <- need[vapply(need, function(k) is.null(o[[k]]) || !nzchar(o[[k]]), TRUE)]
     if (length(missing)) {
-      stop("apply needs the options ", paste(missing, collapse = ", "), call. = FALSE)
+      .sashiny_abort("deploy", "apply needs the options ", paste(missing, collapse = ", "))
     }
     name <- .sashiny_az_options(o)$name
     tag <- as.character(o$image_tag %||% "latest")
@@ -384,9 +382,9 @@
     for (cmd in commands) {
       status <- runner(cmd, character(0))
       if (!identical(as.integer(status), 0L)) {
-        stop(sprintf(
+        .sashiny_abort("deploy", sprintf(
           "command failed with exit status %s: %s", status, paste(cmd[1:4], collapse = " ")
-        ), call. = FALSE)
+        ))
       }
     }
     commands

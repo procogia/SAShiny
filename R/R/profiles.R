@@ -16,7 +16,7 @@
 #' Stop with a profile error.
 #' @noRd
 .sashiny_profile_fail <- function(name, message) {
-  stop(sprintf("profile %s: %s", name, message), call. = FALSE)
+  .sashiny_abort("deploy", sprintf("profile %s: %s", name, message))
 }
 
 #' Check that a profile field is a safe non-empty string.
@@ -172,17 +172,17 @@ sas_connect_env <- function(license_ack = NULL) {
   }
   if (identical(kind, "viya")) {
     url <- env("SASHINY_VIYA_URL")
-    if (is.null(url)) stop("SASHINY_VIYA_URL is required when SASHINY_PROFILE=viya", call. = FALSE)
+    if (is.null(url)) .sashiny_abort("deploy", "SASHINY_VIYA_URL is required when SASHINY_PROFILE=viya")
     return(sas_connect("viya", url = url, license_ack = license_ack))
   }
   if (identical(kind, "sas94")) {
     host <- env("SASHINY_SAS94_HOST")
-    if (is.null(host)) stop("SASHINY_SAS94_HOST is required when SASHINY_PROFILE=sas94", call. = FALSE)
+    if (is.null(host)) .sashiny_abort("deploy", "SASHINY_SAS94_HOST is required when SASHINY_PROFILE=sas94")
     port <- as.integer(env("SASHINY_SAS94_PORT") %||% "8591")
     return(sas_connect("sas94",
       host = host, port = port, saspath = env("SASHINY_SAS94_SASPATH"),
       license_ack = license_ack
     ))
   }
-  stop("SASHINY_PROFILE must be oda, viya or sas94", call. = FALSE)
+  .sashiny_abort("deploy", "SASHINY_PROFILE must be oda, viya or sas94")
 }

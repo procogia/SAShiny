@@ -15,7 +15,7 @@
       return(i)
     }
   }
-  stop(sprintf("unknown column '%s'", name), call. = FALSE)
+  .sashiny_abort("values", sprintf("unknown column '%s'", name))
 }
 
 #' Column values of a chart value
@@ -51,7 +51,7 @@
 .sashiny_chart_resolve <- function(value, spec) {
   kind <- spec$kind %||% ""
   if (!kind %in% .sashiny_chart_kinds) {
-    stop(sprintf("unknown chart kind '%s'", kind), call. = FALSE)
+    .sashiny_abort("values", sprintf("unknown chart kind '%s'", kind))
   }
   for (field in .sashiny_chart_fields) {
     if (!is.null(spec[[field]])) {
@@ -61,7 +61,7 @@
   if (kind == "histogram") {
     spec$y <- NULL
   } else if (is.null(spec$y)) {
-    stop(sprintf("chart kind '%s' requires a 'y' column", kind), call. = FALSE)
+    .sashiny_abort("values", sprintf("chart kind '%s' requires a 'y' column", kind))
   }
   spec
 }
@@ -108,10 +108,10 @@ sas_render_chart <- function(value, spec = NULL, backend = "ggplot2", render = N
     return(render(value, spec))
   }
   if (is.null(spec)) {
-    stop("chart has no spec and no render callback", call. = FALSE)
+    .sashiny_abort("values", "chart has no spec and no render callback")
   }
   if (!backend %in% c("ggplot2", "base", "plotly")) {
-    stop(sprintf("unknown chart backend '%s'", backend), call. = FALSE)
+    .sashiny_abort("values", sprintf("unknown chart backend '%s'", backend))
   }
   spec <- .sashiny_chart_resolve(value, spec)
   switch(backend,
@@ -136,13 +136,11 @@ sas_chart_backends <- function() {
 #' @noRd
 .sashiny_chart_need <- function(pkg) {
   if (!requireNamespace(pkg, quietly = TRUE)) {
-    stop(
+    .sashiny_abort("values",
       sprintf(
         "the '%s' package is needed to render this chart; install it with install.packages(\"%s\")",
         pkg, pkg
-      ),
-      call. = FALSE
-    )
+      ))
   }
 }
 

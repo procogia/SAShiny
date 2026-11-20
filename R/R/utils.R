@@ -24,14 +24,14 @@
       "The '%s' package is required %s. Install it with install.packages(\"%s\").",
       pkg, reason, pkg
     )
-    stop(message, call. = FALSE)
+    .sashiny_abort("engine", message)
   }
   if (!is.null(version) && utils::packageVersion(pkg) < version) {
     message <- sprintf(
       "The '%s' package %s or later is required %s (installed: %s). Update it with install.packages(\"%s\").",
       pkg, version, reason, utils::packageVersion(pkg), pkg
     )
-    stop(message, call. = FALSE)
+    .sashiny_abort("engine", message)
   }
   invisible(TRUE)
 }

@@ -50,8 +50,7 @@ sas_app <- function(contracts, engine, title = "SAShiny", publish = FALSE,
   # would collide on every input and output id.
   if (anyDuplicated(ids)) {
     dup <- ids[duplicated(ids)][[1]]
-    stop(sprintf("duplicate module id %s: two contracts resolve to the same id", dup),
-         call. = FALSE)
+    .sashiny_abort("contract", sprintf("duplicate module id %s: two contracts resolve to the same id", dup))
   }
   module_views <- lapply(loaded, function(contract) {
     .sashiny_module_views(contract, chart_view)
@@ -60,8 +59,7 @@ sas_app <- function(contracts, engine, title = "SAShiny", publish = FALSE,
     used <- unlist(lapply(module_views, names))
     unknown <- setdiff(names(chart_view), used)
     if (length(unknown) > 0L) {
-      stop("chart_view names outputs that are not paired: ", paste(unknown, collapse = ", "),
-           call. = FALSE)
+      .sashiny_abort("contract", "chart_view names outputs that are not paired: ", paste(unknown, collapse = ", "))
     }
   }
 

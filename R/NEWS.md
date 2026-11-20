@@ -31,6 +31,12 @@
   process ('callr', now in Imports). A timeout kills that worker, and the next
   run starts a new one. In a Shiny app, runs on single engines and pools no
   longer block other sessions.
+* Errors are classed (#130): every error has class `sashiny_error` and one of
+  `sashiny_error_contract`, `_values`, `_engine`, `_license`, `_upload`,
+  `_deploy` or `_run` ('cli' is now in Imports). `sas_validate(error = TRUE)`
+  raises one error naming the contract file and every issue path. Results
+  print their status, run id, duration, backend, the first ERROR line and a
+  summary of each output. `sas_check()` turns a failed run into an error.
 * `sas_result_table()`, `sas_result_log()` and `sas_result_outputs()` return
   data frames: tables with 'SAS' labels and formats as column attributes, and
   the log classified by line (spec section 8.7, #130).

@@ -30,6 +30,7 @@ from .collect import is_paired, paired_chart_spec
 from .contract import Contract
 from .engines import Engine
 from .engines.base import check_engine
+from .errors import ValuesError
 from .result import Result
 from .upload import UploadError, UploadFile
 
@@ -139,7 +140,7 @@ def _input_ui(iid: str, spec: dict[str, Any], today: date) -> TagChild:  # noqa:
         if "sample" in spec:
             parts.append(ui.input_checkbox(f"{iid}{SAMPLE_SUFFIX}", "Use the sample file", True))
         return ui.div(*parts)
-    raise ValueError(f"unknown input type {kind}")
+    raise ValuesError(f"unknown input type {kind}")
 
 
 def shiny_values(
@@ -463,16 +464,16 @@ def _chart_views(contract: Contract, chart_view: str | dict[str, str]) -> dict[s
     paired = [oid for oid, s in contract.data["outputs"].items() if is_paired(s)]
     if isinstance(chart_view, str):
         if chart_view not in _VIEWS:
-            raise ValueError(f"chart_view must be 'sashiny' or 'sas', not {chart_view!r}")
+            raise ValuesError(f"chart_view must be 'sashiny' or 'sas', not {chart_view!r}")
         return dict.fromkeys(paired, chart_view)
     if not isinstance(chart_view, dict):
         raise TypeError("chart_view must be 'sashiny', 'sas' or a dict of output id to view")
     unknown = [oid for oid in chart_view if oid not in paired]
     if unknown:
-        raise ValueError(f"chart_view names outputs that are not paired: {', '.join(unknown)}")
+        raise ValuesError(f"chart_view names outputs that are not paired: {', '.join(unknown)}")
     bad = [oid for oid, v in chart_view.items() if v not in _VIEWS]
     if bad:
-        raise ValueError(f"chart_view must map outputs to 'sashiny' or 'sas': {', '.join(bad)}")
+        raise ValuesError(f"chart_view must map outputs to 'sashiny' or 'sas': {', '.join(bad)}")
     return {oid: chart_view.get(oid, "sashiny") for oid in paired}
 
 

@@ -128,9 +128,27 @@ sas_contract <- function(path) {
 #' @param contract A `sashiny_contract` object from [sas_contract()].
 #' @param today A `Date` used to resolve `"today"` in date bounds. Defaults to
 #'   the current date.
-#' @return A list of `sashiny_issue` objects (empty when valid).
+#' @param error `TRUE` to raise an error of class `sashiny_error_contract`
+#'   (naming the contract file and every issue's path) when the contract is
+#'   invalid, instead of returning the issues.
+#' @return A list of `sashiny_issue` objects (empty when valid); with
+#'   `error = TRUE`, the contract, invisibly.
 #' @export
-sas_validate <- function(contract, today = Sys.Date()) {
+sas_validate <- function(contract, today = Sys.Date(), error = FALSE) {
+  if (isTRUE(error)) {
+    issues <- sas_validate(contract, today)
+    if (length(issues)) {
+      file <- basename(contract$path %||% "contract")
+      details <- vapply(issues, function(i) {
+        sprintf("%s %s: %s", i$code, if (nzchar(i$path)) i$path else "(root)", i$message)
+      }, character(1))
+      .sashiny_abort("contract", sprintf("%s is invalid (%d issue%s):\n", file,
+        length(issues), if (length(issues) == 1L) "" else "s"),
+        paste0("* ", details, collapse = "\n"),
+        .data = list(issues = issues, file = contract$path))
+    }
+    return(invisible(contract))
+  }
   issues <- list()
   validator <- jsonvalidate::json_validator(.sashiny_schema(), engine = "ajv")
     # digits = NA preserves the original numeric values (jsonlite's default
@@ -211,7 +229,7 @@ sas_validate <- function(contract, today = Sys.Date()) {
   # Year 0000 is not a real calendar date (spec section 4 V009). R's `as.Date` would
   # otherwise accept it and map it to a "year 0" date.
   if (grepl("^0000-", value)) {
-    stop("year 0000 is not a real calendar date", call. = FALSE)
+    .sashiny_abort("contract", "year 0000 is not a real calendar date")
   }
   as.Date(value)
 }

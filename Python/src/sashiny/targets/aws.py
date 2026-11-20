@@ -11,6 +11,7 @@ from __future__ import annotations
 import shutil
 
 from ..deploy import DeployResult, Runner, Target, _Context, _generate_container, register
+from ..errors import DeployError
 from .azure import validate_app_name
 
 __all__ = ["generate", "template"]
@@ -26,7 +27,7 @@ def _options(ctx: _Context) -> tuple[str, int]:
     name = validate_app_name(ctx.options.get("app_name", "sashiny-app"))
     count = ctx.options.get("desired_count", 1)
     if isinstance(count, bool) or not isinstance(count, int) or not 1 <= count <= _MAX_TASKS:
-        raise ValueError("desired_count must be an integer from 1 to 10")
+        raise DeployError("desired_count must be an integer from 1 to 10")
     return name, count
 
 
@@ -393,7 +394,7 @@ def _apply(ctx: _Context, result: DeployResult, runner: Runner) -> list[list[str
         need += ["sas_user_secret_arn", "sas_password_secret_arn"]
     missing = [k for k in need if not opts.get(k)]
     if missing:
-        raise ValueError("apply needs the options " + ", ".join(missing))
+        raise DeployError("apply needs the options " + ", ".join(missing))
     name, _count = _options(ctx)
     out = str(result.out_dir)
     image = str(opts["image_uri"])

@@ -19,6 +19,7 @@ from typing import Any
 
 from .contract import Contract
 from .engines import Engine
+from .errors import ValuesError
 from .result import Result
 
 __all__ = ["Pool", "PoolExhausted", "PoolSession"]
@@ -95,15 +96,15 @@ class Pool(Engine):
             self.engine = None
             self._factory = engine
         if min_size < 0 or max_size < 0:
-            raise ValueError("min_size and max_size must be non-negative")
+            raise ValuesError("min_size and max_size must be non-negative")
         if min_size > max_size:
-            raise ValueError("min_size must not exceed max_size")
+            raise ValuesError("min_size must not exceed max_size")
         # Session counts are discrete: a fractional maximum would admit one more
         # session than configured (spec §6.5 bounds the pool).
         if not isinstance(min_size, int) or not isinstance(max_size, int):
-            raise ValueError("min_size and max_size must be whole numbers")
+            raise ValuesError("min_size and max_size must be whole numbers")
         if not math.isfinite(acquire_timeout) or acquire_timeout < 0:
-            raise ValueError("acquire_timeout must be a non-negative finite number")
+            raise ValuesError("acquire_timeout must be a non-negative finite number")
         self.min_size = min_size
         self.max_size = max_size
         self.idle_timeout = idle_timeout

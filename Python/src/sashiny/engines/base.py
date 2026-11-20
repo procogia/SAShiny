@@ -15,6 +15,7 @@ from datetime import date
 from typing import Any
 
 from ..contract import Contract
+from ..errors import EngineError
 from ..result import Result
 
 __all__ = ["Engine", "check_engine", "testing"]
@@ -42,7 +43,7 @@ def check_engine(engine: Engine) -> Engine:
 
     if isinstance(engine, (SaspyEngine, Pool)) or testing():
         return engine
-    raise TypeError(
+    raise EngineError(
         "engine must come from sashiny.connect(), SaspyEngine or Pool: SAShiny runs "
         "programs only on a live SAS 9.4, SAS Viya or SAS OnDemand for Academics system"
     )

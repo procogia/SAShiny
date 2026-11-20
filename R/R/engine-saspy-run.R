@@ -84,12 +84,10 @@ print.sashiny_engine_saspy <- function(x, ...) {
     return("cfgfile")
   }
   if (!is.list(cfg) || length(cfg) == 0L || is.null(names(cfg))) {
-    stop("cfg must be a named list or the path of a saspy configuration file; ", supported,
-      call. = FALSE
-    )
+    .sashiny_abort("engine", "cfg must be a named list or the path of a saspy configuration file; ", supported)
   }
   if (!is.null(cfg$provider) || !is.null(cfg$colocal)) {
-    stop("local 'SAS' (COM) connections are not supported; ", supported, call. = FALSE)
+    .sashiny_abort("engine", "local 'SAS' (COM) connections are not supported; ", supported)
   }
   methods <- c(
     http = !is.null(cfg$url),
@@ -98,16 +96,14 @@ print.sashiny_engine_saspy <- function(x, ...) {
   )
   if (sum(methods) != 1L) {
     if (!is.null(cfg$saspath) && is.null(cfg$host)) {
-      stop("local 'SAS' (STDIO) connections are not supported; ", supported, call. = FALSE)
+      .sashiny_abort("engine", "local 'SAS' (STDIO) connections are not supported; ", supported)
     }
-    stop("cfg must describe exactly one connection (url, iomhost, or saspath + host); ",
-      supported,
-      call. = FALSE
-    )
+    .sashiny_abort("engine", "cfg must describe exactly one connection (url, iomhost, or saspath + host); ",
+      supported)
   }
   if (methods[["http"]]) {
     if (!grepl("^https?://", cfg$url)) {
-      stop("the 'SAS Viya' url must start with https:// or http://", call. = FALSE)
+      .sashiny_abort("engine", "the 'SAS Viya' url must start with https:// or http://")
     }
     return("viya")
   }
@@ -117,7 +113,7 @@ print.sashiny_engine_saspy <- function(x, ...) {
       return("oda")
     }
     if (length(hosts) != 1L) {
-      stop("a 'SAS' 9.4 IOM configuration needs exactly one iomhost", call. = FALSE)
+      .sashiny_abort("engine", "a 'SAS' 9.4 IOM configuration needs exactly one iomhost")
     }
     return("sas94-iom")
   }
@@ -175,12 +171,12 @@ print.sashiny_engine_saspy <- function(x, ...) {
 #' @noRd
 .sashiny_write_cfgfile <- function(cfg, cfgname, folder) {
   if (!grepl("^[A-Za-z_][A-Za-z0-9_]*$", cfgname)) {
-    stop("cfgname must be a Python identifier: ", cfgname, call. = FALSE)
+    .sashiny_abort("engine", "cfgname must be a Python identifier: ", cfgname)
   }
   json <- as.character(jsonlite::toJSON(cfg, auto_unbox = TRUE, null = "null", digits = NA))
   quotes <- strrep("'", 3L)
   if (grepl(quotes, json, fixed = TRUE)) {
-    stop("the saspy configuration cannot contain three single quotes", call. = FALSE)
+    .sashiny_abort("engine", "the saspy configuration cannot contain three single quotes")
   }
   path <- file.path(folder, paste0("sascfg_", cfgname, ".py"))
   writeLines(c(
@@ -221,7 +217,7 @@ print.sashiny_engine_saspy <- function(x, ...) {
 #' @noRd
 .sashiny_saspy_open <- function(engine) {
   if (!.sashiny_license_ok(engine)) {
-    stop(.sashiny_license_message, call. = FALSE)
+    .sashiny_abort("license", .sashiny_license_message)
   }
   if (!is.null(engine$session_factory)) {
     return(engine$session_factory())
@@ -267,21 +263,19 @@ print.sashiny_engine_saspy <- function(x, ...) {
 .sashiny_preflight <- function(cfg, authinfo = .sashiny_authinfo_path(), check_authinfo = TRUE) {
   java <- cfg$java
   if (!is.null(cfg$iomhost) && (is.null(java) || !nzchar(java))) {
-    stop(
+    .sashiny_abort("engine",
       "Java was not found; IOM connections (ODA, SAS 9.4) need Java 8 or later. ",
-      "Install it, set JAVA_HOME, or pass java = \"/path/to/java\".",
-      call. = FALSE
-    )
+      "Install it, set JAVA_HOME, or pass java = \"/path/to/java\".")
   }
   key <- cfg$authkey
   if (check_authinfo && !is.null(key)) {
     lines <- if (file.exists(authinfo)) readLines(authinfo, warn = FALSE) else character(0)
     first <- vapply(strsplit(trimws(lines), "[[:space:]]+"), function(w) w[1] %||% "", "")
     if (!key %in% first) {
-      stop(sprintf(
+      .sashiny_abort("engine", sprintf(
         "no credentials for '%s' in %s. Add a line: %s user <user id> password <password>",
         key, authinfo, key
-      ), call. = FALSE)
+      ))
     }
   }
   invisible(TRUE)
@@ -378,7 +372,7 @@ sas_engine_choices.sashiny_engine_saspy <- function(engine, contract) {
   .sashiny_submit(engine, .sashiny_choices_code(source))
   df <- .sashiny_saspy_session(engine)$sd2df(table = "_sx_choices", libref = "work")
   if (is.null(df)) {
-    stop("could not read choices from ", source$dataset, call. = FALSE)
+    .sashiny_abort("engine", "could not read choices from ", source$dataset)
   }
   values <- .sashiny_choice_text(.sashiny_df_column(df, source$value_column))
   labels <- if (is.null(source$label_column)) {
@@ -425,7 +419,7 @@ sas_engine_choices.sashiny_engine_saspy <- function(engine, contract) {
 .sashiny_df_column <- function(df, name) {
   idx <- match(toupper(name), toupper(names(df)))
   if (is.na(idx)) {
-    stop("column ", name, " not returned by SAS", call. = FALSE)
+    .sashiny_abort("engine", "column ", name, " not returned by SAS")
   }
   df[[idx]]
 }
@@ -644,7 +638,7 @@ sas_engine_run.sashiny_engine_saspy <- function(engine, contract, values, today 
     html = main$LST,
     log = .sashiny_scope_log(main$LOG, spec$scope %||% "program"),
     download = .sashiny_fetch_download(engine, oid, spec),
-    stop("unknown output type ", spec$type, call. = FALSE)
+    .sashiny_abort("engine", "unknown output type ", spec$type)
   )
 }
 
@@ -656,7 +650,7 @@ sas_engine_run.sashiny_engine_saspy <- function(engine, contract, values, today 
   cols <- sas$sd2df(table = "_sx_cols", libref = "work")
   ncols <- .sashiny_nrow(cols)
   if (ncols == 0L) {
-    stop(sprintf("dataset %s.%s not found", lib, mem), call. = FALSE)
+    .sashiny_abort("engine", sprintf("dataset %s.%s not found", lib, mem))
   }
   nobs <- sas$sd2df(table = "_sx_nobs", libref = "work")
   total <- NULL
@@ -704,7 +698,7 @@ sas_engine_run.sashiny_engine_saspy <- function(engine, contract, values, today 
     keys <- names
   }
   if (is.null(df)) {
-    stop(sprintf("could not read %s.%s", lib, mem), call. = FALSE)
+    .sashiny_abort("engine", sprintf("could not read %s.%s", lib, mem))
   }
   frame <- lapply(keys, function(k) .sashiny_df_column(df, k))
   rows <- lapply(seq_len(.sashiny_nrow(df)), function(i) {
@@ -763,7 +757,7 @@ sas_engine_run.sashiny_engine_saspy <- function(engine, contract, values, today 
   hit <- grep("^SASHINY-PATH=", .sashiny_split_log(log), value = TRUE)
   path <- if (length(hit)) trimws(sub("^SASHINY-PATH=", "", hit[[1]])) else ""
   if (!nzchar(path)) {
-    stop("cannot resolve the path of library ", libref, call. = FALSE)
+    .sashiny_abort("engine", "cannot resolve the path of library ", libref)
   }
   path
 }
@@ -777,10 +771,10 @@ sas_engine_run.sashiny_engine_saspy <- function(engine, contract, values, today 
   local <- file.path(dir, basename(gsub("\\", "/", remote, fixed = TRUE)))
   res <- .sashiny_saspy_session(engine)$download(local, remote)
   if (is.list(res) && !isTRUE(res$Success)) {
-    stop("download failed for ", remote, call. = FALSE)
+    .sashiny_abort("engine", "download failed for ", remote)
   }
   if (!file.exists(local)) {
-    stop("download produced no file for ", remote, call. = FALSE)
+    .sashiny_abort("engine", "download produced no file for ", remote)
   }
   .sashiny_read_bytes(local)
 }
@@ -808,7 +802,7 @@ sas_engine_run.sashiny_engine_saspy <- function(engine, contract, values, today 
     csv = .sashiny_csv_bytes(table),
     xlsx = .sashiny_xlsx_bytes(table, parts$mem),
     xpt = .sashiny_xpt_bytes(table, parts$mem),
-    stop("unsupported download format ", fmt, call. = FALSE)
+    .sashiny_abort("engine", "unsupported download format ", fmt)
   )
   .sashiny_download_value(name, fmt, payload)
 }

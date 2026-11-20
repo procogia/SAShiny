@@ -16,7 +16,7 @@
   }
   if (!is.character(value) || length(value) != 1L || is.na(value) ||
     !grepl("^[A-Z][A-Z0-9_]{0,62}$", value)) {
-    stop(key, " must be 1-63 uppercase letters, digits or '_', starting with a letter", call. = FALSE)
+    .sashiny_abort("deploy", key, " must be 1-63 uppercase letters, digits or '_', starting with a letter")
   }
   value
 }
@@ -27,11 +27,11 @@
   instances <- options$instances %||% 1L
   if (!is.numeric(instances) || length(instances) != 1L || is.na(instances) ||
     instances != round(instances) || instances < 1 || instances > 10) {
-    stop("instances must be an integer from 1 to 10", call. = FALSE)
+    .sashiny_abort("deploy", "instances must be an integer from 1 to 10")
   }
   public <- options$public %||% TRUE
   if (!isTRUE(public) && !isFALSE(public)) {
-    stop("public must be TRUE or FALSE", call. = FALSE)
+    .sashiny_abort("deploy", "public must be TRUE or FALSE")
   }
   n <- list(
     service = .sashiny_sf_ident(options, "service_name", "SASHINY_APP"),
@@ -271,7 +271,7 @@
   apply = function(ctx, result, runner) {
     o <- ctx$options
     if (is.null(o$repository_url) || !nzchar(o$repository_url)) {
-      stop("apply needs the options repository_url", call. = FALSE)
+      .sashiny_abort("deploy", "apply needs the options repository_url")
     }
     n <- .sashiny_sf_names(o)
     out <- result$out_dir
@@ -291,9 +291,9 @@
     for (cmd in commands) {
       status <- runner(cmd, character(0))
       if (!identical(as.integer(status), 0L)) {
-        stop(sprintf(
+        .sashiny_abort("deploy", sprintf(
           "command failed with exit status %s: %s", status, paste(cmd[1:3], collapse = " ")
-        ), call. = FALSE)
+        ))
       }
     }
     commands
