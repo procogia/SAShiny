@@ -470,8 +470,7 @@ test_that("a click during a run is ignored and the Run card shows running...", {
   resolvers <- list()
   local_mocked_bindings(isRunning = function() TRUE, .package = "shiny")
   local_mocked_bindings(
-    .sashiny_portable_engine = function(engine) engine,
-    .sashiny_run_bg_promise = function(...) {
+    .sashiny_run_async = function(...) {
       started <<- started + 1L
       promises::promise(function(resolve, reject) resolvers[[length(resolvers) + 1L]] <<- resolve)
     }

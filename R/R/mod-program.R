@@ -659,30 +659,20 @@ sas_program_server <- function(id, contract, engine, server_override = NULL, ren
     # error before the first run without forcing an uninitialised eventReactive
     # (which raises a shiny.silent.error under ignoreNULL=TRUE).
     result <- shiny::reactiveVal(NULL)
-    # Run the engine off the event loop (issue #44): a slow SAS run must not
-    # block unrelated browser sessions. In a running app the ExtendedTask runs
-    # the engine in a callr background process polled by later, so the main
-    # process keeps serving other sessions. A pool or custom engine cannot be
-    # sent to another process, so it still runs in-process (and blocks).
-    # testServer cannot await a background process, so it runs synchronously.
+    # Run the engine off the event loop (issue #44; spec section 6.5): saspy
+    # engines and pools run in persistent worker processes polled by `later`,
+    # so the main process keeps serving other sessions. testServer cannot
+    # await a background process, so it runs synchronously.
     use_extended <- shiny::isRunning() && requireNamespace("callr", quietly = TRUE) &&
       requireNamespace("later", quietly = TRUE) && requireNamespace("promises", quietly = TRUE)
     # Whether a run is in flight; only an ExtendedTask can be running between
     # flushes (the synchronous path finishes inside the click handler).
     running <- function() FALSE
     if (use_extended) {
-      portable <- .sashiny_portable_engine(engine)
       run_task <- shiny::ExtendedTask$new(function(contract, values, uploads) {
-        if (is.null(portable)) {
-          return(promises::promise_resolve(
-            sas_engine_run(engine, contract, values, uploads = uploads)
-          ))
-        }
         run_id <- .sashiny_run_id()
         promises::catch(
-          .sashiny_run_bg_promise(portable, contract, values, uploads,
-            run_id = run_id, session = session
-          ),
+          .sashiny_run_async(engine, contract, values, uploads, run_id = run_id, session = session),
           function(e) .sashiny_engine_error(run_id, list(), e)
         )
       })

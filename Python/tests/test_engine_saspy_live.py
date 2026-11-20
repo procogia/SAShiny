@@ -439,3 +439,18 @@ def test_missing_java_is_reported_on_the_result(contract: sashiny.Contract) -> N
     result = engine.run(contract, {"min_age": 1}, today=TODAY)
     assert result.status == "error"
     assert "Java was not found" in result.metadata["engine_error"]
+
+
+def test_engine_reuses_one_session_across_runs(contract: sashiny.Contract) -> None:
+    # Spec 6.5 (session lifetime): one engine, one SAS session, reused across runs.
+    opened: list[FakeSAS] = []
+
+    def factory() -> FakeSAS:
+        opened.append(_fake())
+        return opened[-1]
+
+    engine = fake_engine(factory)
+    results = [engine.run(contract, {"min_age": 30, "make": "BMW"}, today=TODAY) for _ in range(3)]
+    assert [r.status for r in results] == ["success"] * 3
+    assert len(opened) == 1
+    assert opened[0].submitted.count(saspy_mod.SESSION_SETUP_CODE) == 1
