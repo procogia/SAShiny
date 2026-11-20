@@ -298,6 +298,7 @@ test_that("a paired tag without the toggle shows only the default view", {
 
 test_that("a failed part is reported without hiding the other part", {
   skip_if_not_installed("shiny")
+  skip_if_not_installed("ggplot2") # the chart part renders as an <img>
   value <- paired_value()
   value$sas <- list(error = "select=3 but the run produced 2 graph(s)")
   html <- as.character(.sashiny_paired_tag(value, paired_spec(), "p", "g"))
@@ -353,6 +354,7 @@ paired_engine <- function() {
 }
 
 test_that("the module renders paired cards, the module toggle and honours the settings", {
+  skip_if_not_installed("ggplot2") # the default chart backend
   skip_on_cran()
   skip_if_not_installed("shiny")
   skip_if_not_installed("htmltools")
