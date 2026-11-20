@@ -81,7 +81,7 @@ licence acknowledgement. Without it, nothing is sent to SAS:
 
 ```{r}
 engine <- sas_connect("oda", region = "us1", license_ack = FALSE)
-result <- sas_run(contract, list(n_rows = 3), engine)
+result <- sas_run(contract, engine, list(n_rows = 3))
 result$status
 result$metadata$engine_error
 ```
@@ -91,9 +91,9 @@ With a licensed system:
 ```{r, eval = FALSE}
 options(SAShiny.license_ack = TRUE) # I hold a valid licence for this system
 engine <- sas_connect("viya", url = "https://viya.example.com")
-result <- sas_run(contract, list(n_rows = 3), engine)
+result <- sas_run(contract, engine, list(n_rows = 3))
 result$status
-sas_engine_close(engine)
+sas_close(engine)
 ```
 
 ## Build and publish an app

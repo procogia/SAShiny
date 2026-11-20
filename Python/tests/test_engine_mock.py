@@ -80,7 +80,7 @@ def test_mock_and_recordings_are_not_public(monkeypatch: pytest.MonkeyPatch) -> 
     with pytest.raises(RuntimeError, match="internal test fixture"):
         engine.run(contract, {})
     with pytest.raises(TypeError, match=r"sashiny\.connect"):
-        sashiny.run(contract, {}, engine)
+        sashiny.run(contract, engine)
     with pytest.raises(TypeError, match=r"sashiny\.connect"):
         sashiny.Pool(engine)
 

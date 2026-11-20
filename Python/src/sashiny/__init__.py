@@ -31,7 +31,7 @@ from .pool import Pool
 from .profiles import Profile, connect_from_env, parse_profile
 from .publish import publish
 from .result import LogLine, Result, TableResult
-from .run import run
+from .run import close, run
 from .upload import UploadError, UploadFile
 from .values import json_values, render_values
 from .wrapper import reset_code, wrapper_code
@@ -59,6 +59,7 @@ __all__ = [
     "__version__",
     "app",
     "chart_backends",
+    "close",
     "connect",
     "connect_from_env",
     "connect_in_session",

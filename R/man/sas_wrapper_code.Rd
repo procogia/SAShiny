@@ -22,3 +22,4 @@ A character string of the complete wrapper text.
 \description{
 Generate the main wrapper submission (spec section 6.3)
 }
+\keyword{internal}

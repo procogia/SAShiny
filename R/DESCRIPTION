@@ -33,6 +33,7 @@ Imports:
     cli,
     jsonlite,
     jsonvalidate,
+    lifecycle,
     openssl,
     stats,
     tools,

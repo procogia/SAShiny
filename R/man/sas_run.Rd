@@ -6,8 +6,8 @@
 \usage{
 sas_run(
   contract,
-  values,
   engine,
+  values = list(),
   today = Sys.Date(),
   uploads = NULL,
   run_id = NULL
@@ -17,10 +17,11 @@ sas_run(
 \item{contract}{A \code{sashiny_contract} object, or a path to a \verb{*.sashiny.yml}
 file (loaded automatically).}
 
-\item{values}{A named list of input values.}
-
 \item{engine}{An engine from \code{\link[=sas_connect]{sas_connect()}}, \code{\link[=sas_engine_saspy]{sas_engine_saspy()}} or
 \code{\link[=sas_pool]{sas_pool()}}.}
+
+\item{values}{A named list of input values. Defaults to the contract's
+defaults (an empty list).}
 
 \item{today}{A \code{Date} used to resolve \code{"today"}.}
 
@@ -35,13 +36,19 @@ A \code{sashiny_result} object (see \code{\link[=sas_engine_run]{sas_engine_run(
 \description{
 Run a contract with the given inputs on an engine
 }
+\section{Argument order}{
+
+Before 'SAShiny' 0.3.1 the order was \code{sas_run(contract, values, engine)}.
+That order still works, with a deprecation warning.
+}
+
 \examples{
 path <- system.file("examples", "minimal", "minimal.sashiny.yml", package = "SAShiny")
 \dontrun{
 # Needs a licensed 'SAS' system and saspy; not run during checks.
 engine <- sas_connect("sas94", host = "sas.example.com", license_ack = TRUE)
-result <- sas_run(path, list(), engine)
+result <- sas_run(path, engine)
 result$status
-sas_engine_close(engine)
+sas_close(engine)
 }
 }

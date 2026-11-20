@@ -230,7 +230,7 @@ print.sashiny_engine_saspy <- function(x, ...) {
   cfgfile <- engine$cfg
   if (is.list(cfgfile)) {
     # CRAN: the generated saspy configuration (no credentials) is written under
-    # tempdir() and removed by sas_engine_close().
+    # tempdir() and removed by sas_close().
     if (is.null(engine$tmpdir)) {
       engine$tmpdir <- tempfile("sashiny-cfg-")
       dir.create(engine$tmpdir)

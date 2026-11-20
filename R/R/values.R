@@ -116,6 +116,7 @@
 #'
 #' @param json A JSON object as a single string (or a raw vector of UTF-8).
 #' @return A named list of input values keyed by input id.
+#' @keywords internal
 #' @export
 #' @examples
 #' values <- sas_json_values('{"company": "a\\u0000b"}')
@@ -155,6 +156,7 @@ sas_json_values <- function(json) {
 #'   was supplied.
 #' @return A list with `macros` (a named list in spec section 5.7 order) and
 #'   `issues` (a list of `sashiny_issue` objects).
+#' @keywords internal
 #' @export
 sas_render_values <- function(data, values, today = Sys.Date(), only = NULL,
                               choices_override = NULL, uploads = NULL) {
