@@ -20,6 +20,9 @@
 #'   own outputs.
 #' @param chart_toggle Whether to show the 'SAS' / 'SAShiny' toggles (default
 #'   `TRUE`).
+#' @details While the app runs, `shiny.maxRequestSize` is set to the largest
+#'   `max_size_mb` of the contracts' dataset inputs, and restored when the app
+#'   stops.
 #' @return A Shiny app object (from [shiny::shinyApp()]).
 #' @examples
 #' \dontrun{
@@ -83,7 +86,19 @@ sas_app <- function(contracts, engine, title = "SAShiny", publish = FALSE,
     if (show_publish) .sashiny_publish_server("sashiny_publish")
   }
 
-  shiny::shinyApp(ui, server)
+  # Raise Shiny's upload cap once for the app's lifetime, to the largest
+  # max_size_mb of any contract (spec section 7; #130 J4), and restore it when
+  # the app stops (CRAN: restore options).
+  limit <- .sashiny_upload_limit(loaded)
+  on_start <- NULL
+  if (!is.null(limit)) {
+    on_start <- function() {
+      prev <- getOption("shiny.maxRequestSize")
+      options(shiny.maxRequestSize = limit)
+      shiny::onStop(function() options(shiny.maxRequestSize = prev))
+    }
+  }
+  shiny::shinyApp(ui, server, onStart = on_start)
 }
 
 #' The app's page: a navbar with one tab per program.

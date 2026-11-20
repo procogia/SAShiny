@@ -214,31 +214,51 @@ test_that("each chart output gets its own render callback", {
   )
 })
 
-  test_that("upload limit is raised to the largest max_size_mb and restored", {
-    skip_on_cran()
-    skip_if_not_installed("shiny")
-    prev <- getOption("shiny.maxRequestSize")
-    on.exit(options(shiny.maxRequestSize = prev), add = TRUE)
-    inputs <- list(
-      a = list(type = "dataset", max_size_mb = 10),
-      b = list(type = "dataset", max_size_mb = 50),
-      c = list(type = "numeric")
-    )
-    .sashiny_set_upload_limit(inputs)
-    expect_identical(getOption("shiny.maxRequestSize"), 50 * 1024 * 1024)
-    .sashiny_restore_upload_limit()
-    expect_identical(getOption("shiny.maxRequestSize"), prev)
-  })
+test_that("the app upload limit is the largest max_size_mb across contracts (#130 J4)", {
+  ds <- function(mb) list(data = list(inputs = list(f = c(list(type = "dataset"), mb))))
+  expect_identical(.sashiny_upload_limit(list(ds(list(max_size_mb = 10)),
+    ds(list(max_size_mb = 80)))), 80 * 1024 * 1024)
+  expect_identical(.sashiny_upload_limit(list(ds(list()))), 50 * 1024 * 1024)
+  expect_null(.sashiny_upload_limit(list(list(data = list(inputs = list(n = list(type = "numeric")))))))
+})
 
-  test_that("upload limit defaults to 50 MB when undeclared", {
-    skip_on_cran()
-    skip_if_not_installed("shiny")
-    prev <- getOption("shiny.maxRequestSize")
-    on.exit(options(shiny.maxRequestSize = prev), add = TRUE)
-    .sashiny_set_upload_limit(list(a = list(type = "dataset")))
-    expect_identical(getOption("shiny.maxRequestSize"), 50 * 1024 * 1024)
-    .sashiny_restore_upload_limit()
-  })
+test_that("module sessions never change shiny.maxRequestSize (#130 J4)", {
+  skip_on_cran()
+  skip_if_not_installed("shiny")
+  withr::local_options(shiny.maxRequestSize = 7)
+  big <- sas_contract(file.path(.sashiny_fixtures(), "contracts", "valid", "dataset",
+                                "contract.sashiny.yml"))
+  small <- sas_contract(file.path(.sashiny_fixtures(), "contracts", "valid", "minimal",
+                                  "contract.sashiny.yml"))
+  engine <- .sashiny_engine_mock()
+  # Previously each module set the option on start and restored it on end, so
+  # one session ending reset the limit for a still-running session. Now neither
+  # touches it, at start or at end.
+  for (contract in list(big, small, big)) {
+    shiny::testServer(sas_program_server, args = list(contract = contract, engine = engine), {
+      expect_identical(getOption("shiny.maxRequestSize"), 7)
+    })
+    expect_identical(getOption("shiny.maxRequestSize"), 7)
+  }
+})
+
+test_that("sas_app() sets the limit while running and restores it on stop", {
+  skip_on_cran()
+  skip_if_not_installed("shiny")
+  withr::local_options(shiny.maxRequestSize = 7)
+  contract <- sas_contract(file.path(.sashiny_fixtures(), "contracts", "valid", "dataset",
+                                     "contract.sashiny.yml"))
+  app <- sas_app(list(contract), .sashiny_engine_mock())
+  stops <- list()
+  local_mocked_bindings(onStop = function(fun, session = NULL) {
+    stops[[length(stops) + 1L]] <<- fun
+    function() NULL
+  }, .package = "shiny")
+  app$onStart()
+  expect_identical(getOption("shiny.maxRequestSize"), .sashiny_upload_limit(list(contract)))
+  for (f in stops) f()
+  expect_identical(getOption("shiny.maxRequestSize"), 7)
+})
 
 # ---------------------------------------------------------------- paired outputs (section 8.6)
 

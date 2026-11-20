@@ -2,6 +2,10 @@
 
 ## Fixes
 
+* `sas_app()` sets `shiny.maxRequestSize` once, to the largest `max_size_mb`
+  of its contracts, and restores it when the app stops. `sas_program_server()`
+  no longer changes this global option, so one browser session ending can no
+  longer reset the upload limit for another (#130).
 * The `container` deployment image now builds and runs (spec section 6.8).
   The Python image is based on `python:3.12-slim-bookworm`, because current
   `python:3.12-slim` (Debian trixie) has no Java 17. The R image installs R
