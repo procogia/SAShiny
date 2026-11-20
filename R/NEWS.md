@@ -1,5 +1,14 @@
 # SAShiny (development version)
 
+## New features
+
+* `sas_program_server()` gains `values`, a reactive of input values that
+  other Shiny code (for example a parent filter panel) uses to drive a
+  contract's inputs (spec section 6.10). Supplied ids replace the UI value
+  and are validated exactly like UI values. With `ui.auto_run: true`, a
+  change starts a run after `debounce_ms` (default 500). `hide_inputs = TRUE`
+  hides the controls of the supplied ids. See `examples/parent-filter/`.
+
 ## Fixes
 
 * `sas_app()` sets `shiny.maxRequestSize` once, to the largest `max_size_mb`

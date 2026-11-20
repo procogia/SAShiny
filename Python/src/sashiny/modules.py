@@ -13,6 +13,7 @@ import base64
 import dataclasses
 import io
 import logging
+import time
 import uuid
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
@@ -23,6 +24,7 @@ from typing import Any
 from htmltools import HTMLDependency
 from shiny import Inputs, Outputs, Session, module, reactive, req, ui
 from shiny import render as shiny_render
+from shiny.module import resolve_id
 from shiny.ui import TagChild
 
 from . import choices_cache
@@ -47,6 +49,8 @@ SAMPLE_SUFFIX = "__sample"
 # letter, so `out_` + `_view` never collides with an output card.
 _VIEW_TOGGLE_ID = "out__view"
 _VIEW_GROUP_ID = "views"
+_HIDE_INPUTS_ID = "hide__inputs"
+_HIDE_INPUTS_ID = "hide__inputs"
 _VIEWS = ("sas", "sashiny")
 _VIEW_LABELS = {"sas": "SAS graph", "sashiny": "SAShiny chart"}
 _GROUP_LABELS = {"sas": "SAS graphs", "sashiny": "SAShiny charts"}
@@ -189,6 +193,53 @@ def shiny_values(
         else:
             values[iid] = raw
     return values, uploads
+
+
+def merge_values(
+    contract: Contract, values: dict[str, Any], external: dict[str, Any] | None
+) -> dict[str, Any]:
+    """Merge external values over UI values (spec §6.10).
+
+    Supplied ids replace the UI value; a supplied ``None`` makes the input
+    absent; dataset ids are ignored. :class:`datetime.date` values (and tuples
+    of them for a ``daterange``) become ISO strings.
+
+    Args:
+        contract: The loaded contract.
+        values: The UI values from :func:`shiny_values`.
+        external: The dict returned by ``values()``, or ``None``.
+
+    Returns:
+        A new dict of merged values.
+
+    """
+    if external is None:
+        return dict(values)
+    if not isinstance(external, dict):
+        raise TypeError("values() must return a dict of input values")
+    inputs: dict[str, Any] = contract.data.get("inputs") or {}
+    merged = dict(values)
+    for iid, raw in external.items():
+        kind = (inputs.get(iid) or {}).get("type")
+        if kind == "dataset":
+            continue
+        if raw is None:
+            merged.pop(iid, None)
+        elif isinstance(raw, date):
+            merged[iid] = raw.isoformat()
+        elif isinstance(raw, (list, tuple)):
+            merged[iid] = [v.isoformat() if isinstance(v, date) else v for v in raw]
+        else:
+            merged[iid] = raw
+    return merged
+
+
+def _hide_inputs_tag(ids: list[str], ns: Callable[[str], str]) -> TagChild:
+    """Return a ``<style>`` tag hiding the controls of ``ids`` (spec §6.10)."""
+    if not ids:
+        return None
+    rules = "\n".join(f"#{ns(f'in__{iid}')} {{ display: none; }}" for iid in ids)
+    return ui.tags.style(rules)
 
 
 def _check_upload_size(
@@ -545,7 +596,11 @@ def program_ui(
     today = today or date.today()
     controls: list[TagChild] = []
     for iid, spec in _ordered_inputs(contract):
-        controls.extend([_input_ui(iid, spec, today), _help(spec)])
+        # The wrapper id lets the server hide controls driven by `values` (spec §6.10).
+        controls.append(
+            ui.div(_input_ui(iid, spec, today), _help(spec), id=resolve_id(f"in__{iid}"))
+        )
+    controls.append(ui.output_ui(_HIDE_INPUTS_ID))
     settings = contract.data.get("ui") or {}
     # A task button shows a busy state and is disabled until the run finishes.
     controls.append(
@@ -581,6 +636,9 @@ def program_server(  # noqa: PLR0913, PLR0915, PLR0917 - Shiny module: one react
     *,
     chart_view: str | dict[str, str] = "sashiny",
     chart_toggle: bool = True,
+    values: Callable[[], dict[str, Any] | None] | None = None,
+    hide_inputs: bool = False,
+    debounce_ms: float = 500,
 ) -> dict[str, Any]:
     """Serve a SAS program module (run the contract and render outputs).
 
@@ -600,12 +658,24 @@ def program_server(  # noqa: PLR0913, PLR0915, PLR0917 - Shiny module: one react
             original SAS graph, or a dict of paired output id to view.
         chart_toggle: Whether to show the SAS / SAShiny toggles (default
             `True`). With `False` each paired card shows only its default view.
+        values: An optional reactive returning a dict of input values in the
+            §2.1 JSON form (spec §6.10). Supplied ids replace the UI value and
+            are validated exactly like UI values; other ids come from the UI.
+            With `ui.auto_run: true`, a change starts a run after `debounce_ms`.
+        hide_inputs: Whether to hide the controls of the ids supplied by
+            `values()` (default `False`).
+        debounce_ms: Debounce interval in milliseconds for auto-runs driven by
+            `values()` (default 500).
 
     Returns:
         `{"result", "status", "log"}` reactive calcs for custom extensions.
 
     """
     check_engine(engine)
+    if values is not None and not callable(values):
+        raise TypeError("values must be a reactive (or callable) returning a dict")
+    if debounce_ms < 0:
+        raise ValueError("debounce_ms must be non-negative")
     views = _chart_views(contract, chart_view)
     if server_override is not None:
         return server_override(input, output, session, contract, engine)  # type: ignore[no-any-return]
@@ -683,6 +753,10 @@ def program_server(  # noqa: PLR0913, PLR0915, PLR0917 - Shiny module: one react
                 run_contract = dataclasses.replace(contract, cached_choices=hit)
         return await _run_snapshot(engine, run_contract, snapshot)
 
+    def _start_run() -> None:
+        external = values() if values is not None else None
+        run_task(_snapshot_inputs(contract, _read, external))
+
     @reactive.effect
     @reactive.event(input.run, ignore_none=not settings.get("auto_run", False))
     def _trigger() -> None:
@@ -690,7 +764,18 @@ def program_server(  # noqa: PLR0913, PLR0915, PLR0917 - Shiny module: one react
         # burst of clicks does not queue one engine run per click (issue #49).
         if run_task.status() == "running":
             return
-        run_task(_snapshot_inputs(contract, _read))
+        _start_run()
+
+    if values is not None:
+        _external_runs(values, settings, run_task, _start_run, debounce_ms / 1000)
+
+        @output(id=_HIDE_INPUTS_ID)
+        @shiny_render.ui
+        def _hide_inputs() -> TagChild:
+            if not hide_inputs:
+                return None
+            supplied = [iid for iid in (values() or {}) if iid in inputs]
+            return _hide_inputs_tag(supplied, session.ns)
 
     # Cancel any in-flight or queued run when the session ends, so a slow SAS
     # run does not keep executing after the browser disconnects (issue #50).
@@ -782,14 +867,63 @@ def _register_outputs(  # noqa: PLR0913, PLR0917 - the module's reactive pieces 
         return view_toggle_tag(group, group_view) if chart_toggle else None
 
 
+def _external_runs(
+    values: Callable[[], dict[str, Any] | None],
+    settings: dict[str, Any],
+    run_task: Any,
+    start_run: Callable[[], None],
+    debounce: float,
+) -> None:
+    """Start debounced runs when ``values()`` changes and ``ui.auto_run`` is on (spec §6.10)."""
+    if not settings.get("auto_run", False):
+        return
+    changed_at: reactive.Value[float | None] = reactive.value(None)
+    state = {"first": True, "pending": False}
+
+    @reactive.effect
+    def _watch() -> None:
+        values()
+        if state["first"]:
+            # The auto_run run at session start already uses the first value.
+            state["first"] = False
+            return
+        with reactive.isolate():
+            changed_at.set(time.monotonic())
+
+    @reactive.effect
+    def _settle() -> None:
+        at = changed_at()
+        if at is None:
+            return
+        remaining = at + debounce - time.monotonic()
+        if remaining > 0:
+            reactive.invalidate_later(remaining)
+            return
+        with reactive.isolate():
+            changed_at.set(None)
+            if run_task.status() == "running":
+                state["pending"] = True
+            else:
+                start_run()
+
+    @reactive.effect
+    def _after_run() -> None:
+        status = run_task.status()
+        if status in {"success", "error"} and state["pending"]:
+            state["pending"] = False
+            with reactive.isolate():
+                start_run()
+
+
 def _snapshot_inputs(
-    contract: Contract, read: Callable[[str], Any]
+    contract: Contract, read: Callable[[str], Any], external: dict[str, Any] | None = None
 ) -> tuple[dict[str, Any], dict[str, Any]] | Result:
-    """Return :func:`shiny_values`, or a V014 error :class:`Result` for a refused upload."""
+    """Return merged :func:`shiny_values`, or a V014 error :class:`Result` for a refused upload."""
     try:
-        return shiny_values(contract, read)
+        values, uploads = shiny_values(contract, read)
     except UploadError as exc:
         return _upload_error_result(exc)
+    return merge_values(contract, values, external), uploads
 
 
 async def _run_snapshot(

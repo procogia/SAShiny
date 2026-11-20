@@ -28,7 +28,7 @@ FIX = SPEC / "fixtures"
 
 pytest.importorskip("shiny.testserver")
 
-from shiny import App, ui  # noqa: E402
+from shiny import App, reactive, ui  # noqa: E402
 from shiny.testserver import test_server  # noqa: E402
 
 
@@ -323,3 +323,92 @@ def test_choices_load_once_for_many_sessions(tmp_path: Path) -> None:
                 session.flush()
                 time.sleep(0.02)
     assert Counting.queries == 1
+
+
+def _numeric_contract(auto_run: bool = False) -> sashiny.Contract:
+    contract = sashiny.load(FIX / "contracts" / "valid" / "numeric" / "contract.sashiny.yml")
+    if auto_run:
+        contract.data["ui"] = {"auto_run": True}
+    return contract
+
+
+def _values_app(contract: sashiny.Contract, ext: object, **kwargs: object) -> tuple[App, dict]:
+    """An app whose module is driven by ``ext`` (a reactive.value); exposes the result."""
+    engine = MockEngine()
+    app_ui = ui.page_fluid(modules.program_ui("mod", contract))
+    seen: dict = {}
+
+    def server(input, output, session):
+        seen.update(modules.program_server("mod", contract, engine, values=ext, **kwargs))
+
+    return App(app_ui, server), seen
+
+
+def _wait_result(session: object, seen: dict, timeout: float = 5.0) -> object:
+    _wait_for_run(session, timeout)
+    with reactive.isolate():
+        return seen["result"]()
+
+
+def test_external_values_reach_the_macros() -> None:
+    ext = reactive.value({"min_msrp": 40000})
+    app, seen = _values_app(_numeric_contract(), ext)
+    with test_server(app) as session:
+        session.set_inputs(**{"mod-min_msrp": 20000, "mod-ratio": 0.25, "mod-big": 1})
+        session.set_inputs(**{"mod-run": 1})
+        res = _wait_result(session, seen)
+        assert res.status == "success"
+        assert res.metadata["macros"]["MIN_MSRP"] == "40000"
+        assert res.metadata["macros"]["RATIO_VALUE"] == "0.25"
+
+
+def test_invalid_external_values_give_v_codes() -> None:
+    ext = reactive.value({"min_msrp": 999999, "nope": 1})
+    app, seen = _values_app(_numeric_contract(), ext)
+    with test_server(app) as session:
+        session.set_inputs(**{"mod-min_msrp": 20000, "mod-ratio": 0.5, "mod-big": 1})
+        session.set_inputs(**{"mod-run": 1})
+        res = _wait_result(session, seen)
+        assert res.status == "error"
+        assert {i["code"] for i in res.metadata["issues"]} == {"V003", "V011"}
+
+
+def test_auto_run_debounces_external_changes() -> None:
+    contract = _numeric_contract(auto_run=True)
+    engine = MockEngine()
+    app_ui = ui.page_fluid(
+        ui.input_numeric("ext", "ext", 30000), modules.program_ui("mod", contract)
+    )
+    seen: dict = {}
+
+    def server(input, output, session):
+        ext = reactive.calc(lambda: {"min_msrp": input.ext()})
+        seen.update(modules.program_server("mod", contract, engine, values=ext, debounce_ms=300))
+
+    with test_server(App(app_ui, server)) as session:
+        session.set_inputs(**{"ext": 30000, "mod-min_msrp": 20000, "mod-ratio": 0.5, "mod-big": 1})
+        session.set_inputs(**{"mod-run": 0})
+        first = _wait_result(session, seen)
+        assert first.metadata["macros"]["MIN_MSRP"] == "30000"
+        session.set_inputs(ext=50000)
+        session.set_inputs(ext=60000)
+        # Within the debounce interval no new run has started.
+        assert _wait_result(session, seen, timeout=0.05) is first
+        deadline = time.monotonic() + 5
+        res = first
+        while time.monotonic() < deadline and (res is None or res.run_id == first.run_id):
+            time.sleep(0.05)
+            res = _wait_result(session, seen, timeout=0.2)
+        assert res is not None
+        assert res.run_id != first.run_id
+        assert res.metadata["macros"]["MIN_MSRP"] == "60000"
+
+
+def test_hide_inputs_hides_supplied_controls() -> None:
+    ext = reactive.value({"min_msrp": 30000})
+    app, _ = _values_app(_numeric_contract(), ext, hide_inputs=True)
+    with test_server(app) as session:
+        session.flush()
+        html = str(session.get_output("mod-hide__inputs").value)
+        assert "#mod-in__min_msrp" in html
+        assert "in__ratio" not in html
