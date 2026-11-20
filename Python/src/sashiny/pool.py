@@ -132,6 +132,9 @@ class Pool(Engine):
             session.engine.close()
 
     def _discard(self, session: PoolSession) -> None:
+        from .choices_cache import clear  # noqa: PLC0415 - avoid an import cycle
+
+        clear(self)  # spec §6.4: a pooled SAS session was replaced
         with self._cond:
             self._sessions = [s for s in self._sessions if s is not session]
         self._close(session)

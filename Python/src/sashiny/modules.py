@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import dataclasses
 import io
 import logging
 import uuid
@@ -24,6 +25,7 @@ from shiny import Inputs, Outputs, Session, module, reactive, req, ui
 from shiny import render as shiny_render
 from shiny.ui import TagChild
 
+from . import choices_cache
 from .collect import is_paired, paired_chart_spec
 from .contract import Contract
 from .engines import Engine
@@ -567,7 +569,7 @@ def program_ui(
 
 
 @module.server
-def program_server(  # noqa: PLR0913, PLR0917 - Shiny module signature + override
+def program_server(  # noqa: PLR0913, PLR0915, PLR0917 - Shiny module: one reactive graph
     input: Inputs,
     output: Outputs,
     session: Session,
@@ -610,16 +612,7 @@ def program_server(  # noqa: PLR0913, PLR0917 - Shiny module signature + overrid
     settings = contract.data.get("ui") or {}
     choice_error = reactive.value("")
 
-    @reactive.effect
-    def _load_choices() -> None:
-        """Fill `choices_from` inputs once at session start (spec §6.4)."""
-        if not any("choices_from" in s for s in inputs.values()):
-            return
-        try:
-            found = engine.choices(contract)
-        except Exception as exc:  # shown in the status card
-            choice_error.set(f"could not read choices: {exc}")
-            return
+    def _apply_choices(found: dict[str, list[dict[str, str]]]) -> None:
         for iid, items in found.items():
             spec = inputs[iid]
             options = {c["value"]: c.get("label", c["value"]) for c in items}
@@ -631,6 +624,44 @@ def program_server(  # noqa: PLR0913, PLR0917 - Shiny module signature + overrid
                 ui.update_checkbox_group(iid, choices=options, selected=spec.get("default", []))
             else:
                 ui.update_selectize(iid, choices=options, selected=spec.get("default", []))
+
+    @reactive.extended_task
+    async def choices_task() -> dict[str, list[dict[str, str]]]:
+        # Load choices off the event loop, once per app and contract (spec 6.4).
+        return await asyncio.to_thread(choices_cache.load, engine, contract)
+
+    @reactive.effect
+    def _load_choices() -> None:
+        """Fill `choices_from` inputs from the app cache, or load them (spec §6.4)."""
+        if not choices_cache.has_choices_from(contract):
+            return
+        with reactive.isolate():
+            hit = choices_cache.cached(engine, contract)
+            if hit is not None:
+                _apply_choices(hit)
+                return
+            placeholder = {"": "Loading choices\u2026"}
+            for iid, spec in inputs.items():
+                if "choices_from" not in spec:
+                    continue
+                if spec["type"] == "choice" and spec.get("widget") == "radio":
+                    ui.update_radio_buttons(iid, choices=placeholder)
+                elif spec["type"] == "choice":
+                    ui.update_select(iid, choices=placeholder)
+                elif spec.get("widget") == "checkbox":
+                    ui.update_checkbox_group(iid, choices=placeholder)
+                else:
+                    ui.update_selectize(iid, choices=placeholder)
+            choices_task()
+
+    @reactive.effect
+    def _choices_done() -> None:
+        status = choices_task.status()
+        if status == "success":
+            choice_error.set("")
+            _apply_choices(choices_task.result())
+        elif status == "error":
+            choice_error.set(f"could not read choices: {choices_task.error()}")
 
     def _read(iid: str) -> Any:
         try:
@@ -644,7 +675,12 @@ def program_server(  # noqa: PLR0913, PLR0917 - Shiny module signature + overrid
     async def run_task(snapshot: tuple[dict[str, Any], dict[str, Any]] | Result) -> Result:
         # Run the engine off the event loop so a slow SAS run never blocks other
         # sessions (spec §5.1 / PLAN.md). Inputs are snapshotted in _trigger.
-        return await _run_snapshot(engine, contract, snapshot)
+        run_contract = contract
+        if choices_cache.has_choices_from(contract):
+            hit = choices_cache.cached(engine, contract)
+            if hit is not None:
+                run_contract = dataclasses.replace(contract, cached_choices=hit)
+        return await _run_snapshot(engine, run_contract, snapshot)
 
     @reactive.effect
     @reactive.event(input.run, ignore_none=not settings.get("auto_run", False))

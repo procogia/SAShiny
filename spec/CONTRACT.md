@@ -107,6 +107,7 @@ Either form declares one:
 | `entry` | `program` | `program`: submit the program text as-is. `macro`: submit the program text (which defines a macro), then call it. |
 | `macro` | — | Macro to call when `entry: macro`. Each input's macro name is passed as a keyword parameter of the same name. |
 | `timeout_seconds` | `300` | Wall-clock limit for the whole run. |
+| `choices_ttl_seconds` | `3600` | How long `choices_from` lists are reused (§6.4); `0` disables the cache. |
 | `reset_work` | `true` | Empty `WORK` and delete previously injected macro variables before the run. |
 
 ### 2.4 `ui`
@@ -361,6 +362,18 @@ proc sql outobs=<max_choices> noprint;
 quit;
 ```
 It then reads `work._sx_choices` and deletes it. All names are schema-validated SAS names.
+
+**Caching.** The choices of a contract are loaded once per app (or per engine, outside an app) and
+cached, keyed by contract SHA-256, for `run.choices_ttl_seconds` (integer 0–86400, default 3600; 0
+means never reuse). The cache is cleared when the SAS session or worker is replaced. In a Shiny
+module:
+- the load runs in the background;
+- each input whose choices are not loaded yet shows "Loading choices…";
+- the inputs fill when the load finishes;
+- a failure is shown in the status card (#68).
+
+A run uses fresh cached choices. Otherwise, it loads them inside the run, which is already off the
+event loop (§6.5), so validation always sees the choices.
 
 ### 6.5 Run status
 The engine reads the log of the main submission:

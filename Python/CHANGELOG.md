@@ -6,6 +6,12 @@ All notable changes to the Python library are documented here. The format follow
 
 ## [Unreleased]
 
+### Added
+
+- `choices_from` lists load once per app and contract, cached for the new
+  `run.choices_ttl_seconds` (default 3600), and load in the background in a Shiny app
+  (spec §6.4, #130).
+
 ### Fixed
 
 - The `container` deployment image now builds and runs (spec §6.8). The Python image is based on

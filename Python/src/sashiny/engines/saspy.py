@@ -550,6 +550,9 @@ class SaspyEngine(Engine):
         cannot extend the whole-run deadline (spec §6.5); the caller returns
         promptly and the session is closed asynchronously.
         """
+        from ..choices_cache import clear  # noqa: PLC0415 - avoid an import cycle
+
+        clear(self)
         sas = self._sas
         self._sas = None
         self._choices.clear()
@@ -657,7 +660,8 @@ class SaspyEngine(Engine):
         data = contract.data
         flags = {k: bool(v) for k, v in (uploads or {}).items()}
         try:
-            override = {k: [c["value"] for c in v] for k, v in self.choices(contract).items()}
+            found = getattr(contract, "cached_choices", None) or self.choices(contract)
+            override = {k: [c["value"] for c in v] for k, v in found.items()}
         except Exception as exc:  # reported on the result, never raised
             failed = Result.new(run_id, "error", engine=self.name, engine_version=self.version)
             failed.metadata["engine_error"] = f"{type(exc).__name__}: {exc}"

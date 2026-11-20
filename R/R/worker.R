@@ -97,6 +97,8 @@
     return(invisible(NULL))
   }
   if (!is.null(w$rs)) try(w$rs$kill(), silent = TRUE)
+  # A new SAS session must re-read choices (spec section 6.4, caching).
+  .sashiny_clear_choices(engine)
   w$rs <- NULL
   w$id <- NULL
   w$busy <- FALSE
@@ -276,6 +278,54 @@
   msg$result
 }
 
+#' Read `choices_from` lists in the worker without blocking (spec section 6.4).
+#'
+#' Resolves with the choices, or with an error condition (never rejects).
+#' @noRd
+.sashiny_worker_choices_promise <- function(engine, contract, poll = 0.05, timeout = 300) {
+  promises::promise(function(resolve, reject) {
+    started <- NULL
+    check <- function() {
+      w <- .sashiny_worker(engine)
+      if (is.null(started)) {
+        if (w$busy) {
+          later::later(check, poll)
+          return(invisible())
+        }
+        ok <- tryCatch({
+          w <- .sashiny_worker_start(engine)
+          w$busy <- TRUE
+          w$rs$call(function(contract) {
+            state <- utils::getFromNamespace(".sashiny_worker_state", "SAShiny")
+            SAShiny::sas_engine_choices(state$engine, contract)
+          }, list(contract))
+          TRUE
+        }, error = function(e) e)
+        if (inherits(ok, "error")) {
+          .sashiny_worker_kill(engine)
+          return(resolve(ok))
+        }
+        started <<- Sys.time()
+      }
+      if (identical(w$rs$poll_process(0L), "ready")) {
+        msg <- w$rs$read()
+        w$busy <- FALSE
+        if (!is.null(msg$error)) {
+          return(resolve(simpleError(conditionMessage(msg$error$parent %||% msg$error))))
+        }
+        return(resolve(msg$result))
+      }
+      if (as.numeric(difftime(Sys.time(), started, units = "secs")) > timeout) {
+        .sashiny_worker_kill(engine)
+        return(resolve(simpleError("reading choices timed out")))
+      }
+      later::later(check, poll)
+      invisible()
+    }
+    check()
+  })
+}
+
 #' Run any engine without blocking the event loop (spec section 6.5).
 #'
 #' saspy engines use their worker; a pool acquires a session without blocking
@@ -285,6 +335,9 @@
 .sashiny_run_async <- function(engine, contract, values, uploads = NULL, today = Sys.Date(),
                                run_id = NULL, session = NULL) {
   run_id <- run_id %||% .sashiny_run_id()
+  if (.sashiny_has_choices_from(contract) && is.null(contract$cached_choices)) {
+    contract$cached_choices <- .sashiny_cached_choices(engine, contract)
+  }
   if (inherits(engine, "sashiny_pool")) {
     return(.sashiny_pool_promise(engine, contract, values, uploads, today, run_id, session))
   }

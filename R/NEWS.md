@@ -18,6 +18,10 @@
 
 ## New features
 
+* `choices_from` lists load once per app and contract, cached for the new
+  `run.choices_ttl_seconds` (default 3600). In a running app they load in the
+  background, showing "Loading choices…", so a new browser session never
+  waits for 'SAS' (spec section 6.4, #130).
 * SAS sessions persist across runs (spec section 6.5, #130). Each saspy engine,
   and each pooled session, keeps its SAS session in one long-lived worker
   process ('callr', now in Imports). A timeout kills that worker, and the next
