@@ -1,0 +1,78 @@
+{
+  "description": "Language accessors (CONTRACT.md 8.7). 'result' is a run result's outputs and log; 'expected' gives, per accessor, the columns (name and type), the rows as JSON (null for missing), and the attributes. Types: 'double', 'character', 'integer'. Written by hand from the spec.",
+  "result": {
+    "log": "NOTE: SASHINY-BEGIN run=r1\r\nNOTE: SASHINY-BEGIN-PROGRAM\nWARNING: Variable x is uninitialized.   \nERROR: File WORK.NOPE.DATA does not exist.\n  data work.a; run;\nNote this is not a note line\nNOTE: SASHINY-END-PROGRAM\n",
+    "outputs": {
+      "stats": {
+        "columns": [
+          {"name": "origin", "type": "character", "label": "Origin", "format": "$8."},
+          {"name": "n", "type": "numeric", "label": "", "format": ""},
+          {"name": "mean_msrp", "type": "numeric", "label": "Mean MSRP", "format": "DOLLAR12."}
+        ],
+        "rows": [["Asia", 158, 24741.32], ["Europe", 123, null], [null, 147, 27180.5]],
+        "total_rows": 1000,
+        "truncated": true,
+        "formatted": false
+      },
+      "shown": {
+        "columns": [
+          {"name": "n", "type": "numeric", "label": "", "format": "COMMA6."}
+        ],
+        "rows": [["1,000"], [""]],
+        "total_rows": 2,
+        "truncated": false,
+        "formatted": true
+      },
+      "plotlog": [
+        {"level": "warning", "text": "WARNING: Variable x is uninitialized."},
+        {"level": "text", "text": "  data work.a; run;"}
+      ],
+      "report": "<html><body>Report</body></html>",
+      "broken": {"error": "dataset WORK.NOPE not found"}
+    }
+  },
+  "expected": {
+    "table": {
+      "stats": {
+        "columns": [["origin", "character"], ["n", "double"], ["mean_msrp", "double"]],
+        "rows": [["Asia", 158, 24741.32], ["Europe", 123, null], [null, 147, 27180.5]],
+        "labels": {"origin": "Origin", "n": "", "mean_msrp": "Mean MSRP"},
+        "formats": {"origin": "$8.", "n": "", "mean_msrp": "DOLLAR12."},
+        "total_rows": 1000,
+        "truncated": true
+      },
+      "shown": {
+        "columns": [["n", "character"]],
+        "rows": [["1,000"], [""]],
+        "labels": {"n": ""},
+        "formats": {"n": "COMMA6."},
+        "total_rows": 2,
+        "truncated": false
+      }
+    },
+    "log": {
+      "columns": [["line", "integer"], ["type", "character"], ["text", "character"]],
+      "rows": [
+        [1, "NOTE", "NOTE: SASHINY-BEGIN run=r1"],
+        [2, "NOTE", "NOTE: SASHINY-BEGIN-PROGRAM"],
+        [3, "WARNING", "WARNING: Variable x is uninitialized."],
+        [4, "ERROR", "ERROR: File WORK.NOPE.DATA does not exist."],
+        [5, "other", "  data work.a; run;"],
+        [6, "other", "Note this is not a note line"],
+        [7, "NOTE", "NOTE: SASHINY-END-PROGRAM"]
+      ]
+    },
+    "outputs": {
+      "frames": ["shown", "stats"],
+      "log_frames": {
+        "plotlog": [[1, "WARNING", "WARNING: Variable x is uninitialized."], [2, "other", "  data work.a; run;"]]
+      },
+      "unchanged": ["broken", "report"]
+    },
+    "errors": [
+      {"id": "missing", "message": "no output 'missing' in this result"},
+      {"id": "report", "message": "output 'report' is not a table or chart"},
+      {"id": "broken", "message": "output 'broken' could not be collected: dataset WORK.NOPE not found"}
+    ]
+  }
+}

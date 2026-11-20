@@ -31,6 +31,9 @@
   process ('callr', now in Imports). A timeout kills that worker, and the next
   run starts a new one. In a Shiny app, runs on single engines and pools no
   longer block other sessions.
+* `sas_result_table()`, `sas_result_log()` and `sas_result_outputs()` return
+  data frames: tables with 'SAS' labels and formats as column attributes, and
+  the log classified by line (spec section 8.7, #130).
 * Deployment targets (spec section 6.8). `sas_deploy()` writes deployment
   artifacts for an app directory, and `sas_deploy_targets()` lists the
   targets. The first is `container` (a non-root `Dockerfile` with a

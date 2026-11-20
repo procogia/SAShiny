@@ -3885,6 +3885,10 @@ dev = [
     { name = "pytest-cov" },
     { name = "ruff" },
 ]
+frames = [
+    { name = "pandas", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "pandas", version = "3.1.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+]
 matplotlib = [
     { name = "matplotlib", version = "3.10.9", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "matplotlib", version = "3.11.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
@@ -3935,6 +3939,7 @@ requires-dist = [
     { name = "matplotlib", marker = "extra == 'matplotlib'", specifier = ">=3.7" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.13" },
     { name = "openpyxl", marker = "extra == 'upload'", specifier = ">=3.1" },
+    { name = "pandas", marker = "extra == 'frames'", specifier = ">=2.0" },
     { name = "pandas", marker = "extra == 'plotly'", specifier = ">=2.0" },
     { name = "pandas", marker = "extra == 'upload'", specifier = ">=2.0" },
     { name = "plotly", marker = "extra == 'plotly'", specifier = ">=5.18" },
@@ -3949,7 +3954,7 @@ requires-dist = [
     { name = "shiny", marker = "extra == 'shiny'", specifier = ">=1.0" },
     { name = "streamlit", marker = "extra == 'streamlit'", specifier = ">=1.40" },
 ]
-provides-extras = ["connect", "dev", "matplotlib", "plotly", "plotnine", "saspy", "shiny", "streamlit", "upload"]
+provides-extras = ["connect", "dev", "frames", "matplotlib", "plotly", "plotnine", "saspy", "shiny", "streamlit", "upload"]
 
 [package.metadata.requires-dev]
 dev = [
