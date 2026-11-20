@@ -1,4 +1,6 @@
-# SAShiny
+# SAShiny <img src="R/man/figures/logo.png" align="right" height="139" alt="SAShiny logo: a crescent moon" />
+
+*Your SAS and Shiny programs, radiant as the moon.*
 
 Use an **unchanged SAS program** as the **server** of a Shiny app, with Shiny (R or Python) handling the UI.
 A sidecar YAML contract declares the program's inputs and outputs, and SAShiny does the rest.
@@ -27,6 +29,14 @@ analysis.sashiny.yml    # the contract: inputs → macro variables, outputs → 
 | [`Python/`](Python) | Python library (target: PyPI) |
 | [`spec/`](spec) | The contract: [CONTRACT.md](spec/CONTRACT.md), [JSON Schema](spec/sashiny.schema.json), conformance fixtures |
 | [`examples/`](examples) | Demo programs: general (`sashelp.cars`), pharma (TEAE summary), AML (threshold tuning), forecasting (ARIMA / SARIMA) |
+
+## The name
+
+SAShiny is **SAS + Shiny**, and it is pronounced like **Sashini** (/sa-SHEE-nee/). Sashini is a South
+Asian feminine given name from the Sanskrit *śaśin* (शशिन्), "moon": it means "moon",
+"moon-like" or "radiant as the moon", and in Sinhalese also "charming" or "graceful"
+([names.org](https://www.names.org/n/sashini/about)). SAS does the analysis; the Shiny half is the
+moonlight that makes it shine.
 
 ## Development
 
