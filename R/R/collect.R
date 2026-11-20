@@ -115,12 +115,10 @@
     return(plots)
   }
   if (select < 1) {
-    stop(sprintf("select=%d but graph positions are 1-based", select), call. = FALSE)
+    .sashiny_abort("engine", sprintf("select=%d but graph positions are 1-based", select))
   }
   if (select > length(plots)) {
-    stop(sprintf("select=%d but the run produced %d graph(s)", select, length(plots)),
-      call. = FALSE
-    )
+    .sashiny_abort("engine", sprintf("select=%d but the run produced %d graph(s)", select, length(plots)))
   }
   plots[select]
 }
@@ -301,7 +299,7 @@
   names_upper <- toupper(vapply(meta, function(m) as.character(m$name), character(1)))
   idx <- match(toupper(wanted), names_upper)
   if (anyNA(idx)) {
-    stop("column(s) not found: ", paste(wanted[is.na(idx)], collapse = ", "), call. = FALSE)
+    .sashiny_abort("engine", "column(s) not found: ", paste(wanted[is.na(idx)], collapse = ", "))
   }
   meta[idx]
 }

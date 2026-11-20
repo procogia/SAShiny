@@ -18,6 +18,10 @@ All notable changes to the Python library are documented here. The format follow
 - `choices_from` lists load once per app and contract, cached for the new
   `run.choices_ttl_seconds` (default 3600), and load in the background in a Shiny app
   (spec §6.4, #130).
+- Exception hierarchy (#130): `SashinyError` with `ContractError`, `ValuesError`, `EngineError`,
+  `LicenseError`, `UploadError`, `DeployError` and `RunError`, each also a subclass of the
+  built-in it replaces. `validate(..., raise_error=True)`, `Result.check()` and a readable
+  `Result.__repr__`, all matching R.
 - `Result.table(id)`, `Result.log_frame()` and `Result.frames()` return pandas DataFrames
   (spec §8.7, #130). New extra `sashiny[frames]`; the core still imports without pandas.
 

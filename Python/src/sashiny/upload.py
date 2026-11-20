@@ -31,8 +31,7 @@ MAX_NAME_BYTES = 32
 BYTES_PER_MB = 1024 * 1024
 
 
-class UploadError(ValueError):
-    """An upload failed §7 conversion (reported as ``V014``)."""
+from .errors import UploadError  # noqa: E402 - re-exported for compatibility
 
 
 @dataclass(frozen=True)

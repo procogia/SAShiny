@@ -128,13 +128,13 @@ sas_json_values <- function(json) {
     json <- rawToChar(json)
   }
   if (!is.character(json) || length(json) != 1L || is.na(json)) {
-    stop("`json` must be a single JSON string.", call. = FALSE)
+    .sashiny_abort("values", "`json` must be a single JSON string.")
   }
   # An escape is live only when preceded by an even number of backslashes.
   json <- gsub("(?<!\\\\)((?:\\\\\\\\)*)\\\\u0000", "\\1\\\\u0001", json, perl = TRUE)
   values <- jsonlite::fromJSON(json, simplifyVector = FALSE)
   if (!is.list(values) || (length(values) > 0L && is.null(names(values)))) {
-    stop("`json` must be a JSON object of input values.", call. = FALSE)
+    .sashiny_abort("values", "`json` must be a JSON object of input values.")
   }
   if (length(values) == 0L) values <- structure(list(), names = character())
   values
@@ -384,7 +384,7 @@ sas_render_values <- function(data, values, today = Sys.Date(), only = NULL,
       }
       dt <- tryCatch(
         {
-          if (!grepl("^\\d{4}-\\d{2}-\\d{2}$", it)) stop("bad date")
+          if (!grepl("^\\d{4}-\\d{2}-\\d{2}$", it)) .sashiny_abort("values", "bad date")
           .sashiny_resolve_date(it, today)
         },
         error = function(e) NULL
@@ -405,5 +405,5 @@ sas_render_values <- function(data, values, today = Sys.Date(), only = NULL,
     return(list(err = NULL, rendered = vapply(dates, .sashiny_render_date, character(1), mode = mode)))
   }
 
-  stop("unknown input type: ", kind)
+  .sashiny_abort("values", "unknown input type: ", kind)
 }

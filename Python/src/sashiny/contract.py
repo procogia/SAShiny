@@ -131,18 +131,39 @@ def load(path: str | Path) -> Contract:
     return Contract(data=data, base_dir=p.parent, path=p)
 
 
-def validate(contract: Contract, today: date | None = None) -> list[Issue]:
+def validate(
+    contract: Contract, today: date | None = None, *, raise_error: bool = False
+) -> list[Issue]:
     """Validate a contract, returning every schema and semantic issue.
 
     Args:
         contract: The loaded :class:`Contract`.
         today: The date used to resolve ``"today"`` in date bounds. Defaults to
             the current date.
+        raise_error: Raise a :class:`sashiny.errors.ContractError` naming the
+            contract file and every issue's path instead of returning issues.
 
     Returns:
         A list of :class:`Issue` objects. Empty when the contract is valid.
 
+    Raises:
+        ContractError: With ``raise_error=True``, when the contract is invalid.
+
     """
+    if raise_error:
+        found = validate(contract, today)
+        if found:
+            from .errors import ContractError  # noqa: PLC0415 - avoid an import cycle
+
+            name = contract.path.name if contract.path else "contract"
+            plural = "" if len(found) == 1 else "s"
+            details = "\n".join(f"* {i.code} {i.path or '(root)'}: {i.message}" for i in found)
+            raise ContractError(
+                f"{name} is invalid ({len(found)} issue{plural}):\n{details}",
+                issues=found,
+                file=str(contract.path or ""),
+            )
+        return []
     issues: list[Issue] = []
     validator = Draft202012Validator(SCHEMA)
     for err in validator.iter_errors(contract.data):

@@ -4,16 +4,21 @@
 \alias{sas_validate}
 \title{Validate a contract}
 \usage{
-sas_validate(contract, today = Sys.Date())
+sas_validate(contract, today = Sys.Date(), error = FALSE)
 }
 \arguments{
 \item{contract}{A \code{sashiny_contract} object from \code{\link[=sas_contract]{sas_contract()}}.}
 
 \item{today}{A \code{Date} used to resolve \code{"today"} in date bounds. Defaults to
 the current date.}
+
+\item{error}{\code{TRUE} to raise an error of class \code{sashiny_error_contract}
+(naming the contract file and every issue's path) when the contract is
+invalid, instead of returning the issues.}
 }
 \value{
-A list of \code{sashiny_issue} objects (empty when valid).
+A list of \code{sashiny_issue} objects (empty when valid); with
+\code{error = TRUE}, the contract, invisibly.
 }
 \description{
 Validates the contract against the JSON Schema (E000) and the semantic rules

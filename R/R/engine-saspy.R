@@ -138,7 +138,7 @@ sas_connect <- function(profile, region = "us1", url = NULL, context = NULL,
                         license_ack = NULL) {
   if (identical(profile, "oda")) {
     if (!(region %in% names(.sashiny_oda_hosts))) {
-      stop(
+      .sashiny_abort("engine",
         "unknown ODA region '", region, "'; expected one of ",
         paste(names(.sashiny_oda_hosts), collapse = ", ")
       )
@@ -152,7 +152,7 @@ sas_connect <- function(profile, region = "us1", url = NULL, context = NULL,
     )
   } else if (identical(profile, "viya")) {
     if (is.null(url)) {
-      stop("url is required for profile 'viya'")
+      .sashiny_abort("engine", "url is required for profile 'viya'")
     }
     cfg <- list(url = url, authkey = "viya", options = list("fullstimer"))
     if (!is.null(context)) {
@@ -163,7 +163,7 @@ sas_connect <- function(profile, region = "us1", url = NULL, context = NULL,
     }
   } else if (identical(profile, "sas94")) {
     if (is.null(host)) {
-      stop("host is required for profile 'sas94'")
+      .sashiny_abort("engine", "host is required for profile 'sas94'")
     }
     if (!is.null(saspath)) {
       cfg <- list(
@@ -186,7 +186,7 @@ sas_connect <- function(profile, region = "us1", url = NULL, context = NULL,
       )
     }
   } else {
-    stop("unknown profile '", profile, "'; expected 'oda', 'viya' or 'sas94'")
+    .sashiny_abort("engine", "unknown profile '", profile, "'; expected 'oda', 'viya' or 'sas94'")
   }
 
   sas_engine_saspy(cfg, license_ack = license_ack)

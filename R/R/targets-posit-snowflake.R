@@ -179,15 +179,13 @@
   },
   apply = function(ctx, result, runner) {
     if (!identical(ctx$language, "r")) {
-      stop("apply for a Python app must run in Python (sashiny.deploy.deploy)", call. = FALSE)
+      .sashiny_abort("deploy", "apply for a Python app must run in Python (sashiny.deploy.deploy)")
     }
     o <- ctx$options
     server <- o$server
     if (is.null(server) && !(nzchar(Sys.getenv("CONNECT_SERVER")) && nzchar(Sys.getenv("CONNECT_API_KEY")))) {
-      stop(
-        "apply needs the option server or the environment variables CONNECT_SERVER and CONNECT_API_KEY",
-        call. = FALSE
-      )
+      .sashiny_abort("deploy",
+        "apply needs the option server or the environment variables CONNECT_SERVER and CONNECT_API_KEY")
     }
     env <- ctx$profile$env
     # CRAN: the profile's plain variables are set only for the publish call and restored on exit.

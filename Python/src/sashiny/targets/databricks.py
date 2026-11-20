@@ -17,6 +17,7 @@ import re
 import shutil
 
 from ..deploy import DeployResult, Runner, Target, _Context, register
+from ..errors import DeployError
 
 __all__ = ["app_yaml", "generate"]
 
@@ -27,15 +28,15 @@ _KEYS = {"SASHINY_SAS_USER": "sas-user", "SASHINY_SAS_PASSWORD": "sas-password"}
 
 def _options(ctx: _Context) -> tuple[str, str]:
     if ctx.profile.method != "http":
-        raise ValueError("target databricks_apps supports only http (Viya) profiles")
+        raise DeployError("target databricks_apps supports only http (Viya) profiles")
     name = ctx.options.get("app_name", "sashiny-app")
     if not isinstance(name, str) or not _APP_NAME.match(name):
-        raise ValueError(
+        raise DeployError(
             "app_name must be 2-30 lowercase letters, digits or '-', starting with a letter"
         )
     scope = ctx.options.get("secret_scope", "sashiny")
     if not isinstance(scope, str) or not _SCOPE.match(scope):
-        raise ValueError("secret_scope must be 1-128 letters, digits, '_', '-' or '.'")
+        raise DeployError("secret_scope must be 1-128 letters, digits, '_', '-' or '.'")
     return name, scope
 
 
@@ -153,7 +154,7 @@ def _apply(ctx: _Context, result: DeployResult, runner: Runner) -> list[list[str
     opts = ctx.options
     path = opts.get("source_code_path")
     if not isinstance(path, str) or not path.startswith("/Workspace/"):
-        raise ValueError("apply needs the option source_code_path (a /Workspace/... path)")
+        raise DeployError("apply needs the option source_code_path (a /Workspace/... path)")
     name, _scope = _options(ctx)
     out = str(result.out_dir)
     prof = opts.get("databricks_profile")

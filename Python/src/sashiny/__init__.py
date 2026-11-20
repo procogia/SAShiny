@@ -17,6 +17,15 @@ from .engines import (
     connect_in_session,
     load_profiles,
 )
+from .errors import (
+    ContractError,
+    DeployError,
+    EngineError,
+    LicenseError,
+    RunError,
+    SashinyError,
+    ValuesError,
+)
 from .lint import lint
 from .pool import Pool
 from .profiles import Profile, connect_from_env, parse_profile
@@ -29,17 +38,24 @@ from .wrapper import reset_code, wrapper_code
 
 __all__ = [
     "Contract",
+    "ContractError",
+    "DeployError",
     "Engine",
+    "EngineError",
     "Issue",
+    "LicenseError",
     "LogLine",
     "Pool",
     "ProcPythonEngine",
     "Profile",
     "Result",
+    "RunError",
+    "SashinyError",
     "SaspyEngine",
     "TableResult",
     "UploadError",
     "UploadFile",
+    "ValuesError",
     "__version__",
     "app",
     "chart_backends",

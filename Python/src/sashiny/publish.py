@@ -20,6 +20,8 @@ from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 from typing import Literal
 
+from .errors import DeployError
+
 __all__ = ["PublishResult", "bundle_files", "on_connect", "publish"]
 
 SECRET_NAMES = frozenset({".authinfo", "_authinfo", ".netrc", "_netrc", ".Renviron", ".env"})
@@ -128,18 +130,18 @@ def publish(  # noqa: PLR0913 - explicit deployment options
 
     """
     if not license_ack:
-        raise ValueError(
+        raise DeployError(
             "publishing requires license_ack=True: confirm that the deployed app runs "
             "programs only on a SAS system you are licensed to use"
         )
     root = Path(app_dir).resolve()
     if not (root / "app.py").is_file():
-        raise ValueError(f"app_dir must contain app.py: {root}")
+        raise DeployError(f"app_dir must contain app.py: {root}")
     names = ["SASHINY_LICENSE_ACK", *env_vars]
     if sas_credentials == "env":
         missing = [v for v in ("SASHINY_SAS_USER", "SASHINY_SAS_PASSWORD") if not os.environ.get(v)]
         if missing:
-            raise ValueError(
+            raise DeployError(
                 f"sas_credentials='env' needs {' and '.join(missing)} set in this process; "
                 "or use sas_credentials='server'"
             )

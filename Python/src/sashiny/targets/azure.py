@@ -12,6 +12,7 @@ import shutil
 from typing import Any
 
 from ..deploy import DeployResult, Runner, Target, _Context, _generate_container, register
+from ..errors import DeployError
 
 __all__ = ["bicep", "generate", "validate_app_name"]
 
@@ -30,7 +31,7 @@ def _secret_param(var: str) -> str:
 def validate_app_name(name: object) -> str:
     """Return ``name`` if it is a valid ``app_name`` (spec §6.8.1), else raise ``ValueError``."""
     if not isinstance(name, str) or not _APP_NAME.match(name) or name.endswith("-"):
-        raise ValueError(
+        raise DeployError(
             "app_name must be 2-32 lowercase letters, digits or '-', starting with a letter"
         )
     return name
@@ -44,14 +45,14 @@ def _options(ctx: _Context) -> tuple[str, int, str | None]:
         or not isinstance(replicas, int)
         or not 1 <= replicas <= _MAX_REPLICAS
     ):
-        raise ValueError("max_replicas must be an integer from 1 to 30")
+        raise DeployError("max_replicas must be an integer from 1 to 30")
     subnet = ctx.options.get("infrastructure_subnet_id")
     if subnet is not None and (
         not isinstance(subnet, str)
         or not subnet.startswith("/subscriptions/")
         or re.search(r"[\s'\"\\$`]", subnet)
     ):
-        raise ValueError("infrastructure_subnet_id must be a subnet resource id")
+        raise DeployError("infrastructure_subnet_id must be a subnet resource id")
     return name, replicas, subnet
 
 
@@ -346,7 +347,7 @@ def _apply(ctx: _Context, result: DeployResult, runner: Runner) -> list[list[str
             k for k in ("sas_user_secret_uri", "sas_password_secret_uri") if not opts.get(k)
         ]
     if missing:
-        raise ValueError("apply needs the options " + ", ".join(missing))
+        raise DeployError("apply needs the options " + ", ".join(missing))
     name, _replicas, _subnet = _options(ctx)
     tag = str(opts.get("image_tag", "latest"))
     out = str(result.out_dir)

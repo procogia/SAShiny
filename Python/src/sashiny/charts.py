@@ -15,6 +15,8 @@ import math
 from collections.abc import Callable
 from typing import Any
 
+from .errors import ValuesError
+
 __all__ = ["chart_backends", "render_chart"]
 
 # A chart value is the same shape as a table value (spec §8.1).
@@ -30,7 +32,7 @@ def _column_index(value: ChartValue, name: str) -> int:
     for i, col in enumerate(value.get("columns", [])):
         if col["name"].lower() == name.lower():
             return i
-    raise ValueError(f"unknown column {name!r}")
+    raise ValuesError(f"unknown column {name!r}")
 
 
 def _series(value: ChartValue, name: str) -> list[Any]:
@@ -83,9 +85,9 @@ def render_chart(
     if render is not None:
         return render(value, spec)
     if spec is None:
-        raise ValueError("chart has no spec and no render callback")
+        raise ValuesError("chart has no spec and no render callback")
     if backend not in ("plotnine", "matplotlib", "plotly"):
-        raise ValueError(f"unknown chart backend {backend!r}")
+        raise ValuesError(f"unknown chart backend {backend!r}")
     resolved = _resolve_spec(value, spec)
     if backend == "plotnine":
         return _render_plotnine(value, resolved)
@@ -103,7 +105,7 @@ def _resolve_spec(value: ChartValue, spec: ChartSpec) -> ChartSpec:
     """
     kind = spec.get("kind")
     if kind not in _KINDS:
-        raise ValueError(f"unknown chart kind {kind!r}")
+        raise ValuesError(f"unknown chart kind {kind!r}")
     resolved = dict(spec)
     for field in _FIELDS:
         name = spec.get(field)
@@ -112,7 +114,7 @@ def _resolve_spec(value: ChartValue, spec: ChartSpec) -> ChartSpec:
     if kind == "histogram":
         resolved.pop("y", None)
     elif resolved.get("y") is None:
-        raise ValueError(f"chart kind {kind!r} requires a 'y' column")
+        raise ValuesError(f"chart kind {kind!r} requires a 'y' column")
     return resolved
 
 

@@ -14,6 +14,7 @@ from collections.abc import Sequence
 from typing import Any
 
 from ..deploy import DeployResult, Runner, Target, _Context, register
+from ..errors import DeployError
 from .snowflake import _ident
 
 __all__ = ["egress_sql", "generate"]
@@ -187,11 +188,11 @@ def _apply(ctx: _Context, result: DeployResult, runner: Runner) -> list[list[str
     from ..publish import publish  # noqa: PLC0415 - optional dependency path
 
     if ctx.language != "python":
-        raise ValueError("apply for an R app must run in R (SAShiny::sas_deploy)")
+        raise DeployError("apply for an R app must run in R (SAShiny::sas_deploy)")
     opts: dict[str, Any] = ctx.options
     server = opts.get("server")
     if not server and not (os.environ.get("CONNECT_SERVER") and os.environ.get("CONNECT_API_KEY")):
-        raise ValueError(
+        raise DeployError(
             "apply needs the option server or the environment variables CONNECT_SERVER and "
             "CONNECT_API_KEY"
         )

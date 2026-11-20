@@ -26,7 +26,7 @@
 sas_result_table <- function(result, id, tibble = FALSE) {
   value <- .sashiny_result_output(result, id)
   if (!.sashiny_is_table_value(value)) {
-    stop(sprintf("output '%s' is not a table or chart", id), call. = FALSE)
+    .sashiny_abort("values", sprintf("output '%s' is not a table or chart", id))
   }
   df <- .sashiny_table_df(value)
   for (j in seq_along(value$columns)) {
@@ -97,11 +97,11 @@ sas_result_outputs <- function(result) {
 .sashiny_result_output <- function(result, id) {
   outputs <- result$outputs %||% list()
   if (!is.character(id) || length(id) != 1L || !id %in% names(outputs)) {
-    stop(sprintf("no output '%s' in this result", paste(id, collapse = ",")), call. = FALSE)
+    .sashiny_abort("values", sprintf("no output '%s' in this result", paste(id, collapse = ",")))
   }
   value <- outputs[[id]]
   if (is.list(value) && !is.null(names(value)) && identical(names(value), "error")) {
-    stop(sprintf("output '%s' could not be collected: %s", id, value$error), call. = FALSE)
+    .sashiny_abort("values", sprintf("output '%s' could not be collected: %s", id, value$error))
   }
   value
 }

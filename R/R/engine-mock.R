@@ -21,9 +21,7 @@
 #' @noRd
 .sashiny_require_testing <- function() {
   if (!.sashiny_testing()) {
-    stop("the mock engine is an internal test fixture; connect to SAS with sas_connect()",
-      call. = FALSE
-    )
+    .sashiny_abort("engine", "the mock engine is an internal test fixture; connect to SAS with sas_connect()")
   }
   invisible(TRUE)
 }
@@ -176,7 +174,7 @@ sas_engine_run.sashiny_engine_mock <- function(engine, contract, values, today =
 .sashiny_write_recording <- function(engine, contract, macros, recording, files = list()) {
   .sashiny_require_testing()
   if (is.null(engine$recordings_dir)) {
-    stop("recordings_dir is not set", call. = FALSE)
+    .sashiny_abort("engine", "recordings_dir is not set")
   }
   dir.create(engine$recordings_dir, recursive = TRUE, showWarnings = FALSE)
   key <- .sashiny_recording_key(contract, macros, files)

@@ -156,10 +156,8 @@ sas_engine_close.default <- function(engine) {
   if (inherits(engine, c("sashiny_engine_saspy", "sashiny_pool")) || .sashiny_testing()) {
     return(invisible(engine))
   }
-  stop(
+  .sashiny_abort("engine",
     "engine must come from sas_connect(), sas_engine_saspy() or sas_pool(): ",
     "SAShiny runs programs only on a live 'SAS' 9.4, 'SAS Viya' or ",
-    "'SAS OnDemand for Academics' system",
-    call. = FALSE
-  )
+    "'SAS OnDemand for Academics' system")
 }

@@ -24,6 +24,7 @@ from .collect import is_paired, paired_chart_spec
 from .contract import Contract, default_module_id, load, resolve_date
 from .engines import Engine
 from .engines.base import check_engine
+from .errors import ValuesError
 from .result import Result
 from .upload import UploadError, UploadFile
 
@@ -152,7 +153,7 @@ def widget_spec(
         if "sample" in spec:
             kw["sample"] = True
         return WidgetSpec("file_uploader", kw)
-    raise ValueError(f"unknown input type {kind}")
+    raise ValuesError(f"unknown input type {kind}")
 
 
 def to_values(contract: Contract, raw: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -294,7 +295,7 @@ def streamlit_app(
     loaded = [c if isinstance(c, Contract) else load(c) for c in contracts]
     ids = [_module_id(c) for c in loaded]
     if len(set(ids)) != len(ids):
-        raise ValueError("two contracts resolve to the same module id")
+        raise ValuesError("two contracts resolve to the same module id")
     eng = _engine(st, engine)
     page_title = title or (loaded[0].data.get("title") if len(loaded) == 1 else None) or "SAShiny"
     st.title(page_title)

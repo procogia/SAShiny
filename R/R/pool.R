@@ -27,18 +27,18 @@ sas_pool <- function(engine, min_size = 0L, max_size = 4L,
                      idle_timeout = 300, max_runs_per_session = 100L,
                      acquire_timeout = 30) {
   if (min_size < 0L || max_size < 0L) {
-    stop("min_size and max_size must be non-negative", call. = FALSE)
+    .sashiny_abort("engine", "min_size and max_size must be non-negative")
   }
   if (min_size > max_size) {
-    stop("min_size must not exceed max_size", call. = FALSE)
+    .sashiny_abort("engine", "min_size must not exceed max_size")
   }
   # Session counts are discrete: a fractional maximum would admit one more
   # session than configured (spec section 6.5 bounds the pool).
   if (!.sashiny_is_int(min_size) || !.sashiny_is_int(max_size)) {
-    stop("min_size and max_size must be whole numbers", call. = FALSE)
+    .sashiny_abort("engine", "min_size and max_size must be whole numbers")
   }
   if (!is.finite(acquire_timeout) || acquire_timeout < 0) {
-    stop("acquire_timeout must be a non-negative finite number", call. = FALSE)
+    .sashiny_abort("engine", "acquire_timeout must be a non-negative finite number")
   }
   if (!is.function(engine)) .sashiny_check_engine(engine)
   pool <- new.env(parent = emptyenv())
@@ -247,7 +247,7 @@ sas_engine_run.sashiny_pool <- function(engine, contract, values, today = Sys.Da
 sas_engine_choices.sashiny_pool <- function(engine, contract) {
   session <- .sashiny_acquire(engine)
   if (is.null(session)) {
-    stop(sprintf("pool exhausted: all %d sessions busy", engine$max_size), call. = FALSE)
+    .sashiny_abort("engine", sprintf("pool exhausted: all %d sessions busy", engine$max_size))
   }
   on.exit(.sashiny_release(engine, session), add = TRUE)
   sas_engine_choices(session$engine, contract)

@@ -15,6 +15,7 @@ import re
 import shutil
 
 from ..deploy import DeployResult, Runner, Target, _Context, register
+from ..errors import DeployError
 from .snowflake import _ident, _snow
 
 __all__ = ["generate"]
@@ -25,10 +26,10 @@ _TITLE = re.compile(r"^[^'\"\\\x00-\x1f\x7f]{1,100}$")
 def _names(ctx: _Context) -> dict[str, str]:
     o = ctx.options
     if ctx.profile.method != "http":
-        raise ValueError("target streamlit_snowflake supports only http (Viya) profiles")
+        raise DeployError("target streamlit_snowflake supports only http (Viya) profiles")
     title = o.get("title", "SAShiny")
     if not isinstance(title, str) or not _TITLE.match(title):
-        raise ValueError(
+        raise DeployError(
             "title must be 1-100 characters without quotes, backslashes or control characters"
         )
     n = {

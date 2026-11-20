@@ -15,6 +15,7 @@ from datetime import date
 from typing import Any
 
 from .contract import NUMERIC_LITERAL, SAS_NAME, Issue, choice_values, macro_names, resolve_date
+from .errors import ValuesError
 
 __all__ = ["json_values", "render_values", "superq_macros"]
 
@@ -100,7 +101,7 @@ def json_values(text: str | bytes) -> dict[str, Any]:
     """
     values = json.loads(text)
     if not isinstance(values, dict):
-        raise ValueError("json must be a JSON object of input values")
+        raise ValuesError("json must be a JSON object of input values")
     return values
 
 

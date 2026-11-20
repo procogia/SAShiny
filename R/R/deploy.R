@@ -45,7 +45,7 @@
   port <- options$port %||% 8000L
   if (!is.numeric(port) || length(port) != 1L || is.na(port) || port != round(port) ||
     port < 1 || port > 65535) {
-    stop("port must be an integer from 1 to 65535", call. = FALSE)
+    .sashiny_abort("deploy", "port must be an integer from 1 to 65535")
   }
   as.integer(port)
 }
@@ -173,10 +173,10 @@ sas_deploy_targets <- function() {
 #' @noRd
 .sashiny_lookup_target <- function(target) {
   if (!is.character(target) || length(target) != 1L || !exists(target, envir = .sashiny_targets)) {
-    stop(sprintf(
+    .sashiny_abort("deploy", sprintf(
       "unknown deployment target '%s'; expected one of %s",
       paste(target, collapse = ","), paste(sort(ls(.sashiny_targets)), collapse = ", ")
-    ), call. = FALSE)
+    ))
   }
   get(target, envir = .sashiny_targets)
 }
@@ -189,19 +189,17 @@ sas_deploy_targets <- function() {
   has_r <- file.exists(file.path(app_dir, "app.R"))
   if (!is.null(requested)) {
     if (!requested %in% c("python", "r")) {
-      stop("language must be 'python' or 'r'", call. = FALSE)
+      .sashiny_abort("deploy", "language must be 'python' or 'r'")
     }
     return(list(language = requested, generated = !(if (requested == "python") has_py else has_r)))
   }
   if (has_py != has_r) {
     return(list(language = if (has_py) "python" else "r", generated = FALSE))
   }
-  stop(
+  .sashiny_abort("deploy",
     "cannot detect the app language: the folder has ",
     if (has_py) "both app.py and app.R" else "neither app.py nor app.R",
-    "; pass language = \"python\" or language = \"r\"",
-    call. = FALSE
-  )
+    "; pass language = \"python\" or language = \"r\"")
 }
 
 #' The default command runner: runs a command and returns its exit status.
@@ -294,7 +292,7 @@ sas_deploy <- function(app_dir, target, out_dir = NULL, profile = NULL, ...,
   ), class = "sashiny_deployment")
   if (isTRUE(apply)) {
     if (is.null(spec$apply)) {
-      stop(sprintf("target %s has no apply step; follow its generated docs", target), call. = FALSE)
+      .sashiny_abort("deploy", sprintf("target %s has no apply step; follow its generated docs", target))
     }
     result$commands <- spec$apply(ctx, result, runner %||% .sashiny_system_runner)
   }
@@ -305,35 +303,33 @@ sas_deploy <- function(app_dir, target, out_dir = NULL, profile = NULL, ...,
 #' @noRd
 .sashiny_deploy_validate <- function(spec, app_dir, profile, license_ack, version, options) {
   if (!isTRUE(license_ack)) {
-    stop(
+    .sashiny_abort("deploy",
       "deploying requires license_ack = TRUE: confirm the deployed app runs programs only on a ",
-      "'SAS' system you are licensed to use",
-      call. = FALSE
-    )
+      "'SAS' system you are licensed to use")
   }
   if (is.null(profile)) {
-    stop("a SAS connection profile is required", call. = FALSE)
+    .sashiny_abort("deploy", "a SAS connection profile is required")
   }
   prof <- if (inherits(profile, "sashiny_profile")) profile else sas_profile(profile)
   private <- options[[spec$private_network_option]]
   has_private <- !is.null(private) && !isFALSE(private) && !identical(private, "") && !anyNA(private)
   if (isTRUE(prof$requires_vpn) && !has_private) {
-    stop(sprintf(
+    .sashiny_abort("deploy", sprintf(
       "profile %s requires a private network; pass %s for target %s",
       prof$name, spec$private_network_option, spec$id
-    ), call. = FALSE)
+    ))
   }
   if (isTRUE(prof$needs_java) && !isTRUE(spec$needs_java_runtime)) {
-    stop(sprintf(
+    .sashiny_abort("deploy", sprintf(
       "target %s cannot provide Java 17, which profile %s (iom) needs; use an http (Viya) profile",
       spec$id, prof$name
-    ), call. = FALSE)
+    ))
   }
   if (!is.null(options$port)) .sashiny_deploy_port(options)
   root <- normalizePath(app_dir, winslash = "/", mustWork = TRUE)
   lang <- .sashiny_deploy_language(root, options$language)
   if (!lang$language %in% spec$languages) {
-    stop(sprintf("target %s does not support language %s", spec$id, lang$language), call. = FALSE)
+    .sashiny_abort("deploy", sprintf("target %s does not support language %s", spec$id, lang$language))
   }
   list(
     app_dir = root, profile = prof, language = lang$language, generated = lang$generated,
@@ -345,7 +341,7 @@ sas_deploy <- function(app_dir, target, out_dir = NULL, profile = NULL, ...,
 #' @noRd
 .sashiny_deploy_write <- function(root, out, artifacts) {
   if (dir.exists(out) && length(list.files(out, all.files = TRUE, no.. = TRUE)) > 0L) {
-    stop("out_dir must be empty or absent: ", out, call. = FALSE)
+    .sashiny_abort("deploy", "out_dir must be empty or absent: ", out)
   }
   bundle <- .sashiny_bundle_files(root)
   written <- character(0)

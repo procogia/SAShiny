@@ -12,7 +12,65 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 
-__all__ = ["LogLine", "Result", "TableResult"]
+__all__ = ["LogLine", "Result", "TableResult", "failure_reason", "output_summary"]
+
+
+def first_error(log: str) -> tuple[int, str] | None:
+    """Return ``(line number, text)`` of the first ``ERROR`` line, or ``None``."""
+    from .collect import split_log  # noqa: PLC0415 - avoid an import cycle
+
+    for i, line in enumerate(split_log(log or ""), 1):
+        if line.startswith("ERROR"):
+            return i, line
+    return None
+
+
+def failure_reason(result: Result) -> str:
+    """Return the first reason a run failed: ERROR line, engine error or invalid input."""
+    hit = first_error(result.log)
+    if hit is not None:
+        return f"{hit[1]} (log line {hit[0]})"
+    meta = result.metadata
+    if meta.get("engine_error"):
+        return str(meta["engine_error"])
+    issues = meta.get("issues") or []
+    if issues:
+        i = issues[0]
+        parts = ["invalid input", i.get("code", ""), i.get("input") or "", i.get("message") or ""]
+        return " ".join(p for p in parts if p)
+    return "no ERROR line in the log"
+
+
+def _duration(started: Any, ended: Any) -> float | None:
+    try:
+        return (datetime.fromisoformat(ended) - datetime.fromisoformat(started)).total_seconds()
+    except (TypeError, ValueError):
+        return None
+
+
+def output_summary(value: Any) -> str:  # noqa: PLR0911 - one return per output kind
+    """Return a one-line summary of a §8.1 output value."""
+    if isinstance(value, dict) and set(value) == {"error"}:
+        return f"not collected: {value['error']}"
+    if isinstance(value, dict) and "columns" in value and "rows" in value:
+        n, total = len(value["rows"]), value.get("total_rows")
+        more = f" of {total}" if total is not None and total > n else ""
+        return f"table, {n} row(s){more} x {len(value['columns'])} column(s)"
+    if (
+        isinstance(value, list)
+        and value
+        and all(isinstance(v, dict) and "level" in v for v in value)
+    ):
+        return f"log, {len(value)} line(s)"
+    if isinstance(value, dict) and "sas" in value and "sashiny" in value:
+        return "paired SAS graph and SAShiny chart"
+    if isinstance(value, dict) and "filename" in value:
+        return f"download {value['filename']}"
+    if isinstance(value, str):
+        return f"html, {len(value)} characters"
+    if isinstance(value, list):
+        return f"plot, {len(value)} graph(s)"
+    return type(value).__name__
 
 
 @dataclass
@@ -55,6 +113,37 @@ class Result:
     outputs: dict[str, Any] = field(default_factory=dict)
     log: str = ""
     metadata: dict[str, Any] = field(default_factory=dict)
+
+    def check(self) -> Result:
+        """Return ``self`` if the run succeeded or warned; otherwise raise :class:`RunError`.
+
+        The message names the run id and the first ``ERROR`` log line (or the
+        engine error, or the first invalid input), like R's ``sas_check()``.
+
+        Raises:
+            RunError: If ``status`` is ``error`` (or anything but success/warning).
+
+        """
+        if self.status in ("success", "warning"):
+            return self
+        from .errors import RunError  # noqa: PLC0415 - avoid an import cycle
+
+        raise RunError(f"run {self.run_id} failed: {failure_reason(self)}", self)
+
+    def __repr__(self) -> str:
+        """Status, run id, duration, backend, failure reason and one line per output."""
+        meta = self.metadata
+        lines = [f"<sashiny result> {self.status}", f"  run id:   {self.run_id}"]
+        seconds = meta.get("seconds", _duration(meta.get("started_at"), meta.get("ended_at")))
+        if seconds is not None:
+            lines.append(f"  duration: {float(seconds):.2f} s")
+        lines.append(f"  backend:  {meta.get('backend') or meta.get('engine', '')}")
+        if self.status not in ("success", "warning"):
+            lines.append(f"  reason:   {failure_reason(self)}")
+        if self.outputs:
+            lines.append("  outputs:")
+            lines += [f"    {k}: {output_summary(v)}" for k, v in self.outputs.items()]
+        return "\n".join(lines)
 
     def table(self, output_id: str) -> Any:
         """Return a table or chart output as a pandas DataFrame (spec §8.7).
