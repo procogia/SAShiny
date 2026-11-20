@@ -9,7 +9,14 @@ from typing import Any
 
 from .charts import chart_backends, render_chart
 from .contract import Contract, Issue, default_module_id, load, validate
-from .engines import Engine, SaspyEngine, connect, load_profiles
+from .engines import (
+    Engine,
+    ProcPythonEngine,
+    SaspyEngine,
+    connect,
+    connect_in_session,
+    load_profiles,
+)
 from .lint import lint
 from .pool import Pool
 from .profiles import Profile, connect_from_env, parse_profile
@@ -26,6 +33,7 @@ __all__ = [
     "Issue",
     "LogLine",
     "Pool",
+    "ProcPythonEngine",
     "Profile",
     "Result",
     "SaspyEngine",
@@ -37,6 +45,7 @@ __all__ = [
     "chart_backends",
     "connect",
     "connect_from_env",
+    "connect_in_session",
     "default_module_id",
     "deploy",
     "json_values",

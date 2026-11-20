@@ -28,10 +28,10 @@ def testing() -> bool:
 def check_engine(engine: Engine) -> Engine:
     """Return ``engine`` if it runs on a live SAS system (spec §6.6).
 
-    The public entry points accept only :class:`sashiny.SaspyEngine` and
-    :class:`sashiny.Pool`. Any other engine (the internal mock, or a custom
-    class that could return logs that never came from SAS) is accepted only
-    inside the test suite.
+    The public entry points accept only :class:`sashiny.SaspyEngine` (including
+    the in-session :class:`sashiny.ProcPythonEngine`) and :class:`sashiny.Pool`.
+    Any other engine (the internal mock, or a custom class that could return
+    logs that never came from SAS) is accepted only inside the test suite.
 
     Raises:
         TypeError: For any other engine outside the test suite.

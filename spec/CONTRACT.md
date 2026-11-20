@@ -386,6 +386,13 @@ The engine reads the log of the main submission:
 
 A timeout MUST abort the SAS session. The pool MUST then discard and replace that session.
 
+*In-session exception (PROC PYTHON, Python only).* An in-session engine (§6.6) runs inside the SAS job
+that started it and cannot abort its own parent session. When `timeout_seconds` passes, it MUST stop
+waiting and return an `error` result with `metadata.engine_error` starting with
+`run exceeded timeout_seconds`, and it MUST refuse every later run on that engine with an error
+result. Ending the SAS job is left to the scheduler that started it. There is no pool for
+in-session engines: one SAS job is one session and runs one contract at a time.
+
 **Session lifetime.**
 - An engine owns one SAS session and reuses it across runs. Each run resets WORK (§6.2). The session
   is replaced only after an engine error or a timeout, and the replacement starts lazily, on the next
@@ -407,13 +414,26 @@ within the timeout, the run returns an error `Result` with `metadata.engine_erro
 ### 6.6 Supported backends and licence acknowledgement
 
 A run that users can reach through the public API MUST be executed by a live, licensed SAS system.
-Exactly three backends are supported:
+Exactly three backends are supported through saspy, plus one in-session backend (Python only):
 
 | Backend | saspy access method | Configuration that identifies it |
 |---|---|---|
 | SAS OnDemand for Academics (ODA) | IOM | `iomhost` is a list of `*.oda.sas.com` hosts, `authkey: oda` |
 | SAS Viya | HTTP | `url` starting with `https://` (or `http://`) |
 | SAS 9.4 | IOM or SSH | IOM: `iomhost` (one host) and `iomport`; SSH: `saspath` and `host` |
+| In-session (PROC PYTHON) | none: the `SAS` callback object of PROC PYTHON | `connect_in_session(SAS, ...)` inside a SAS Viya or SAS 9.4M9+ job |
+
+**In-session backend.** `sashiny.connect_in_session(SAS, license_ack=..., own_session=False)` returns
+an engine that submits through the `SAS` object PROC PYTHON injects into its Python session. It runs
+in batch only (no Shiny server inside PROC PYTHON). Each main submission is wrapped in
+`PROC PRINTTO LOG=` and `ODS HTML5 FILE=` files in the WORK directory, which the engine reads back as
+the log and the listing; the run status (§6.5) is parsed from that log exactly as for saspy. Downloads
+are read from the WORK directory on disk. Because the run shares the user's SAS session, the §6.2 reset
+(which empties WORK and deletes macro variables) is allowed only with `own_session = True`, which
+confirms that the SAS job exists only for this run; a contract with `reset_work: true` (the default) on
+an engine without `own_session = True` returns an error result and submits nothing. SAShiny cannot fully
+verify that the object is a real PROC PYTHON callback, so the licence acknowledgement applies as for
+every backend. R has no in-session backend (PROC R is a follow-up).
 
 Rules:
 - An engine configuration (a saspy configuration mapping) that matches none of the rows is rejected when the engine is

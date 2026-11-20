@@ -39,4 +39,14 @@ cd R && SASHINY_LIVE=1 SASHINY_PROFILE=oda Rscript -e 'testthat::test_file("test
 ```
 
 Record the summary (backend, date, process ids, timings) in the PR or in `docs/qa-live-checklist.md`.
+
+PROC PYTHON (#128) runs inside SAS, so pytest cannot drive it. Submit
+`Python/tests/live/procpython/probe.sas` in a SAS Viya job (set `repo` first). It answers the #128
+probe questions and writes `sashiny_parity_*.json` to WORK. Copy those files locally, then compare
+them with saspy:
+
+```sh
+cd Python && SASHINY_LIVE=1 SASHINY_PROFILE=viya SASHINY_PROCPYTHON_OUT=<folder> \
+  uv run --extra saspy pytest tests/live/test_procpython_live.py
+```
 Mock-engine tests prove wiring only; they are never live acceptance.
