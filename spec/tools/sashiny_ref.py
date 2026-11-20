@@ -705,3 +705,22 @@ def recording_key(contract_sha256: str, macros: list[tuple[str, str]], uploads: 
     import hashlib
 
     return hashlib.sha256(recording_key_text(contract_sha256, macros, uploads).encode("utf-8")).hexdigest()
+
+
+def cache_key_text(
+    contract_sha256: str, program_sha256: str, macros: list[tuple[str, str]], uploads: list[tuple[str, str]]
+) -> str:
+    """The result-cache key text (CONTRACT.md 6.11)."""
+    lines = ["sashiny-cache-key 1", f"contract {contract_sha256}", f"program {program_sha256}"]
+    lines += [f"macro {n}={v}" for n, v in macros]
+    lines += [f"upload {i} {h}" for i, h in uploads]
+    return "\n".join(lines) + "\n"
+
+
+def cache_key(
+    contract_sha256: str, program_sha256: str, macros: list[tuple[str, str]], uploads: list[tuple[str, str]]
+) -> str:
+    """The result-cache key (CONTRACT.md 6.11)."""
+    import hashlib
+
+    return hashlib.sha256(cache_key_text(contract_sha256, program_sha256, macros, uploads).encode("utf-8")).hexdigest()

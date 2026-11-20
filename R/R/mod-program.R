@@ -769,7 +769,12 @@ sas_program_server <- function(id, contract, engine, server_override = NULL, ren
         if (.sashiny_has_choices_from(contract)) {
           run_contract$cached_choices <- .sashiny_cached_choices(engine, contract)
         }
-        result(sas_engine_run(engine, run_contract, converted$values, uploads = converted$uploads))
+        result(.sashiny_cached_run(engine, run_contract, converted$values,
+          function() {
+            sas_engine_run(engine, run_contract, converted$values, uploads = converted$uploads)
+          },
+          uploads = converted$uploads
+        ))
       }
       shiny::observeEvent(input$run, start_run(), ignoreNULL = !isTRUE(settings$auto_run))
     }

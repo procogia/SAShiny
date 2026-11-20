@@ -46,9 +46,12 @@ sas_run <- function(contract, engine, values = list(), today = Sys.Date(),
   if (!inherits(contract, "sashiny_contract")) {
     contract <- sas_contract(contract)
   }
-  sas_engine_run(engine, contract, values %||% list(),
-    today = today,
-    uploads = uploads, run_id = run_id
+  values <- values %||% list()
+  # Opt-in result cache (spec section 6.11); a no-op unless `run.cache: true`.
+  .sashiny_cached_run(engine, contract, values,
+    function() sas_engine_run(engine, contract, values, today = today, uploads = uploads,
+      run_id = run_id),
+    today = today, uploads = uploads
   )
 }
 

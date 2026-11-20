@@ -1,0 +1,9 @@
+sashiny: 1
+program: program.sas
+title: Bad result cache
+outputs:
+  log:
+    type: log
+run:
+  cache: true
+  cache_ttl_seconds: 0

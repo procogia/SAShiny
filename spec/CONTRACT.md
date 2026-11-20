@@ -108,6 +108,8 @@ Either form declares one:
 | `macro` | — | Macro to call when `entry: macro`. Each input's macro name is passed as a keyword parameter of the same name. |
 | `timeout_seconds` | `300` | Wall-clock limit for the whole run. |
 | `choices_ttl_seconds` | `3600` | How long `choices_from` lists are reused (§6.4); `0` disables the cache. |
+| `cache` | `false` | Reuse the result of an identical earlier run (§6.11). Leave off for non-deterministic programs. |
+| `cache_ttl_seconds` | `3600` | How long a cached result is reused (§6.11); `1`–`86400`. |
 | `reset_work` | `true` | Empty `WORK` and delete previously injected macro variables before the run. |
 
 ### 2.4 `ui`
@@ -1163,6 +1165,46 @@ is `false`, `values()` changes never start a run.
 **Hiding controls.** With `hide_inputs = TRUE` (Python `hide_inputs=True`), the UI controls of the
 ids currently supplied by `values()` are hidden; the other controls and the Run button stay visible.
 The default (`FALSE`) shows every control, even when its value is overridden.
+
+### 6.11 Result cache (opt-in)
+
+With `run.cache: true`, a run whose inputs are identical to an earlier successful run reuses that
+run's result instead of submitting the program again. The default is `false`: without it every run
+reaches SAS.
+
+**Key.** The cache key is the lower-case hex SHA-256 of this UTF-8 text, built line by line with LF
+endings:
+
+```
+sashiny-cache-key 1
+contract <contract_sha256>
+program <program_sha256>
+macro <NAME>=<VALUE>          one line per rendered macro, in 5.7 order
+upload <input_id> <sha256>    one line per supplied dataset input, contract order; sha256 of the file bytes
+```
+
+`contract_sha256` and `program_sha256` are those of §8.4. The rendered values include resolved
+`"today"` defaults and bounds, so a run on another day has another key. The key is computed after
+value validation; a run whose values do not validate (V001–V014) is never looked up or stored and
+fails exactly as without the cache. `spec/fixtures/collect/cache_key.json` fixes the key text.
+
+**Storage.** Only results with status `success` or `warning` are stored; `error`, `timeout` and
+engine failures never are. A stored result is reused for `run.cache_ttl_seconds` (default `3600`)
+after it was stored. The cache is per process and shared by every engine and pool of that process;
+it holds at most 100 results by default and evicts the least recently used one when full.
+Implementations provide a hook to replace the in-memory store (for example with an external cache);
+they do not ship an external store.
+
+**Hits.** A reused result keeps its original `run_id`, `log`, outputs and metadata, and adds
+`metadata.cache_hit = true` and `metadata.cached_at` (UTC ISO 8601 time when it was stored). A run
+that does not hit the cache has no `cache_hit` field. Each hit returns a copy, so changing a returned
+result does not change the cache.
+
+**Non-deterministic programs.** The key covers only the contract, the program file and the inputs. A
+program whose result also depends on the current date or time (beyond `"today"` inputs), random
+numbers, or data outside its inputs (database tables, files, `SASHELP` views that change) MUST leave
+`run.cache` off; otherwise users see stale results. The program file is hashed, but files it
+`%include`s are not.
 
 ---
 

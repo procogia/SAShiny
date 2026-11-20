@@ -338,6 +338,24 @@
   if (.sashiny_has_choices_from(contract) && is.null(contract$cached_choices)) {
     contract$cached_choices <- .sashiny_cached_choices(engine, contract)
   }
+  # Opt-in result cache (spec section 6.11).
+  cached <- .sashiny_cache_lookup(engine, contract, values, today, uploads)
+  if (!is.null(cached$hit)) {
+    return(promises::promise_resolve(cached$hit))
+  }
+  if (!is.null(cached$key)) {
+    return(promises::then(
+      .sashiny_run_async_uncached(engine, contract, values, uploads, today, run_id, session),
+      function(result) .sashiny_cache_store_result(cached$key, result)
+    ))
+  }
+  .sashiny_run_async_uncached(engine, contract, values, uploads, today, run_id, session)
+}
+
+#' Start a run without the result cache (see `.sashiny_run_async()`).
+#' @noRd
+.sashiny_run_async_uncached <- function(engine, contract, values, uploads, today, run_id,
+                                        session) {
   if (inherits(engine, "sashiny_pool")) {
     return(.sashiny_pool_promise(engine, contract, values, uploads, today, run_id, session))
   }
