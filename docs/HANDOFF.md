@@ -117,6 +117,16 @@ The R package and the Python library always ship the same version.
 - **TestPyPI** - the pending publisher is configured and the publish workflow
   succeeds. `sashiny` 0.1.0 and 0.1.1 are on TestPyPI. 0.1.1 fixes the core
   import so `import sashiny` works without the optional `shiny` extra.
+## Release 0.3.1 (2026-11-20)
+
+- Tags `r-v0.3.1` and `py-v0.3.1` on `main`; GitHub releases created for both.
+- **PyPI:** `sashiny` 0.3.1 published through Trusted Publishing (after a TestPyPI rehearsal).
+- **CRAN: queued.** 0.2.0 is still inside CRAN's update interval. Submit `SAShiny_0.3.1.tar.gz`
+  (built from `r-v0.3.1`, `R CMD check --as-cran` 1 NOTE for HTML Tidy locally) once that window
+  ends. `R/cran-comments.md` already explains the new Imports `callr`, `cli` and `lifecycle`.
+- Live SAS acceptance for the 0.3.1 features is tracked in `docs/qa-live-checklist.md`
+  (Igor and Shreya, ten checks each).
+
 ## CRAN submission (2026-11-10)
 
 - **Submitted** SAShiny 0.1.0 (source commit `cf65c09`) through
