@@ -2,6 +2,14 @@
 
 ## New features
 
+* Opt-in result cache (spec section 6.11). With `run.cache: true` in a
+  contract, a run whose contract, program and rendered inputs match an
+  earlier `success` or `warning` run reuses that result for
+  `run.cache_ttl_seconds` (default 3600), with `metadata$cache_hit` and
+  `metadata$cached_at` set. **The default is off.** The cache is per process,
+  holds at most 100 results (least recently used evicted) and covers
+  `sas_run()` and the Shiny module. Leave it off for programs that depend on
+  the clock, random numbers or external data.
 * `sas_program_server()` gains `values`, a reactive of input values that
   other Shiny code (for example a parent filter panel) uses to drive a
   contract's inputs (spec section 6.10). Supplied ids replace the UI value

@@ -13,6 +13,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any, cast
 
+from . import result_cache
 from .contract import Contract, load
 from .engines import Engine
 from .engines.base import check_engine
@@ -44,7 +45,9 @@ def run(  # noqa: PLR0913 - mirrors the engine.run signature
         run_id: The run identifier. Defaults to a generated UUID.
 
     Returns:
-        The collected :class:`Result`.
+        The collected :class:`Result`. With ``run.cache: true`` (spec §6.11) an
+        identical earlier ``success``/``warning`` run is returned instead, with
+        ``metadata["cache_hit"] = True``.
 
     Raises:
         TypeError: If ``engine`` is not a live SAS engine or pool.
@@ -66,8 +69,15 @@ def run(  # noqa: PLR0913 - mirrors the engine.run signature
     check_engine(eng)
     if not isinstance(contract, Contract):
         contract = load(contract)
-    return eng.run(
-        contract, cast("dict[str, Any]", values or {}), today=today, uploads=uploads, run_id=run_id
+    loaded = contract
+    vals = cast("dict[str, Any]", values or {})
+    return result_cache.cached_run(
+        eng,
+        loaded,
+        vals,
+        lambda: eng.run(loaded, vals, today=today, uploads=uploads, run_id=run_id),
+        today=today,
+        uploads=uploads,
     )
 
 

@@ -21,6 +21,12 @@ All notable changes to the Python library are documented here. The format follow
   with `PROC PRINTTO` and `ODS HTML5` files in WORK. `reset_work` is refused unless
   `own_session=True`. A timeout stops waiting and disables the engine; the scheduler
   ends the job. Live parity is an opt-in QA check (`tests/live/procpython/probe.sas`).
+- Opt-in result cache (spec §6.11): `run.cache: true` and `run.cache_ttl_seconds`
+  (default 3600). Identical `success`/`warning` runs are reused with
+  `metadata["cache_hit"]` and `metadata["cached_at"]`. **Off by default.** The new
+  `sashiny.result_cache` module holds a per-process LRU of 100 results;
+  `result_cache.set_store()` plugs in another store. Covers `run()`, the Shiny
+  module and the Streamlit front end.
 - `program_server()` gains `values`, a reactive of input values that other Shiny
   code uses to drive a contract's inputs (spec §6.10), plus `hide_inputs` and
   `debounce_ms` (default 500) for `ui.auto_run`. `modules.merge_values()` merges

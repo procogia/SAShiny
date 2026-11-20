@@ -1,0 +1,16 @@
+sashiny: 1
+program: program.sas
+title: Result cache
+inputs:
+  n:
+    type: numeric
+    label: N
+    min: 0
+    max: 10
+    default: 1
+outputs:
+  log:
+    type: log
+run:
+  cache: true
+  cache_ttl_seconds: 600

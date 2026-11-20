@@ -27,7 +27,7 @@ from shiny import render as shiny_render
 from shiny.module import resolve_id
 from shiny.ui import TagChild
 
-from . import choices_cache
+from . import choices_cache, result_cache
 from .collect import is_paired, paired_chart_spec
 from .contract import Contract
 from .engines import Engine
@@ -938,7 +938,14 @@ async def _run_snapshot(
     if isinstance(snapshot, Result):
         return snapshot
     values, uploads = snapshot
-    return await asyncio.to_thread(engine.run, contract, values, uploads=uploads)
+    return await asyncio.to_thread(
+        result_cache.cached_run,
+        engine,
+        contract,
+        values,
+        lambda: engine.run(contract, values, uploads=uploads),
+        uploads=uploads,
+    )
 
 
 def _upload_error_result(exc: UploadError) -> Result:

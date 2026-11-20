@@ -1,0 +1,8 @@
+{
+  "errors": [
+    {
+      "code": "E000",
+      "path": "/run/cache_ttl_seconds"
+    }
+  ]
+}

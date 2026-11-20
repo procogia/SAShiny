@@ -20,6 +20,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any, cast
 
+from . import result_cache
 from .collect import is_paired, paired_chart_spec
 from .contract import Contract, default_module_id, load, resolve_date
 from .engines import Engine
@@ -347,7 +348,15 @@ def _program(st: Any, contract: Contract, mid: str, engine: Engine) -> None:
         except UploadError as exc:
             state[result_key] = _upload_error(exc)
         else:
-            state[run_key] = _Run(lambda: engine.run(contract, values, uploads=uploads))
+            state[run_key] = _Run(
+                lambda: result_cache.cached_run(
+                    engine,
+                    contract,
+                    values,
+                    lambda: engine.run(contract, values, uploads=uploads),
+                    uploads=uploads,
+                )
+            )
     task: _Run | None = state.get(run_key)
     if task is not None:
         if not task.done:

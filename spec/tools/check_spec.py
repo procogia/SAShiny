@@ -135,6 +135,12 @@ def check_collect(r: Report) -> None:
     uploads = [tuple(u) for u in k["uploads"]]
     r.check(ref.recording_key_text(k["contract_sha256"], macros, uploads) == k["key_text"], "collect/recording_key text")
     r.check(ref.recording_key(k["contract_sha256"], macros, uploads) == k["key"], "collect/recording_key sha256")
+    k = json.loads((d / "cache_key.json").read_text(encoding="utf-8"))
+    macros = [tuple(m) for m in k["macros"]]
+    uploads = [tuple(u) for u in k["uploads"]]
+    args = (k["contract_sha256"], k["program_sha256"], macros, uploads)
+    r.check(ref.cache_key_text(*args) == k["key_text"], "collect/cache_key text")
+    r.check(ref.cache_key(*args) == k["key"], "collect/cache_key sha256")
 
 
 def check_lint(r: Report, today: date) -> None:
