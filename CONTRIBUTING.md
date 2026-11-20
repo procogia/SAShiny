@@ -22,3 +22,21 @@
 Write the expected output **by hand** from CONTRACT.md, then run
 `uv run --no-project --python 3.12 --with jsonschema --with pyyaml python spec/tools/check_spec.py`.
 Never generate expected files from an implementation.
+
+## Live checks
+
+Live tests need a real, licensed SAS session and are skipped everywhere else (CI, CRAN, PyPI). Set
+`SASHINY_LIVE=1` and `SASHINY_PROFILE` (`oda`, `viya` or `sas94`, with the variables listed in
+`Python/tests/live/conftest.py`); credentials come from `~/.authinfo`.
+
+Session reuse (#130 J1/J2) runs `examples/general` 10 times on one engine and on a pool of two. It
+prints the distinct SAS process ids and the median and p90 run times, and writes a CSV to the temp
+folder:
+
+```sh
+cd Python && SASHINY_LIVE=1 SASHINY_PROFILE=oda uv run --extra saspy pytest tests/live/test_live_session_reuse.py -s
+cd R && SASHINY_LIVE=1 SASHINY_PROFILE=oda Rscript -e 'testthat::test_file("tests/testthat/test-live-session-reuse.R")'
+```
+
+Record the summary (backend, date, process ids, timings) in the PR or in `docs/qa-live-checklist.md`.
+Mock-engine tests prove wiring only; they are never live acceptance.

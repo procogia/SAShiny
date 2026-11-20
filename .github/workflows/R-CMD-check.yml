@@ -21,7 +21,10 @@ jobs:
           - {os: ubuntu-latest,  r: "devel", http-user-agent: "release"}
           - {os: ubuntu-latest,  r: "release"}
           - {os: ubuntu-latest,  r: "oldrel-1"}
-          - {os: ubuntu-latest,  r: "4.1"}
+          # ggplot2 >= 4 needs S7 and 3.5.x pulls in Hmisc; neither installs on
+          # R 4.1 (#132). ggplot2 and plotly (which needs it) are Suggests; this
+          # job installs every other Suggests and their tests skip.
+          - {os: ubuntu-latest,  r: "4.1", skip: "ggplot2|plotly"}
           - {os: macos-latest,   r: "release"}
           - {os: windows-latest, r: "release"}
     env:
@@ -41,12 +44,27 @@ jobs:
           r-version: ${{ matrix.config.r }}
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
+      - name: Suggests that install on this R version
+        id: deps
+        if: matrix.config.skip != ''
+        shell: Rscript {0}
+        working-directory: R
+        run: |
+          d <- read.dcf("DESCRIPTION", fields = c("Imports", "Suggests"))
+          pk <- trimws(sub("[ (].*$", "", unlist(strsplit(paste(d[!is.na(d)], collapse = ","), ","))))
+          pk <- setdiff(pk[nzchar(pk)], c(strsplit("${{ matrix.config.skip }}", "|", fixed = TRUE)[[1]],
+            "stats", "tools", "utils"))
+          cat("pkgs=", paste0("any::", pk, collapse = " "), "\n", sep = "", file = Sys.getenv("GITHUB_OUTPUT"), append = TRUE)
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           working-directory: R
-          extra-packages: any::rcmdcheck
+          dependencies: ${{ matrix.config.skip != '' && '"hard"' || '"all"' }}
+          extra-packages: any::rcmdcheck ${{ steps.deps.outputs.pkgs }}
           needs: check
       - uses: r-lib/actions/check-r-package@v2
+        env:
+          # The skipped Suggests are not installed on this job (#132).
+          _R_CHECK_FORCE_SUGGESTS_: ${{ matrix.config.skip != '' && 'false' || 'true' }}
         with:
           working-directory: R
           upload-snapshots: true
