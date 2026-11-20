@@ -3,9 +3,9 @@ name: spec
 on:
   push:
     branches: [main]
-    paths: ["spec/**", "examples/**", ".github/workflows/spec.yml"]
+    paths: ["spec/**", "examples/**", ".github/workflows/spec.yml", "R/DESCRIPTION", "R/R/info.R", "Python/src/sashiny/__init__.py", "Python/src/sashiny/info.py"]
   pull_request:
-    paths: ["spec/**", "examples/**", ".github/workflows/spec.yml"]
+    paths: ["spec/**", "examples/**", ".github/workflows/spec.yml", "R/DESCRIPTION", "R/R/info.R", "Python/src/sashiny/__init__.py", "Python/src/sashiny/info.py"]
 
 permissions:
   contents: read
@@ -20,6 +20,8 @@ jobs:
           python-version: "3.12"
       - name: Check schema, fixtures and example contracts
         run: uv run --no-project --with "jsonschema>=4.23" --with "pyyaml>=6" python spec/tools/check_spec.py
+      - name: R and Python versions and spec releases agree (lockstep)
+        run: python spec/tools/check_versions.py
       - name: Lint reference tools
         run: uvx ruff check spec/tools --target-version py310 --line-length 140 --select E,F,W,I,UP,B,SIM
       - name: Sample data is reproducible

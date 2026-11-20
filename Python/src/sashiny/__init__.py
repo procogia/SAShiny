@@ -31,6 +31,7 @@ from .errors import (
     SashinyError,
     ValuesError,
 )
+from .info import Info, info
 from .lint import lint
 from .pool import Pool
 from .profiles import Profile, connect_from_env, parse_profile
@@ -48,6 +49,7 @@ __all__ = [
     "DeployError",
     "Engine",
     "EngineError",
+    "Info",
     "Issue",
     "LicenseError",
     "LogLine",
@@ -71,6 +73,7 @@ __all__ = [
     "connect_in_session",
     "default_module_id",
     "deploy",
+    "info",
     "json_values",
     "lint",
     "load",
@@ -89,7 +92,7 @@ __all__ = [
     "wrapper_code",
 ]
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 
 def __getattr__(name: str) -> Any:

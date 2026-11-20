@@ -1,4 +1,13 @@
-# SAShiny (development version)
+# SAShiny 0.3.1
+
+## Versioning
+
+* The R package and the Python library are now released together with the
+  same version number (lockstep, spec section 11). This release jumps from
+  0.2.0 to 0.3.1 to match the Python library.
+* New `sas_info()` prints the package version, the contract specification
+  release it implements (`1.3`) and the contract version (`sashiny: 1`).
+  CI fails when the R and Python versions or spec releases differ.
 
 ## New features
 
