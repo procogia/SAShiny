@@ -61,7 +61,21 @@ R CMD build R && R CMD check --as-cran SAShiny_*.tar.gz
 cd Python && uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest
 ```
 
-## Path to CRAN / PyPI (remaining work)
+## Release checklist (lockstep versions, spec section 11)
+
+The R package and the Python library always ship the same version.
+
+1. Bump `R/DESCRIPTION` `Version:` and `Python/src/sashiny/__init__.py` `__version__` to the same value.
+2. If the spec, schema or fixtures changed since the last release, bump the minor part of
+   "Spec release" in `spec/CONTRACT.md` and set the same value in `R/R/info.R`
+   (`.sashiny_spec_release`) and `Python/src/sashiny/info.py` (`SPEC_RELEASE`).
+3. Run `python spec/tools/check_versions.py` (CI runs it in the `spec` workflow) and all three gates.
+4. Move the NEWS.md / CHANGELOG.md entries under the new version heading; update `R/cran-comments.md`.
+5. Tag both: `r-v<version>` and `py-v<version>`. Publish TestPyPI, then PyPI (Trusted Publishing).
+6. Submit to CRAN unless an earlier submission is still within CRAN's update interval; then queue it
+   and note the queued version here.
+
+
 
 1. ~~Make the repo public (D15)~~ — done: <https://github.com/procogia/SAShiny>.
 2. **Close #11** — run `spec/tools/live_sas_check.py` on the ProCogia VPN and

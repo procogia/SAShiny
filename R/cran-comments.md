@@ -1,8 +1,15 @@
 ## Submission
 
-This is a resubmission of SAShiny (previous version 0.1.6, a new submission
-that was pending manual inspection). Version 0.2.0 narrows the package's scope
-and adds publishing to Posit Connect; see NEWS.md.
+This is an update of SAShiny 0.2.0. Version 0.3.1 aligns the version with
+the companion Python library (released together from now on) and adds
+persistent background 'SAS' sessions, a `choices_from` cache, data frame
+accessors, classed errors and an opt-in result cache; see NEWS.md.
+
+New hard dependencies: 'callr' (one persistent background R session per 'SAS'
+connection, so a slow 'SAS' run never blocks the 'Shiny' app), 'cli' (classed
+error messages) and 'lifecycle' (deprecation of renamed functions). All are
+widely used, have no system requirements and are already installed with
+'shiny'. No new 'Suggests' need the network or 'SAS' during checks.
 
 ## Test environments
 

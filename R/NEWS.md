@@ -1,4 +1,13 @@
-# SAShiny (development version)
+# SAShiny 0.3.1
+
+## Versioning
+
+* The R package and the Python library are now released together with the
+  same version number (lockstep, spec section 11). This release jumps from
+  0.2.0 to 0.3.1 to match the Python library.
+* New `sas_info()` prints the package version, the contract specification
+  release it implements (`1.4`) and the contract version (`sashiny: 1`).
+  CI fails when the R and Python versions or spec releases differ.
 
 ## New features
 
@@ -16,46 +25,6 @@
   and are validated exactly like UI values. With `ui.auto_run: true`, a
   change starts a run after `debounce_ms` (default 500). `hide_inputs = TRUE`
   hides the controls of the supplied ids. See `examples/parent-filter/`.
-
-## Fixes
-
-* `sas_app()` sets `shiny.maxRequestSize` once, to the largest `max_size_mb`
-  of its contracts, and restores it when the app stops. `sas_program_server()`
-  no longer changes this global option, so one browser session ending can no
-  longer reset the upload limit for another (#130).
-* The `container` deployment image now builds and runs (spec section 6.8).
-  The Python image is based on `python:3.12-slim-bookworm`, because current
-  `python:3.12-slim` (Debian trixie) has no Java 17. The R image installs R
-  packages as Linux binaries from its base image's repository instead of
-  compiling them from CRAN source, which failed for lack of system libraries.
-  It also adds `libpython3-dev` (reticulate could not load Python, so every
-  run failed) and `ggplot2` (charts did not render). The build now fails when
-  a package is missing; before, `install.packages()` only warned and the image
-  shipped broken. The Azure, AWS and Snowflake container targets share this
-  Dockerfile and get the same fixes.
-* `sas_app()` serves Bootstrap 5 when 'bslib' is installed. It served
-  Bootstrap 3, which the program modules' 'bslib' cards and sidebar layout do
-  not support, so the layout broke.
-
-## Deprecations
-
-* One constructor per 'SAS' backend (#130): `sas_connect(sas_oda("us1"))`,
-  `sas_viya(url)`, `sas_94_iom(host)` and `sas_94_ssh(host, saspath)`. Each
-  validates only its own arguments. `sas_connect("oda", region = ...)` still
-  works, with a deprecation warning.
-* `sas_run()` now takes the engine second: `sas_run(contract, engine, values)`,
-  where `values` defaults to the contract defaults. The old order still works,
-  with a deprecation warning (#130).
-* `sas_close()` closes engines and pools. `sas_pool_close()` and
-  `sas_pool_run()` are deprecated in favour of `sas_close()` and `sas_run()`.
-* `sashiny_lint()` is renamed `sas_lint()`; the old name is deprecated.
-* `sas_engine_close()` stays the generic for engine extensions.
-  `sas_reset_code()`, `sas_wrapper_code()`, `sas_render_values()` and
-  `sas_json_values()` are developer tools, hidden from the reference index
-  ('lifecycle' is now in Imports).
-
-## New features
-
 * `choices_from` lists load once per app and contract, cached for the new
   `run.choices_ttl_seconds` (default 3600). In a running app they load in the
   background, showing "Loading choices…", so a new browser session never
@@ -108,6 +77,43 @@
   deployed app's engine from those variables.
 * Bundles now skip `.git`, `__pycache__` and similar folders at any depth,
   and list files in byte order (spec section 6.8; also for `sas_publish()`).
+
+## Deprecations
+
+* One constructor per 'SAS' backend (#130): `sas_connect(sas_oda("us1"))`,
+  `sas_viya(url)`, `sas_94_iom(host)` and `sas_94_ssh(host, saspath)`. Each
+  validates only its own arguments. `sas_connect("oda", region = ...)` still
+  works, with a deprecation warning.
+* `sas_run()` now takes the engine second: `sas_run(contract, engine, values)`,
+  where `values` defaults to the contract defaults. The old order still works,
+  with a deprecation warning (#130).
+* `sas_close()` closes engines and pools. `sas_pool_close()` and
+  `sas_pool_run()` are deprecated in favour of `sas_close()` and `sas_run()`.
+* `sashiny_lint()` is renamed `sas_lint()`; the old name is deprecated.
+* `sas_engine_close()` stays the generic for engine extensions.
+  `sas_reset_code()`, `sas_wrapper_code()`, `sas_render_values()` and
+  `sas_json_values()` are developer tools, hidden from the reference index
+  ('lifecycle' is now in Imports).
+
+## Fixes
+
+* `sas_app()` sets `shiny.maxRequestSize` once, to the largest `max_size_mb`
+  of its contracts, and restores it when the app stops. `sas_program_server()`
+  no longer changes this global option, so one browser session ending can no
+  longer reset the upload limit for another (#130).
+* The `container` deployment image now builds and runs (spec section 6.8).
+  The Python image is based on `python:3.12-slim-bookworm`, because current
+  `python:3.12-slim` (Debian trixie) has no Java 17. The R image installs R
+  packages as Linux binaries from its base image's repository instead of
+  compiling them from CRAN source, which failed for lack of system libraries.
+  It also adds `libpython3-dev` (reticulate could not load Python, so every
+  run failed) and `ggplot2` (charts did not render). The build now fails when
+  a package is missing; before, `install.packages()` only warned and the image
+  shipped broken. The Azure, AWS and Snowflake container targets share this
+  Dockerfile and get the same fixes.
+* `sas_app()` serves Bootstrap 5 when 'bslib' is installed. It served
+  Bootstrap 3, which the program modules' 'bslib' cards and sidebar layout do
+  not support, so the layout broke.
 
 # SAShiny 0.2.0
 
