@@ -10,7 +10,7 @@ instead of a separate saspy session, for batch use (scheduled reports, flows):
     submit;
     import sashiny
     eng = sashiny.connect_in_session(SAS, license_ack=True, own_session=True)
-    res = sashiny.run("/data/apps/demo/demo.sashiny.yml", {"make": "Audi"}, eng)
+    res = sashiny.run("/data/apps/demo/demo.sashiny.yml", eng, {"make": "Audi"})
     endsubmit;
     run;
 

@@ -34,7 +34,7 @@ if not report["sashiny"].startswith("import failed"):
     eng = sashiny.connect_in_session(SAS, license_ack=True, own_session=True)
     for name in ["minimal", "outputs"]:
         path = repo / "spec" / "fixtures" / "contracts" / "valid" / name / "contract.sashiny.yml"
-        res = sashiny.run(path, {}, eng)
+        res = sashiny.run(path, eng, {})
         report[name] = {"status": res.status, "log_chars": len(res.log),
                         "outputs": sorted(res.outputs), "error": res.metadata.get("engine_error")}
         (out / f"sashiny_parity_{name}.json").write_text(json.dumps(res.outputs, default=str))
