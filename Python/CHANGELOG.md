@@ -8,6 +8,13 @@ All notable changes to the Python library are documented here. The format follow
 
 ### Added
 
+- In-session engine for PROC PYTHON (spec §6.5, §6.6; #128):
+  `sashiny.connect_in_session(SAS, license_ack=..., own_session=...)` returns a
+  `ProcPythonEngine` that runs contracts through the `SAS` callback object inside a
+  SAS Viya or SAS 9.4M9+ job (batch only, no pool). The log and listing are captured
+  with `PROC PRINTTO` and `ODS HTML5` files in WORK. `reset_work` is refused unless
+  `own_session=True`. A timeout stops waiting and disables the engine; the scheduler
+  ends the job. Live parity is an opt-in QA check (`tests/live/procpython/probe.sas`).
 - `choices_from` lists load once per app and contract, cached for the new
   `run.choices_ttl_seconds` (default 3600), and load in the background in a Shiny app
   (spec §6.4, #130).

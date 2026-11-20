@@ -84,7 +84,11 @@ class Pool(Engine):
         """
         if isinstance(engine, Engine):
             from .engines.base import check_engine  # noqa: PLC0415 - avoid an import cycle
+            from .engines.procpython import ProcPythonEngine  # noqa: PLC0415
 
+            if isinstance(engine, ProcPythonEngine):
+                # One PROC PYTHON job is one session (spec §6.5).
+                raise TypeError("an in-session (PROC PYTHON) engine cannot be pooled")
             self.engine: Engine | None = check_engine(engine)
             self._factory: Callable[[], Engine] | None = None
         else:
