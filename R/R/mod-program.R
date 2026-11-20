@@ -96,7 +96,11 @@
     },
     .sashiny_abort("values", "unknown input type ", spec$type)
   )
-  shiny::tagList(control, if (!is.null(spec$help)) shiny::helpText(spec$help))
+  # The wrapper id lets the server hide controls driven by `values` (spec 6.10).
+  shiny::div(
+    id = ns(paste0("in__", iid)),
+    control, if (!is.null(spec$help)) shiny::helpText(spec$help)
+  )
 }
 
 #' Convert Shiny input values to the contract's JSON form (section 2.1)
@@ -133,6 +137,56 @@
     if (!is.null(value)) values[[iid]] <- value
   }
   list(values = values, uploads = uploads)
+}
+
+#' Merge external values over UI values (spec section 6.10)
+#'
+#' Supplied ids replace the UI value; a supplied `NULL` makes the input
+#' absent; dataset ids are ignored. Atomic vectors for `multichoice` and
+#' `daterange` inputs become lists, and `Date` values become ISO strings, so
+#' callers can pass ordinary R vectors.
+#'
+#' @param contract A `sashiny_contract` object.
+#' @param converted The result of `.sashiny_shiny_values()`.
+#' @param external A named list of values, or `NULL`.
+#' @return `converted` with merged `values`.
+#' @noRd
+.sashiny_merge_values <- function(contract, converted, external) {
+  if (is.null(external)) {
+    return(converted)
+  }
+  if (!is.list(external) || (length(external) > 0L && is.null(names(external)))) {
+    .sashiny_abort("values", "`values()` must return a named list of input values.")
+  }
+  inputs <- contract$data$inputs %||% list()
+  for (iid in names(external)) {
+    type <- inputs[[iid]]$type
+    if (identical(type, "dataset")) next
+    value <- external[[iid]]
+    if (is.null(value)) {
+      converted$values[[iid]] <- NULL
+      next
+    }
+    if (inherits(value, "Date")) value <- format(value, "%Y-%m-%d")
+    if (isTRUE(type %in% c("multichoice", "daterange")) && is.atomic(value)) {
+      value <- as.list(value)
+    }
+    converted$values[iid] <- list(value)
+  }
+  converted
+}
+
+#' CSS that hides the controls of externally supplied inputs (spec section 6.10)
+#'
+#' @param ids Input ids to hide.
+#' @param ns A Shiny namespace function.
+#' @return A `<style>` tag, or `NULL` when there is nothing to hide.
+#' @noRd
+.sashiny_hide_inputs_tag <- function(ids, ns) {
+  if (length(ids) == 0L) {
+    return(NULL)
+  }
+  shiny::tags$style(paste0("#", ns(paste0("in__", ids)), " { display: none; }", collapse = "\n"))
 }
 
 #' Whether 'bslib' task buttons are available (bslib 0.7.0 or later).
@@ -530,6 +584,7 @@ sas_program_ui <- function(id, contract, ui_override = NULL, today = Sys.Date())
     lapply(.sashiny_ordered_inputs(contract), function(iid) {
       .sashiny_input_ui(iid, inputs[[iid]], ns, today)
     }),
+    shiny::uiOutput(ns("hide__inputs")),
     .sashiny_run_button(ns("run"), settings$run_label %||% "Run")
   )
   status <- .sashiny_card(
@@ -588,6 +643,15 @@ sas_program_ui <- function(id, contract, ui_override = NULL, today = Sys.Date())
 #'   original 'SAS' graph, or a named list of paired output id to view.
 #' @param chart_toggle Whether to show the 'SAS' / 'SAShiny' toggles (default
 #'   `TRUE`). With `FALSE` each paired card shows only its default view.
+#' @param values An optional reactive returning a named list of input values
+#'   in the contract's JSON form (spec section 6.10). Supplied ids replace the
+#'   UI value (validated exactly like UI values); other ids come from the UI.
+#'   With `ui.auto_run: true`, a change of `values()` starts a run after
+#'   `debounce_ms`.
+#' @param hide_inputs Whether to hide the controls of the ids supplied by
+#'   `values()` (default `FALSE`).
+#' @param debounce_ms Debounce interval in milliseconds for auto-runs driven by
+#'   `values()` (default `500`).
 #' @details In a running app, runs do not block other browser sessions: each
 #'   [sas_connect()] engine and each [sas_pool()] session keeps its 'SAS'
 #'   session in a persistent worker process (spec section 6.5). Ending the
@@ -601,8 +665,16 @@ sas_program_ui <- function(id, contract, ui_override = NULL, today = Sys.Date())
 #' @return A list of reactives: `result`, `status`, `log`.
 #' @export
 sas_program_server <- function(id, contract, engine, server_override = NULL, render = NULL,
-                               chart_view = "sashiny", chart_toggle = TRUE) {
+                               chart_view = "sashiny", chart_toggle = TRUE, values = NULL,
+                               hide_inputs = FALSE, debounce_ms = 500) {
   .sashiny_check_engine(engine)
+  if (!is.null(values) && !is.function(values)) {
+    .sashiny_abort("values", "`values` must be a reactive (or function) returning a named list.")
+  }
+  if (!is.numeric(debounce_ms) || length(debounce_ms) != 1L || is.na(debounce_ms) ||
+    debounce_ms < 0) {
+    .sashiny_abort("values", "`debounce_ms` must be a single non-negative number.")
+  }
   views <- .sashiny_chart_views(contract, chart_view)
   if (!is.null(server_override)) {
     return(server_override(id, contract, engine))
@@ -650,6 +722,13 @@ sas_program_server <- function(id, contract, engine, server_override = NULL, ren
     # Whether a run is in flight; only an ExtendedTask can be running between
     # flushes (the synchronous path finishes inside the click handler).
     running <- function() FALSE
+    # UI values with any external `values()` merged over them (spec 6.10).
+    current_values <- function() {
+      converted <- .sashiny_shiny_values(contract, function(iid) input[[iid]])
+      .sashiny_merge_values(contract, converted, if (!is.null(values)) values())
+    }
+    # Set when `values()` changes during a run: one more run follows it.
+    pending <- FALSE
     if (use_extended) {
       run_task <- shiny::ExtendedTask$new(function(contract, values, uploads) {
         run_id <- .sashiny_run_id()
@@ -661,6 +740,10 @@ sas_program_server <- function(id, contract, engine, server_override = NULL, ren
       running <- function() identical(run_task$status(), "running")
       # Keep the task button busy and disabled until the run finishes.
       if (.sashiny_has_task_button()) bslib::bind_task_button(run_task, "run")
+      start_run <- function() {
+        converted <- current_values()
+        run_task$invoke(contract, converted$values, converted$uploads)
+      }
       shiny::observeEvent(input$run,
         {
           # Ignore a click while a run is in flight, so a burst of clicks does
@@ -668,27 +751,48 @@ sas_program_server <- function(id, contract, engine, server_override = NULL, ren
           if (running()) {
             return(invisible(NULL))
           }
-          converted <- .sashiny_shiny_values(contract, function(iid) input[[iid]])
-          run_task$invoke(contract, converted$values, converted$uploads)
+          start_run()
         },
         ignoreNULL = !isTRUE(settings$auto_run)
       )
       shiny::observeEvent(run_task$result(), {
         result(run_task$result())
+        if (pending) {
+          pending <<- FALSE
+          start_run()
+        }
       })
     } else {
-      shiny::observeEvent(input$run,
-        {
-          converted <- .sashiny_shiny_values(contract, function(iid) input[[iid]])
-          run_contract <- contract
-          if (.sashiny_has_choices_from(contract)) {
-            run_contract$cached_choices <- .sashiny_cached_choices(engine, contract)
-          }
-          result(sas_engine_run(engine, run_contract, converted$values, uploads = converted$uploads))
-        },
-        ignoreNULL = !isTRUE(settings$auto_run)
-      )
+      start_run <- function() {
+        converted <- current_values()
+        run_contract <- contract
+        if (.sashiny_has_choices_from(contract)) {
+          run_contract$cached_choices <- .sashiny_cached_choices(engine, contract)
+        }
+        result(sas_engine_run(engine, run_contract, converted$values, uploads = converted$uploads))
       }
+      shiny::observeEvent(input$run, start_run(), ignoreNULL = !isTRUE(settings$auto_run))
+    }
+
+    if (!is.null(values)) {
+      if (isTRUE(settings$auto_run)) {
+        # Debounced auto-run on external changes; the first value is used by
+        # the auto_run run at session start, so it does not run again.
+        settled <- shiny::debounce(values, debounce_ms)
+        shiny::observeEvent(settled(),
+          {
+            if (running()) pending <<- TRUE else start_run()
+          },
+          ignoreInit = TRUE, ignoreNULL = FALSE
+        )
+      }
+      output$hide__inputs <- shiny::renderUI({
+        if (isTRUE(hide_inputs)) {
+          supplied <- intersect(names(values() %||% list()), names(inputs))
+          .sashiny_hide_inputs_tag(supplied, session$ns)
+        }
+      })
+    }
 
     output$status <- shiny::renderText({
       if (running()) {

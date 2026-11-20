@@ -1140,6 +1140,30 @@ shown with `st.caption`. Errors and warnings use `st.error` and `st.warning`. Th
 The widget mapping is fixed by `spec/fixtures/streamlit/widgets.json`: one case per input type and
 widget variant in `spec/sashiny.schema.json`.
 
+### 6.10 External values for the Shiny module
+
+`sas_program_server()` (R) and `program_server()` (Python) accept an optional `values` argument: a
+reactive that returns a named list (R) or dict (Python) of input values in the §2.1 JSON form. It
+lets other Shiny code, such as a filter panel in a parent module, drive a contract's inputs.
+
+**Precedence.** For every id that `values()` supplies, the supplied value replaces the UI value; ids it
+does not supply are read from the UI as usual. A supplied `null` / `NULL` replaces the UI value with an
+absent value (so a required input gives `V001`). Dataset inputs are always read from the UI; a value
+supplied for a dataset id is ignored. The merged values are validated
+(§4, V001–V014) exactly like UI values, so an invalid or unknown external value gives the same codes
+(for example `V003`, `V004`, `V011`) and no SAS code is submitted.
+
+**Triggers.** A run starts on a Run click, as before. In addition, when `ui.auto_run` is `true`, every
+change of `values()` starts a run once `values()` has been stable for the debounce interval
+(`debounce_ms`, default `500`). The first value of `values()` does not start an extra run (the
+`auto_run` run at session start already uses it). A change while a run is in progress starts one
+run after it finishes, with the latest values; intermediate changes are dropped. When `ui.auto_run`
+is `false`, `values()` changes never start a run.
+
+**Hiding controls.** With `hide_inputs = TRUE` (Python `hide_inputs=True`), the UI controls of the
+ids currently supplied by `values()` are hidden; the other controls and the Run button stay visible.
+The default (`FALSE`) shows every control, even when its value is overridden.
+
 ---
 
 ## 7. Dataset upload conversion

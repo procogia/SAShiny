@@ -512,3 +512,132 @@ test_that("a click during a run is ignored and the Run card shows running...", {
     }
   )
 })
+
+# External values (spec section 6.10) ------------------------------------------
+
+.sashiny_numeric_contract <- function(auto_run = FALSE) {
+  contract <- sas_contract(file.path(.sashiny_fixtures(), "contracts", "valid",
+                                     "numeric", "contract.sashiny.yml"))
+  if (auto_run) contract$data$ui <- list(auto_run = TRUE)
+  contract
+}
+
+test_that("external values override UI values and reach the macros", {
+  skip_on_cran()
+  skip_if_not_installed("shiny")
+  ext <- shiny::reactiveVal(list(min_msrp = 40000))
+  shiny::testServer(
+    sas_program_server,
+    args = list(contract = .sashiny_numeric_contract(), engine = .sashiny_engine_mock(),
+                values = ext), {
+      session$setInputs(min_msrp = 20000, ratio = 0.25, big = 1)
+      session$setInputs(run = 1)
+      expect_identical(result()$status, "success")
+      expect_identical(result()$metadata$macros$MIN_MSRP, "40000")
+      expect_identical(result()$metadata$macros$RATIO_VALUE, "0.25")
+    }
+  )
+})
+
+test_that("invalid external values give the same V-codes", {
+  skip_on_cran()
+  skip_if_not_installed("shiny")
+  ext <- shiny::reactiveVal(list(min_msrp = 999999, nope = 1))
+  shiny::testServer(
+    sas_program_server,
+    args = list(contract = .sashiny_numeric_contract(), engine = .sashiny_engine_mock(),
+                values = ext), {
+      session$setInputs(min_msrp = 20000, ratio = 0.5, big = 1)
+      session$setInputs(run = 1)
+      expect_identical(result()$status, "error")
+      codes <- vapply(result()$metadata$issues, function(i) i$code, character(1))
+      expect_setequal(codes, c("V003", "V011"))
+    }
+  )
+})
+
+test_that("an external NULL makes a required input absent (V001)", {
+  skip_on_cran()
+  skip_if_not_installed("shiny")
+  ext <- shiny::reactiveVal(list(min_msrp = NULL))
+  shiny::testServer(
+    sas_program_server,
+    args = list(contract = .sashiny_numeric_contract(), engine = .sashiny_engine_mock(),
+                values = ext), {
+      session$setInputs(min_msrp = 20000, ratio = 0.5, big = 1)
+      session$setInputs(run = 1)
+      codes <- vapply(result()$metadata$issues, function(i) i$code, character(1))
+      expect_identical(codes, "V001")
+    }
+  )
+})
+
+test_that("auto_run reruns on a debounced change of values()", {
+  skip_on_cran()
+  skip_if_not_installed("shiny")
+  ext <- shiny::reactiveVal(list(min_msrp = 30000))
+  shiny::testServer(
+    sas_program_server,
+    args = list(contract = .sashiny_numeric_contract(auto_run = TRUE),
+                engine = .sashiny_engine_mock(), values = ext, debounce_ms = 500), {
+      session$setInputs(min_msrp = 20000, ratio = 0.5, big = 1)
+      session$setInputs(run = 0)
+      first <- result()$run_id
+      expect_identical(result()$metadata$macros$MIN_MSRP, "30000")
+      ext(list(min_msrp = 50000))
+      session$flushReact()
+      session$elapse(100)
+      expect_identical(result()$run_id, first)
+      ext(list(min_msrp = 60000))
+      session$flushReact()
+      session$elapse(600)
+      expect_false(identical(result()$run_id, first))
+      expect_identical(result()$metadata$macros$MIN_MSRP, "60000")
+    }
+  )
+})
+
+test_that("values() changes do not run without auto_run", {
+  skip_on_cran()
+  skip_if_not_installed("shiny")
+  ext <- shiny::reactiveVal(list(min_msrp = 30000))
+  shiny::testServer(
+    sas_program_server,
+    args = list(contract = .sashiny_numeric_contract(), engine = .sashiny_engine_mock(),
+                values = ext), {
+      session$setInputs(min_msrp = 20000, ratio = 0.5, big = 1)
+      ext(list(min_msrp = 50000))
+      session$flushReact()
+      session$elapse(1000)
+      expect_null(result())
+    }
+  )
+})
+
+test_that("hide_inputs hides only the supplied controls", {
+  skip_on_cran()
+  skip_if_not_installed("shiny")
+  ext <- shiny::reactiveVal(list(min_msrp = 30000))
+  shiny::testServer(
+    sas_program_server,
+    args = list(contract = .sashiny_numeric_contract(), engine = .sashiny_engine_mock(),
+                values = ext, hide_inputs = TRUE), {
+      html <- as.character(output$hide__inputs$html)
+      expect_match(html, "#proxy1-in__min_msrp", fixed = TRUE)
+      expect_no_match(html, "in__ratio", fixed = TRUE)
+    }
+  )
+})
+
+test_that("external values are merged in JSON form", {
+  contract <- .sashiny_numeric_contract()
+  contract$data$inputs$d <- list(type = "daterange")
+  contract$data$inputs$f <- list(type = "dataset", target = "work.f")
+  merged <- .sashiny_merge_values(contract, list(values = list(ratio = 0.1), uploads = list()),
+    list(d = as.Date(c("2024-01-01", "2024-02-01")), f = "ignored")
+  )
+  expect_identical(merged$values$d, list("2024-01-01", "2024-02-01"))
+  expect_null(merged$values$f)
+  expect_identical(merged$values$ratio, 0.1)
+  expect_error(sas_program_server("m", contract, .sashiny_engine_mock(), values = 1), "reactive")
+})

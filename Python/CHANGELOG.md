@@ -21,6 +21,10 @@ All notable changes to the Python library are documented here. The format follow
   with `PROC PRINTTO` and `ODS HTML5` files in WORK. `reset_work` is refused unless
   `own_session=True`. A timeout stops waiting and disables the engine; the scheduler
   ends the job. Live parity is an opt-in QA check (`tests/live/procpython/probe.sas`).
+- `program_server()` gains `values`, a reactive of input values that other Shiny
+  code uses to drive a contract's inputs (spec §6.10), plus `hide_inputs` and
+  `debounce_ms` (default 500) for `ui.auto_run`. `modules.merge_values()` merges
+  them over UI values. See `examples/parent-filter/`.
 - `choices_from` lists load once per app and contract, cached for the new
   `run.choices_ttl_seconds` (default 3600), and load in the background in a Shiny app
   (spec §6.4, #130).

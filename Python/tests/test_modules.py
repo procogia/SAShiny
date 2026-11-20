@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import datetime as dt
 import tempfile
 from pathlib import Path
 
@@ -11,6 +12,7 @@ from shiny.types import SilentException
 
 import sashiny
 from _repo import repo_root
+from engines_helper import MockEngine
 from sashiny import modules
 from sashiny.upload import UploadError
 
@@ -136,3 +138,59 @@ def test_oversized_upload_becomes_v014_result() -> None:
     assert "status: error" in text
     assert "invalid input V014" in text
     assert "big.csv is 51.0 MB (limit 20 MB)" in text
+
+
+# External values (spec §6.10) ---------------------------------------------
+
+
+def _numeric() -> sashiny.Contract:
+    return sashiny.load(FIX / "contracts" / "valid" / "numeric" / "contract.sashiny.yml")
+
+
+def test_merge_values_precedence_and_forms() -> None:
+    contract = sashiny.load(FIX / "contracts" / "valid" / "dates" / "contract.sashiny.yml")
+    ids = list(contract.data["inputs"])
+    merged = modules.merge_values(
+        contract, {ids[0]: "2024-01-01", "keep": 1}, {ids[0]: dt.date(2024, 3, 4)}
+    )
+    assert merged == {ids[0]: "2024-03-04", "keep": 1}
+    assert modules.merge_values(contract, {ids[0]: "x"}, {ids[0]: None}) == {}
+    assert modules.merge_values(contract, {"a": 1}, None) == {"a": 1}
+    with pytest.raises(sashiny.errors.ValuesError):
+        modules.merge_values(contract, {}, [1])  # type: ignore[arg-type]
+
+
+def test_merge_values_ignores_dataset_ids() -> None:
+    contract = sashiny.load(FIX / "contracts" / "valid" / "dataset" / "contract.sashiny.yml")
+    dataset_ids = [i for i, s in contract.data["inputs"].items() if s["type"] == "dataset"]
+    assert modules.merge_values(contract, {}, {dataset_ids[0]: "ignored"}) == {}
+
+
+def test_snapshot_merges_external_values_and_validates() -> None:
+    contract = _numeric()
+    ui_values = {"min_msrp": 20000, "ratio": 0.25, "big": 1}
+    snap = modules._snapshot_inputs(contract, ui_values.get, {"min_msrp": 40000})
+    assert not isinstance(snap, sashiny.Result)
+    result = MockEngine().run(contract, snap[0], uploads=snap[1])
+    assert result.status == "success"
+    assert result.metadata["macros"]["MIN_MSRP"] == "40000"
+    assert result.metadata["macros"]["RATIO_VALUE"] == "0.25"
+
+    snap = modules._snapshot_inputs(contract, ui_values.get, {"min_msrp": 999999, "nope": 1})
+    assert not isinstance(snap, sashiny.Result)
+    bad = MockEngine().run(contract, snap[0], uploads=snap[1])
+    assert bad.status == "error"
+    assert {i["code"] for i in bad.metadata["issues"]} == {"V003", "V011"}
+
+
+def test_hide_inputs_tag_lists_only_supplied_ids() -> None:
+    html = str(modules._hide_inputs_tag(["min_msrp"], lambda x: f"mod-{x}"))
+    assert "#mod-in__min_msrp" in html
+    assert "ratio" not in html
+    assert modules._hide_inputs_tag([], lambda x: x) is None
+
+
+def test_program_ui_wraps_inputs_for_hiding() -> None:
+    html = str(modules.program_ui("mod", _numeric()))
+    assert 'id="mod-in__min_msrp"' in html
+    assert 'id="mod-hide__inputs"' in html

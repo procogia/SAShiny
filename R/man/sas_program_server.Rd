@@ -11,7 +11,10 @@ sas_program_server(
   server_override = NULL,
   render = NULL,
   chart_view = "sashiny",
-  chart_toggle = TRUE
+  chart_toggle = TRUE,
+  values = NULL,
+  hide_inputs = FALSE,
+  debounce_ms = 500
 )
 }
 \arguments{
@@ -35,6 +38,18 @@ original 'SAS' graph, or a named list of paired output id to view.}
 
 \item{chart_toggle}{Whether to show the 'SAS' / 'SAShiny' toggles (default
 \code{TRUE}). With \code{FALSE} each paired card shows only its default view.}
+
+\item{values}{An optional reactive returning a named list of input values
+in the contract's JSON form (spec section 6.10). Supplied ids replace the
+UI value (validated exactly like UI values); other ids come from the UI.
+With \code{ui.auto_run: true}, a change of \code{values()} starts a run after
+\code{debounce_ms}.}
+
+\item{hide_inputs}{Whether to hide the controls of the ids supplied by
+\code{values()} (default \code{FALSE}).}
+
+\item{debounce_ms}{Debounce interval in milliseconds for auto-runs driven by
+\code{values()} (default \code{500}).}
 }
 \value{
 A list of reactives: \code{result}, \code{status}, \code{log}.
