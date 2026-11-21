@@ -1,3 +1,11 @@
+# SAShiny (development version)
+
+## Fixes
+
+* `sas_check()` and `print()` no longer put two spaces in the reason of an
+  input issue without an input id (upload errors, `V014`): the reason is
+  `invalid input V014 no column AGE`, as in Python (#153).
+
 # SAShiny 0.3.1
 
 ## Versioning
