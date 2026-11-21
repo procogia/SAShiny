@@ -136,14 +136,6 @@ class Pool(Engine):
         if self._factory is not None:
             session.engine.close()
 
-    def _discard(self, session: PoolSession) -> None:
-        from .choices_cache import clear  # noqa: PLC0415 - avoid an import cycle
-
-        clear(self)  # spec §6.4: a pooled SAS session was replaced
-        with self._cond:
-            self._sessions = [s for s in self._sessions if s is not session]
-        self._close(session)
-
     def choices(self, contract: Contract) -> dict[str, list[dict[str, str]]]:
         """Read ``choices_from`` choices on a pooled session (spec §6.4)."""
         session = self._acquire()
@@ -200,6 +192,10 @@ class Pool(Engine):
         return found
 
     def _release(self, session: PoolSession, discard: bool) -> None:
+        if discard:
+            from .choices_cache import clear  # noqa: PLC0415 - avoid an import cycle
+
+            clear(self)  # spec §6.4: a failed pooled SAS session is replaced (as R does)
         with self._cond:
             session.in_use = False
             session.last_used = time.monotonic()

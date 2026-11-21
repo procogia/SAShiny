@@ -6,6 +6,11 @@ All notable changes to the Python library are documented here. The format follow
 
 ## [Unreleased]
 
+### Fixed
+
+- `Pool` clears its `choices_from` cache when it discards a failed session (spec §6.4), as
+  R does; choices from the discarded SAS session were offered and validated against (#152).
+
 ## [0.3.1] - 2026-11-20
 
 ### Deprecated
