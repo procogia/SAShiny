@@ -2,6 +2,8 @@
 
 *Your SAS and Shiny programs, radiant as the moon.*
 
+> Part of the [tandemverse](https://github.com/procogia/tandemverse) department. SAShiny keeps its current name for now; `tandemshiny` is held in reserve as a codename until the naming decision (see the [naming policy](https://github.com/procogia/tandemverse#naming-policy)).
+
 Use an **unchanged SAS program** as the **server** of a Shiny app, with Shiny (R or Python) handling the UI.
 A sidecar YAML contract declares the program's inputs and outputs, and SAShiny does the rest.
 
