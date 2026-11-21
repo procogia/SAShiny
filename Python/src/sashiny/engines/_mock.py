@@ -17,6 +17,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+from .. import __version__
 from ..contract import Contract
 from ..recording import contract_sha256, key_for, load_recording, program_sha256
 from ..result import Result
@@ -72,7 +73,7 @@ class MockEngine(Engine):
     """
 
     name = "mock"
-    version = "0.1.0"
+    version = __version__
 
     def __init__(
         self,

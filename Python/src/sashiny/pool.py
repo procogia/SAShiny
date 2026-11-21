@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Any
 
+from . import __version__
 from .contract import Contract
 from .engines import Engine
 from .errors import EngineError, ValuesError
@@ -59,7 +60,7 @@ class Pool(Engine):
     """
 
     name = "pool"
-    version = "0.1.0"
+    version = __version__
 
     def __init__(  # noqa: PLR0913 - pool configuration knobs
         self,

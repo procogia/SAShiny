@@ -56,6 +56,25 @@ test_that("mock engine saves a recording", {
   key <- .sashiny_recording_key(contract, macros)
   expect_true(file.exists(file.path(dir, paste0(key, ".json"))))
 })
+test_that("mock metadata matches Python: package version and one timestamp form (#156)", {
+  engine <- .sashiny_engine_mock()
+  contract <- sas_contract(file.path(.sashiny_fixtures(), "contracts", "valid",
+                                     "minimal", "contract.sashiny.yml"))
+  result <- sas_engine_run(engine, contract, list(), today = .sashiny_today)
+  expect_identical(result$metadata$engine_version, as.character(utils::packageVersion("SAShiny")))
+  for (k in c("started_at", "ended_at")) {
+    expect_match(result$metadata[[k]], "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$", perl = TRUE)
+  }
+})
+
+test_that("timestamps written by Python up to 0.3.1 are still read (spec section 8.4)", {
+  withr::local_options(cli.num_colors = 1)
+  old <- .sashiny_result("r", "success", metadata = list(
+    started_at = "1999-12-31T23:59:59.250000+00:00", ended_at = "2000-01-01T00:00:01Z"
+  ))
+  expect_true(any(grepl("duration: 1.75 s", format(old), fixed = TRUE)))
+})
+
 test_that("contract_sha256 hashes the YAML bytes and program_sha256 the program (spec section 8)", {
   path <- file.path(.sashiny_fixtures(), "contracts", "valid", "minimal", "contract.sashiny.yml")
   contract <- sas_contract(path)

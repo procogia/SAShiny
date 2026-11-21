@@ -1395,6 +1395,13 @@ Every result carries run metadata: `run_id`, `contract_sha256` (of the YAML byte
 (of the program file bytes as stored on disk), rendered macro values, start/end timestamps (UTC, ISO 8601),
 engine name and version, SAS version (`&SYSVLONG`), status, and `collect_errors` (list, possibly empty).
 
+Both languages write the same bytes for these fields:
+- Timestamps (`started_at`, `ended_at`, `recorded_at` in 8.3 and `cached_at` in 6.11) have the form
+  `YYYY-MM-DDTHH:MM:SSZ`: UTC, whole seconds, a literal `Z`. Readers MUST also accept other ISO 8601
+  UTC forms (for example `+00:00` with fractional seconds, as written by Python up to 0.3.1).
+- `engine_version` is the SAShiny package version (equal in R and Python, section 11) for every
+  engine, including the internal test mock.
+
 ### 8.5 Chart spec (client-side rendering)
 
 A `chart` output is rendered by the Shiny module, not by SAS. Exactly one of `spec` (declarative, in

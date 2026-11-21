@@ -12,6 +12,11 @@ All notable changes to the Python library are documented here. The format follow
   both languages' YAML parsers recognise), so a contract is valid in R and Python or in neither:
   `-.5`, `+.5` and `-.5E-3` are now numbers; `1_000`, `017`, `0b101` and `1:30` are now strings
   (`E000` where a number is expected) instead of 1000, 15, 5 and 90 (#155).
+- Run timestamps (`started_at`, `ended_at`, a recording's `recorded_at`) are written as
+  `YYYY-MM-DDTHH:MM:SSZ` (UTC, whole seconds), the form R writes and `cached_at` already used
+  (spec §8.4). Results with `+00:00` timestamps are still read, also on Python 3.10. Every engine
+  (mock, saspy, PROC PYTHON, pool) reports the package version as `engine_version` instead of
+  `"0.1.0"`, as R does (#156).
 
 ### Fixed
 
