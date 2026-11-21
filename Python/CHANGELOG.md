@@ -6,6 +6,13 @@ All notable changes to the Python library are documented here. The format follow
 
 ## [Unreleased]
 
+### Changed
+
+- Contract YAML numbers follow the shared rule of spec §1.1 (the YAML 1.2 core number forms
+  both languages' YAML parsers recognise), so a contract is valid in R and Python or in neither:
+  `-.5`, `+.5` and `-.5E-3` are now numbers; `1_000`, `017`, `0b101` and `1:30` are now strings
+  (`E000` where a number is expected) instead of 1000, 15, 5 and 90 (#155).
+
 ### Fixed
 
 - `Pool` clears its `choices_from` cache when it discards a failed session (spec §6.4), as

@@ -16,7 +16,9 @@ A \code{sashiny_contract} object.
 Reads the contract with \code{yaml::read_yaml}, which does not coerce ISO dates
 to \code{Date} objects (spec section 1.1). Boolean handling is adjusted to match
 PyYAML: single letters \code{y}/\code{Y}/\code{n}/\code{N} stay strings, while the full words
-(\code{yes}, \code{no}, \code{on}, \code{off}, \code{true}, \code{false}) become logicals. Returns a
+(\code{yes}, \code{no}, \code{on}, \code{off}, \code{true}, \code{false}) become logicals. Numbers follow
+the shared rule of spec section 1.1, as in Python: \code{-.5} and \code{1.5e+3} are
+numbers, while \code{1_000}, \code{017}, \code{1e3} and \code{1:30} are strings. Returns a
 \code{sashiny_contract} object holding the parsed data and the file's directory.
 }
 \examples{

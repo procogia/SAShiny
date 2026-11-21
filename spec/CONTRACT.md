@@ -28,6 +28,22 @@ Authors MUST NOT rely on YAML 1.1 implicit typing. In particular, quote values s
 contract dates as strings matching `YYYY-MM-DD` and MUST NOT accept YAML timestamp objects.
 Mapping order is significant: inputs and outputs are processed in the order written.
 
+**Plain scalar typing.** R and Python MUST type every plain (unquoted) scalar the same way, so a
+contract is valid in both languages or in neither (#155). The rule is the YAML 1.2 core schema,
+restricted to the number forms that both languages' YAML parsers recognise:
+
+| Type | Plain scalars (regular expressions match the whole scalar) |
+|---|---|
+| null | `~`, `null`, `Null`, `NULL`, or nothing |
+| boolean | `true`, `True`, `TRUE`, `false`, `False`, `FALSE`; also `yes`, `no`, `on`, `off` in the same three spellings (kept from YAML 1.1 for compatibility; prefer `true`/`false`) |
+| integer | `[-+]?(0\|[1-9][0-9]*)` or `0x[0-9a-fA-F]+` |
+| float | `[-+]?(\.[0-9]+\|[0-9]+\.[0-9]*)([eE][-+][0-9]+)?`, `[-+]?\.(inf\|Inf\|INF)` or `\.(nan\|NaN\|NAN)` |
+| string | everything else |
+
+So `-.5`, `.5`, `1.` and `1.5e+3` are numbers, while `1_000`, `1,000`, `017` (leading zero), `1e3` and
+`1.5e3` (an exponent needs a `.` before it and a sign), `0o17`, `0b101`, `1:30` and `y`/`n` are strings,
+and a string where the schema wants a number is an `E000` error. Quote a value to make it a string.
+
 ---
 
 ## 2. Structure (summary)

@@ -79,7 +79,9 @@ sashiny_issue <- function(code, path, message = "") {
 #' Reads the contract with `yaml::read_yaml`, which does not coerce ISO dates
 #' to `Date` objects (spec section 1.1). Boolean handling is adjusted to match
 #' PyYAML: single letters `y`/`Y`/`n`/`N` stay strings, while the full words
-#' (`yes`, `no`, `on`, `off`, `true`, `false`) become logicals. Returns a
+#' (`yes`, `no`, `on`, `off`, `true`, `false`) become logicals. Numbers follow
+#' the shared rule of spec section 1.1, as in Python: `-.5` and `1.5e+3` are
+#' numbers, while `1_000`, `017`, `1e3` and `1:30` are strings. Returns a
 #' `sashiny_contract` object holding the parsed data and the file's directory.
 #'
 #' @param path Path to the `*.sashiny.yml` file.
@@ -106,11 +108,19 @@ sas_contract <- function(path) {
   # strings, full words become logicals.
   bool_yes <- function(x) if (tolower(x) %in% c("y", "n")) x else TRUE
   bool_no <- function(x) if (tolower(x) %in% c("y", "n")) x else FALSE
-  # Preserve sequences as lists (matching PyYAML, which keeps arrays distinct
-  # from scalars).
+  # Numbers follow the shared rule of spec section 1.1 (#155): every scalar the
+  # yaml package types as a number is re-read with that rule, so forms such as
+  # 1,000, 017 or 1:30 stay strings, as in Python.
+  number <- .sashiny_yaml_number
   handlers <- list(
     "bool#yes" = bool_yes,
     "bool#no" = bool_no,
+    "int" = number, "int#hex" = number, "int#oct" = number, "int#base60" = number,
+    "float" = number, "float#fix" = number, "float#exp" = number,
+    "float#base60" = number, "float#inf" = number, "float#neginf" = number,
+    "float#nan" = number,
+    # Preserve sequences as lists (matching PyYAML, which keeps arrays distinct
+    # from scalars).
     "seq" = function(x) as.list(x)
   )
   data <- yaml::read_yaml(path, handlers = handlers)
@@ -118,6 +128,37 @@ sas_contract <- function(path) {
     list(data = data, base_dir = dirname(path), path = path),
     class = "sashiny_contract"
   )
+}
+
+# Plain-scalar number forms of spec section 1.1: YAML 1.2 core, restricted to
+# the forms both the R yaml package and PyYAML can type the same way.
+.sashiny_yaml_int <- "^([-+]?(0|[1-9][0-9]*)|0x[0-9a-fA-F]+)$"
+.sashiny_yaml_float <- paste0(
+  "^([-+]?([.][0-9]+|[0-9]+[.][0-9]*)([eE][-+][0-9]+)?",
+  "|[-+]?[.](inf|Inf|INF)|[.](nan|NaN|NAN))$"
+)
+
+#' Type a scalar the yaml package read as a number (spec section 1.1)
+#'
+#' Returns an integer (a double outside the integer range) or a double when
+#' `x` is a number under the shared rule, otherwise `x` unchanged as a string.
+#' @noRd
+.sashiny_yaml_number <- function(x) {
+  if (grepl(.sashiny_yaml_int, x, perl = TRUE)) {
+    v <- as.numeric(x) # also reads 0x hex
+    return(if (abs(v) <= .Machine$integer.max) as.integer(v) else v)
+  }
+  if (grepl(.sashiny_yaml_float, x, perl = TRUE)) {
+    bare <- tolower(sub("^[-+]", "", x))
+    if (bare == ".nan") {
+      return(NaN)
+    }
+    if (bare == ".inf") {
+      return(if (startsWith(x, "-")) -Inf else Inf)
+    }
+    return(as.numeric(x))
+  }
+  x
 }
 
 #' Validate a contract

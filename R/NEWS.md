@@ -5,6 +5,11 @@
 * `sas_check()` and `print()` no longer put two spaces in the reason of an
   input issue without an input id (upload errors, `V014`): the reason is
   `invalid input V014 no column AGE`, as in Python (#153).
+* Contract YAML numbers follow one rule in R and Python (spec section 1.1):
+  the YAML 1.2 core number forms that both languages' YAML parsers recognise.
+  `1,000` (was `NA`), `017` (was octal 15) and `-0x1A` (was -26) are now
+  strings, so a contract using them where a number is expected fails with
+  `E000` in both languages (#155).
 
 # SAShiny 0.3.1
 

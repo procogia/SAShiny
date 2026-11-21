@@ -1,0 +1,20 @@
+{
+  "errors": [
+    {
+      "code": "E000",
+      "path": "/inputs/underscore/max"
+    },
+    {
+      "code": "E000",
+      "path": "/inputs/leading_zero/min"
+    },
+    {
+      "code": "E000",
+      "path": "/inputs/bare_exponent/default"
+    },
+    {
+      "code": "E000",
+      "path": "/inputs/sexagesimal/step"
+    }
+  ]
+}

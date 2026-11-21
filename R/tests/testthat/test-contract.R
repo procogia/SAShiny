@@ -125,3 +125,40 @@ test_that("schema validation preserves fractional numeric properties (issue #83)
   issues <- sas_validate(contract, .sashiny_today)
   expect_true(any(vapply(issues, function(i) i$code == "E000", logical(1))))
 })
+# Spec section 1.1 plain scalar typing (#155), mirrored in Python/tests/test_contracts.py.
+yaml_scalars <- list(
+  list("-.5", -0.5),
+  list("+.5", 0.5),
+  list(".5", 0.5),
+  list("1.", 1),
+  list("1.5e+3", 1500),
+  list("-.5E-3", -0.0005),
+  list("-.inf", -Inf),
+  list("12", 12L),
+  list("+12", 12L),
+  list("0x1A", 26L),
+  list("2147483648", 2147483648),
+  list("1_000", "1_000"),
+  list("1,000", "1,000"),
+  list("017", "017"),
+  list("08", "08"),
+  list("1e3", "1e3"),
+  list("1.5e3", "1.5e3"),
+  list("0o17", "0o17"),
+  list("0b101", "0b101"),
+  list("-0x1A", "-0x1A"),
+  list("1:30", "1:30"),
+  list("y", "y"),
+  list("yes", TRUE),
+  list("off", FALSE),
+  list("~", NULL)
+)
+
+test_that("plain scalars are typed by the shared rule (spec section 1.1, #155)", {
+  dir <- withr::local_tempdir()
+  path <- file.path(dir, "x.sashiny.yml")
+  for (case in yaml_scalars) {
+    writeLines(paste0("v: ", case[[1]]), path)
+    expect_identical(sas_contract(path)$data$v, case[[2]], info = case[[1]])
+  }
+})

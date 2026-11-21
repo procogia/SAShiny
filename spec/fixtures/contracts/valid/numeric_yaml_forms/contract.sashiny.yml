@@ -1,0 +1,20 @@
+sashiny: 1
+program: program.sas
+title: YAML number forms (spec 1.1)
+inputs:
+  ratio:
+    type: numeric
+    label: Ratio
+    min: -.5
+    max: +.5
+    step: .05
+    default: 0.
+  big:
+    type: numeric
+    label: Big
+    min: 1.0e+3
+    max: 0x7FFF
+    default: 1.5E+3
+outputs:
+  log:
+    type: log
