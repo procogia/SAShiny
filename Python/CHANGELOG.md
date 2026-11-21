@@ -10,6 +10,9 @@ All notable changes to the Python library are documented here. The format follow
 
 - `Pool` clears its `choices_from` cache when it discards a failed session (spec §6.4), as
   R does; choices from the discarded SAS session were offered and validated against (#152).
+- `split_log` (the `log` output, `Result.log_frame()`, failure reasons) strips only ASCII
+  trailing whitespace (spec §8.1, §8.2), as R does; a trailing U+00A0, U+2003, U+3000 or U+0085
+  now stays (#154).
 
 ## [0.3.1] - 2026-11-20
 

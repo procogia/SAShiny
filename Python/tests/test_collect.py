@@ -47,6 +47,12 @@ def test_split_log_handles_all_line_breaks() -> None:
     assert collect.split_log("") == []
 
 
+def test_split_log_strips_ascii_whitespace_only() -> None:
+    """Spec §8.1/§8.2: only ASCII blanks are trailing whitespace, as in R (#154)."""
+    log = "NOTE: a\u00a0 \t\nb\u3000\x0b\x0c\nc\u2003\nd\u0085\r\n"
+    assert collect.split_log(log) == ["NOTE: a\u00a0", "b\u3000", "c\u2003", "d\u0085"]
+
+
 def test_table_meta_code_uses_upper_case_names() -> None:
     code = collect.table_meta_code("WORK", "STATS")
     assert 'where libname = "WORK" and memname = "STATS"' in code

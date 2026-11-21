@@ -1327,7 +1327,8 @@ own `select` (plot form). Collect `sashiny` like a `chart` from the chart fields
 **html**: The ODS HTML listing returned by the main submission.
 
 **log**: Split the main-submission log on line breaks (`CRLF`, `CR` or `LF`). If the log ends with a line
-break, there is no empty final line. Drop trailing whitespace from each line.
+break, there is no empty final line. Drop trailing whitespace from each line: ASCII blanks only, as in
+8.1 (a no-break space, U+3000 or U+0085 stays).
 `program` scope keeps the lines strictly between the line equal to `NOTE: SASHINY-BEGIN-PROGRAM` and the
 line equal to `NOTE: SASHINY-END-PROGRAM`, or every line after BEGIN if END is missing. Source echo lines
 never match, because SAS prefixes them with line numbers. `full` keeps every line. Each line's `level`
