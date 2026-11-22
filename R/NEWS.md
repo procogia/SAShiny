@@ -24,6 +24,11 @@ R/Python parity pass (spec release 1.5, `docs/parity.md`).
 
 ## Bug fixes
 
+* xlsx uploads read like Python's pandas/openpyxl (spec section 7 step 1):
+  blank rows are kept instead of dropped; text with leading or trailing
+  spaces no longer comes back as `xml:space="preserve"> x `; and columns with
+  a date or time number format are date-times with their time of day (were
+  `Date`, losing the time, or raw serial numbers for some formats).
 * Declared `character` upload columns turn native cells (numbers, logicals,
   dates) into the spec section 7.1 text, as Python does: `1`/`0`, `%.17g`
   numbers and ISO dates, instead of `as.character()` (spec section 7).

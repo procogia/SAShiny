@@ -1,0 +1,32 @@
+{
+  "description": "Spec section 7 step 1 (xlsx): the blank middle row is kept, text keeps its spaces, and date-formatted columns are date-times (the day fraction rounded to the millisecond). Read with every column declared character (step 3) so the cells compare as the section 7.1 text. Hand-written expected values.",
+  "file": "rows.xlsx",
+  "columns": [
+    "day",
+    "stamp",
+    "text",
+    "n"
+  ],
+  "expected": {
+    "day": [
+      "2026-01-01T00:00:00Z",
+      "",
+      "1999-12-31T00:00:00Z"
+    ],
+    "stamp": [
+      "2026-01-01T12:30:15Z",
+      "",
+      "1999-12-31T23:59:59.5Z"
+    ],
+    "text": [
+      " x ",
+      "",
+      "y  "
+    ],
+    "n": [
+      "1",
+      "",
+      "2"
+    ]
+  }
+}

@@ -274,8 +274,9 @@ def test_render_chart_spec_defaults_to_none() -> None:
 # --------------------------------------------------------------------------- §7 uploads
 
 
-def test_declared_character_cells_use_the_section_7_1_text() -> None:
-    folder = FIX / "uploads" / "character_cells"
+@pytest.mark.parametrize("name", ["character_cells", "xlsx_reading"])
+def test_upload_fixtures_read_the_same_in_both_languages(name: str) -> None:
+    folder = FIX / "uploads" / name
     case = json.loads((folder / "case.json").read_text(encoding="utf-8"))
     spec = {
         "type": "dataset",

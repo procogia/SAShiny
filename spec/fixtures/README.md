@@ -54,6 +54,7 @@ The `streamlit_*` cases are Python only (spec §6.8.5); the R package skips them
 | Path | Pins down (CONTRACT.md §7) | Pass condition |
 |---|---|---|
 | `character_cells/case.json`, `cells.xlsx` | Declared `character` columns take the §7.1 rule 5 text of each native cell (step 3) | Every listed column of the read file equals `expected`, cell for cell |
+| `xlsx_reading/case.json`, `rows.xlsx` | xlsx reading (step 1): blank rows kept, text spaces kept, date-formatted columns as date-times | Same as above |
 
 ### Streamlit fixtures (`streamlit/`)
 

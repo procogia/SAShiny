@@ -147,16 +147,18 @@ test_that("plotly refuses color and fill together, and shows the subtitle", {
   expect_identical(if (is.list(title)) title$text else title, "T<br><sup>S</sup>")
 })
 
-test_that("declared character cells use the section 7.1 text (spec section 7)", {
+test_that("upload fixtures read the same in both languages (spec section 7)", {
   skip_if_not_installed("openxlsx")
-  folder <- file.path(.sashiny_fixtures(), "uploads", "character_cells")
-  case <- jsonlite::fromJSON(file.path(folder, "case.json"), simplifyVector = FALSE)
-  spec <- list(
-    type = "dataset", label = "Cells", target = "work.cells", accept = list("xlsx"),
-    columns = lapply(case$columns, function(c) list(name = c, type = "character"))
-  )
-  path <- file.path(folder, case$file)
-  read <- .sashiny_read_upload(.sashiny_upload_file(path), spec)
-  got <- lapply(stats::setNames(nm = unlist(case$columns)), function(c) read$df[[c]])
-  expect_identical(got, lapply(case$expected, unlist))
+  for (name in c("character_cells", "xlsx_reading")) {
+    folder <- file.path(.sashiny_fixtures(), "uploads", name)
+    case <- jsonlite::fromJSON(file.path(folder, "case.json"), simplifyVector = FALSE)
+    spec <- list(
+      type = "dataset", label = "Cells", target = "work.cells", accept = list("xlsx"),
+      columns = lapply(case$columns, function(c) list(name = c, type = "character"))
+    )
+    path <- file.path(folder, case$file)
+    read <- .sashiny_read_upload(.sashiny_upload_file(path), spec)
+    got <- lapply(stats::setNames(nm = unlist(case$columns)), function(c) read$df[[c]])
+    expect_identical(got, lapply(case$expected, unlist), label = name)
+  }
 })

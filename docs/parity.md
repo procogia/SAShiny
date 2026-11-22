@@ -64,6 +64,7 @@ Legend: ✅ same behaviour · 🟡 idiomatic difference only (same behaviour, la
 | Plot extraction, paired outputs | same | same | ✅ (shared `plots.json`) |
 | Upload blank detection (numeric/date) | ASCII | Unicode | 🔧 Python (ASCII) |
 | Declared `character` column conversion | §7.1 cell text | §7.1 cell text | 🔧 spec §7 step 3, shared fixture `uploads/character_cells` |
+| xlsx reading: blank rows, text spaces, date-times | kept, kept, date-time | kept, kept, date-time | 🔧 R (spec §7 step 1, fixture `uploads/xlsx_reading`) |
 | CSV download number text | 15 significant digits | `repr` | ✅ allowed by §8.2 ("may differ slightly") |
 | Data-frame accessors | `sas_result_table/log/outputs` | `Result.table/log_frame/frames` | 🟡 (shared `frames.json`) |
 | Chart spec backends | ggplot2, base, plotly | plotnine, matplotlib, plotly | 🅿 per-language by spec |
@@ -104,10 +105,12 @@ Legend: ✅ same behaviour · 🟡 idiomatic difference only (same behaviour, la
    without a `title` the content name (and title) is `name`, as in R. With both `name` and `title`
    the content name follows the title and Python warns. `server=` is the rsconnect nickname (R:
    `server`); R's `account` has no Python equivalent.
-2. **xlsx reader differences (not closed).** R's openxlsx drops fully blank rows (pandas keeps
-   them), misreads a text cell with leading or trailing spaces as `xml:space="preserve"> x `, and
-   reads xlsx date-times as `Date` (the time is lost), while pandas keeps the time. These sit in the
-   readers, not in the character rule, and need their own fix.
+2. **xlsx reading.** R reads xlsx with openxlsx, Python with pandas/openpyxl. R keeps blank rows,
+   strips the `xml:space="preserve">` prefix openxlsx leaves on inline strings with spaces, and turns
+   date-formatted columns into date-times with openpyxl's rule (day fraction rounded to the
+   millisecond), so both read the same cells (spec §7 step 1, fixture `uploads/xlsx_reading`).
+   Not covered: dates before 1900-03-01 in the 1900 date system, and columns that mix date and
+   non-date cells.
 3. **Tests.** `R/tests/testthat/test-parity.R` and `Python/tests/test_parity.py` pin the closed
    gaps; the shared fixtures (`values/*`, `collect/log_scope.json`) run in
    both suites and in `spec/tools/check_spec.py`.

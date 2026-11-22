@@ -1246,7 +1246,12 @@ A data frame supplied through `values` (§6.10) or `sas_run(uploads = )` / `run(
 first written as CSV in the canonical form of §7.1 and then converted like any other file.
 
 1. Read the file by extension: `csv` (UTF-8, comma, header row, RFC 4180), `xlsx` (first sheet, header
-   row), `xpt` (SAS transport v5/v8), `sas7bdat`.
+   row), `xpt` (SAS transport v5/v8), `sas7bdat`. In `xlsx`, every row between the header and the last
+   non-empty row is read, blank rows included (their cells are missing). Text cells keep their leading
+   and trailing spaces. A column whose non-empty cells all carry a date or time number format (a
+   built-in date format, or a format code that, without quoted text, escaped characters and `[...]`
+   sections, contains `d`, `m`, `y`, `h` or `s`) is a native date-time column: the Excel serial (1900
+   or 1904 date system) gives whole days plus the day fraction rounded to the millisecond, in UTC.
 2. Column names: replace characters outside `[A-Za-z0-9_]` with `_`; prefix `_` if the first character is
    a digit; truncate to 32 bytes; resolve case-insensitive duplicates by suffixing `_2`, `_3`, ... (truncating
    further to fit). Declared `columns` are matched case-insensitively **after** this step.
