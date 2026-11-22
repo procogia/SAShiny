@@ -6,7 +6,7 @@ endorsed by either company.
 """
 
 # Set before the imports below: engines report it as their engine_version (spec §8.4).
-__version__ = "0.4.0"
+__version__ = "0.4.1"
 
 from typing import Any
 
