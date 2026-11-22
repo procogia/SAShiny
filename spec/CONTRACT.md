@@ -1,6 +1,6 @@
 # SAShiny Contract Specification — Version 1
 
-Status: **Draft 1 (phase 1)**. Spec release: **1.5**. This document is normative for both the R package and the Python library.
+Status: **Draft 1 (phase 1)**. Spec release: **1.6**. This document is normative for both the R package and the Python library.
 The key words MUST, MUST NOT, SHOULD and MAY are used as described in RFC 2119.
 
 The machine-readable structure is [`sashiny.schema.json`](sashiny.schema.json) (JSON Schema 2020-12).
@@ -1254,7 +1254,12 @@ first written as CSV in the canonical form of §7.1 and then converted like any 
    `date` (ISO `YYYY-MM-DD`, or a native date type; stored as SAS date with format `DATE9.`). For `numeric`
    and `date` columns, a value is "empty" (missing) when it is the empty string or whitespace only; any
    other non-conforming value (including the literal text `NA`, `nan`, `NaT` or `None`) is unparseable and
-   reported as `V014`.
+   reported as `V014`. A `character` column keeps text cells as they are. Any other cell (a number,
+   logical, date or date-time read natively from `xlsx`, `xpt` or `sas7bdat`) becomes the text that §7.1
+   rule 5 gives for its type, without CSV quoting: `1`/`0` for true/false, integers as digits, other
+   numbers as `%.17g` (so `1.0` is `1` and `0.1 + 0.2` is `0.30000000000000004`), dates as
+   `YYYY-MM-DD` and date-times as `YYYY-MM-DDTHH:MM:SS[.ffffff]Z` in UTC. A missing cell is empty, and an
+   infinite number is `V014`.
 4. Undeclared columns: native numeric/date types are kept. In `csv`, a column whose non-empty values all
    parse as numbers becomes numeric, otherwise character.
 5. The result is written to `target`. Column order is preserved.

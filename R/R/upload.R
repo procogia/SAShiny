@@ -238,9 +238,12 @@
       df[[name]] <- .sashiny_upload_date(df[[name]], name)
       datetimes[[name]] <- "date"
     } else {
-      x <- as.character(df[[name]])
-      x[is.na(x)] <- ""
-      df[[name]] <- x
+      # Text stays as it is; other native cells take their spec section 7.1
+      # rule 5 text (1/0, %.17g, ISO dates), the same text Python writes.
+      x <- df[[name]]
+      if (inherits(x, "haven_labelled")) x <- unclass(x)
+      if (!inherits(x, c("Date", "POSIXct", "factor"))) attr(x, "class") <- NULL
+      df[[name]] <- .sashiny_frame_texts(x, name)
     }
   }
   if (read$all_text) {

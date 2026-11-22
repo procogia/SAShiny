@@ -49,6 +49,12 @@ When adding a fixture, write the expected output by hand from CONTRACT.md first,
 
 The `streamlit_*` cases are Python only (spec §6.8.5); the R package skips them.
 
+### Upload fixtures (`uploads/`)
+
+| Path | Pins down (CONTRACT.md §7) | Pass condition |
+|---|---|---|
+| `character_cells/case.json`, `cells.xlsx` | Declared `character` columns take the §7.1 rule 5 text of each native cell (step 3) | Every listed column of the read file equals `expected`, cell for cell |
+
 ### Streamlit fixtures (`streamlit/`)
 
 | Path | Pins down (CONTRACT.md §6.9) | Pass condition |

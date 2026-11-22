@@ -122,12 +122,17 @@ def frame_csv(frame: Any) -> bytes:
 
 def _frame_column(series: Any, name: str) -> list[str]:
     """One column as quoted CSV fields (spec §7.1 rule 5)."""
+    return [_csv_field(text) for text in _column_texts(series, name)]
+
+
+def _column_texts(series: Any, name: str) -> list[str]:
+    """One column as unquoted §7.1 rule 5 texts; also used for declared character columns."""
     import pandas as pd  # noqa: PLC0415 - optional dependency
 
     dtype = series.dtype
     if isinstance(dtype, pd.CategoricalDtype):
         values = [None if pd.isna(v) else v for v in series.astype(object)]
-        return [_csv_field(_value_text(v, name)) for v in values]
+        return [_value_text(v, name) for v in values]
     if pd.api.types.is_bool_dtype(dtype):
         return ["" if pd.isna(v) else ("1" if v else "0") for v in series.astype(object)]
     if pd.api.types.is_integer_dtype(dtype):
@@ -137,7 +142,7 @@ def _frame_column(series: Any, name: str) -> list[str]:
     if pd.api.types.is_datetime64_any_dtype(dtype):
         return [_datetime_text(v) for v in series]
     if pd.api.types.is_object_dtype(dtype) or pd.api.types.is_string_dtype(dtype):
-        return [_csv_field(_value_text(v, name)) for v in series]
+        return [_value_text(v, name) for v in series]
     raise UploadError(f"column '{name}' has a type that cannot be written as CSV ({dtype})")
 
 
@@ -147,6 +152,11 @@ def _value_text(value: Any, name: str) -> str:  # noqa: PLR0911 - one return per
 
     if value is None or (not isinstance(value, (str, list, dict, tuple)) and pd.isna(value)):
         return ""
+    if type(value).__module__ == "numpy":
+        if type(value).__name__ == "datetime64":
+            return _datetime_text(value)
+        if type(value).__name__ != "timedelta64":
+            value = value.item()  # numpy numbers and booleans (np.int64, np.bool_)
     if isinstance(value, str):
         return value
     if isinstance(value, bool):
@@ -356,19 +366,16 @@ def _is_native_date(v: Any) -> bool:
     return isinstance(v, (datetime.date, datetime.datetime))
 
 
-def _to_character(series: Any) -> Any:
+def _to_character(series: Any, name: str) -> Any:
     """Convert a declared character column to strings (spec §7 step 3).
 
-    Integer-valued floats render without a trailing ``.0`` (``1.0`` -> ``"1"``),
-    matching R's ``as.character``. Native missing values become ``""``.
+    Text cells stay as they are. Other native cells (numbers, booleans, dates,
+    date-times from xlsx, xpt or sas7bdat) take their spec §7.1 rule 5 text
+    without CSV quoting, the same text R writes. Missing cells become ``""``.
     """
+    import pandas as pd  # noqa: PLC0415 - optional dependency
 
-    def _fmt(v: Any) -> str:
-        if isinstance(v, float) and v.is_integer():
-            return str(int(v))
-        return str(v)
-
-    return series.where(series.notna(), "").map(_fmt)
+    return pd.Series(_column_texts(series, name), index=series.index, dtype=object)
 
 
 def _infer_csv_numbers(df: Any, declared: set[str]) -> None:
@@ -425,7 +432,7 @@ def read_upload(upload: UploadFile, spec: dict[str, Any]) -> tuple[Any, dict[str
             df[name] = _to_date(series, name)
             datetimes[name] = "date"
         else:
-            df[name] = _to_character(series)
+            df[name] = _to_character(series, name)
     if all_text:
         _infer_csv_numbers(df, declared)
     return df, datetimes

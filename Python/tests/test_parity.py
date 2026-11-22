@@ -6,6 +6,7 @@ cases (values, log scope) are shared fixtures under ``spec/fixtures``.
 
 from __future__ import annotations
 
+import json
 import re
 import threading
 import time
@@ -24,6 +25,7 @@ from sashiny.collect import build_table, split_log
 from sashiny.engines import saspy as saspy_engine
 from sashiny.lint import lint
 from sashiny.pool import PoolExhausted
+from sashiny.upload import UploadFile, read_upload
 from sashiny.values import render_values
 
 FIX = repo_root() / "spec" / "fixtures"
@@ -267,3 +269,21 @@ def test_plotly_refuses_color_and_fill_together() -> None:
 def test_render_chart_spec_defaults_to_none() -> None:
     with pytest.raises(sashiny.ValuesError, match="no spec and no render callback"):
         sashiny.render_chart(_chart_value())
+
+
+# --------------------------------------------------------------------------- §7 uploads
+
+
+def test_declared_character_cells_use_the_section_7_1_text() -> None:
+    folder = FIX / "uploads" / "character_cells"
+    case = json.loads((folder / "case.json").read_text(encoding="utf-8"))
+    spec = {
+        "type": "dataset",
+        "label": "Cells",
+        "target": "work.cells",
+        "accept": ["xlsx"],
+        "columns": [{"name": c, "type": "character"} for c in case["columns"]],
+    }
+    path = folder / case["file"]
+    df, _ = read_upload(UploadFile(path=path, name=case["file"]), spec)
+    assert {c: list(df[c]) for c in case["columns"]} == case["expected"]

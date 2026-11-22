@@ -24,6 +24,9 @@ R/Python parity pass (spec release 1.5, `docs/parity.md`).
 
 ## Bug fixes
 
+* Declared `character` upload columns turn native cells (numbers, logicals,
+  dates) into the spec section 7.1 text, as Python does: `1`/`0`, `%.17g`
+  numbers and ISO dates, instead of `as.character()` (spec section 7).
 * `S013`: a directory is not a program or sample file.
 * Default module ids strip every combining mark (Unicode category M), as
   Python does.
