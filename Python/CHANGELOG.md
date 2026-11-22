@@ -6,7 +6,18 @@ All notable changes to the Python library are documented here. The format follow
 
 ## [Unreleased]
 
+### Added
+
+- `values` in `program_server()` can now supply a dataset input: pass a pandas `DataFrame` and it
+  replaces the upload control. It is written as CSV in a canonical form (spec §7.1) and checked
+  like an uploaded file, so a missing declared column is `V014`. `run(uploads=)` accepts
+  DataFrames too. The same data frame gives the same CSV bytes in R and Python, so result-cache
+  and recording keys agree. This lets a parent app pass its filtered data to SAS.
+
 ### Changed
+
+- A value supplied through `values` for a dataset input is no longer ignored: a DataFrame replaces
+  the upload, `None` removes it, and anything else is `V014`.
 
 - Contract YAML numbers follow the shared rule of spec §1.1 (the YAML 1.2 core number forms
   both languages' YAML parsers recognise), so a contract is valid in R and Python or in neither:

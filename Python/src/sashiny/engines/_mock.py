@@ -21,7 +21,14 @@ from .. import __version__
 from ..contract import Contract
 from ..recording import contract_sha256, key_for, load_recording, program_sha256
 from ..result import Result
-from ..upload import UploadError, UploadFile, _check_file, read_upload, resolve_upload
+from ..upload import (
+    UploadError,
+    UploadFile,
+    _check_file,
+    read_upload,
+    resolve_upload,
+    upload_supplied,
+)
 from ..values import render_values
 from .base import Engine, testing
 
@@ -52,7 +59,7 @@ def resolve_files(contract: Contract, uploads: dict[str, Any] | None) -> dict[st
     for iid, spec in (contract.data.get("inputs") or {}).items():
         if spec["type"] != "dataset":
             continue
-        upload = resolve_upload((uploads or {}).get(iid), spec, contract.base_dir)
+        upload = resolve_upload((uploads or {}).get(iid), spec, contract.base_dir, iid)
         if upload is not None:
             _check_file(upload, spec)
             files[iid] = upload.path
@@ -108,7 +115,7 @@ class MockEngine(Engine):
         _require_testing()
         today = today or date.today()
         run_id = run_id or str(uuid.uuid4())
-        flags = {k: bool(v) for k, v in (uploads or {}).items()}
+        flags = {k: upload_supplied(v) for k, v in (uploads or {}).items()}
         found = getattr(contract, "cached_choices", None) or self.choices(contract)
         override = {k: [c["value"] for c in v] for k, v in found.items()}
         macros, issues = render_values(

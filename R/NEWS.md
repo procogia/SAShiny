@@ -1,5 +1,21 @@
 # SAShiny (development version)
 
+## New features
+
+* `values` in `sas_program_server()` can now supply a dataset input: pass a
+  data frame (a tibble counts) and it replaces the upload control. It is
+  written as CSV in a canonical form (spec section 7.1) and checked like an
+  uploaded file, so a missing declared column is `V014`. `sas_run(uploads = )`
+  accepts data frames too. The same data frame gives the same CSV bytes in R
+  and Python, so result-cache and recording keys agree. This lets a parent
+  app, such as a teal app, pass its filtered data to SAS.
+
+## Changes
+
+* A value supplied through `values` for a dataset input is no longer ignored:
+  a data frame replaces the upload, `NULL` removes it, and anything else is
+  `V014`.
+
 ## Fixes
 
 * `sas_check()` and `print()` no longer put two spaces in the reason of an

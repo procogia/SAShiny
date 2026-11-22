@@ -40,8 +40,9 @@ def run(  # noqa: PLR0913 - mirrors the engine.run signature
         values: Input values keyed by input id (JSON form, spec §2.1).
             Defaults to the contract's defaults (no values).
         today: The date used to resolve ``"today"``. Defaults to today.
-        uploads: Maps dataset input ids to a file path, an ``UploadFile``, or
-            ``True`` for the input's ``sample`` file.
+        uploads: Maps dataset input ids to a file path, an ``UploadFile``,
+            ``True`` for the input's ``sample`` file, or a pandas DataFrame,
+            which is written as CSV (spec §7.1).
         run_id: The run identifier. Defaults to a generated UUID.
 
     Returns:
