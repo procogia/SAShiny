@@ -1,0 +1,42 @@
+{
+  "sashiny_recording": 1,
+  "status": "warning",
+  "log": "NOTE: SASHINY-BEGIN-PROGRAM\nNOTE: The data set WORK.OUT has 1 observations and 1 variables.\nWARNING: Case 9 is a warning on purpose.\nNOTE: SASHINY-END-PROGRAM\n",
+  "outputs": {
+    "out": {
+      "columns": [
+        {
+          "name": "case",
+          "type": "numeric",
+          "label": "",
+          "format": ""
+        }
+      ],
+      "rows": [
+        [
+          9
+        ]
+      ],
+      "total_rows": 1,
+      "truncated": false,
+      "formatted": false
+    },
+    "log": [
+      {
+        "level": "note",
+        "text": "NOTE: The data set WORK.OUT has 1 observations and 1 variables."
+      },
+      {
+        "level": "warning",
+        "text": "WARNING: Case 9 is a warning on purpose."
+      }
+    ]
+  },
+  "sas_version": "9.04.01M0P061913",
+  "contract_sha256": "2eb47fe376b0c1ebc0fe59ca0000a3d1dba2dcb6b71020a2bdc0d4706144d1ad",
+  "program_sha256": "6b006a88e9f463679a854f4c5ef6955090fe242e24c3aa9f1fa99a23fc5943c8",
+  "macros": {
+    "CASE": "9"
+  },
+  "recorded_at": "2015-07-30T12:00:00Z"
+}

@@ -1,0 +1,183 @@
+{
+  "contract": "replay.sashiny.yml",
+  "today": "2026-11-11",
+  "description": "Replay engine outcomes (CONTRACT.md 6.6 (a), 8.3). Recording file names are the 8.3 keys of each case's rendered values.",
+  "cases": [
+    {
+      "name": "replayed",
+      "values": {
+        "case": 1
+      },
+      "expected": {
+        "status": "success",
+        "recording": "replayed",
+        "sas_version": "9.04.01M0P061913",
+        "recorded_at": "2015-07-30T12:00:00Z",
+        "notice": "Replayed from 9.04.01M0P061913, recorded 2015-07-30T12:00:00Z.",
+        "log": "NOTE: SASHINY-BEGIN-PROGRAM\nNOTE: The data set WORK.OUT has 1 observations and 1 variables.\nNOTE: SASHINY-END-PROGRAM\n",
+        "outputs": {
+          "out": {
+            "columns": [
+              {
+                "name": "case",
+                "type": "numeric",
+                "label": "",
+                "format": ""
+              }
+            ],
+            "rows": [
+              [
+                1
+              ]
+            ],
+            "total_rows": 1,
+            "truncated": false,
+            "formatted": false
+          },
+          "log": [
+            {
+              "level": "note",
+              "text": "NOTE: The data set WORK.OUT has 1 observations and 1 variables."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "no_sas_version",
+      "values": {
+        "case": 2
+      },
+      "expected": {
+        "status": "error",
+        "recording": "refused",
+        "engine_error": "recording not replayed: it has no SAS version"
+      }
+    },
+    {
+      "name": "different_program",
+      "values": {
+        "case": 3
+      },
+      "expected": {
+        "status": "error",
+        "recording": "refused",
+        "engine_error": "recording not replayed: it was made from a different version of the program"
+      }
+    },
+    {
+      "name": "no_recorded_at",
+      "values": {
+        "case": 4
+      },
+      "expected": {
+        "status": "error",
+        "recording": "refused",
+        "engine_error": "recording not replayed: it has no recording time"
+      }
+    },
+    {
+      "name": "missing",
+      "values": {
+        "case": 5
+      },
+      "expected": {
+        "status": "error",
+        "recording": "missing",
+        "engine_error": "no recording of this run: these inputs were not recorded on SAS"
+      }
+    },
+    {
+      "name": "not_version_1",
+      "values": {
+        "case": 6
+      },
+      "expected": {
+        "status": "error",
+        "recording": "refused",
+        "engine_error": "recording not replayed: it is not a version 1 SAShiny recording"
+      }
+    },
+    {
+      "name": "different_contract",
+      "values": {
+        "case": 7
+      },
+      "expected": {
+        "status": "error",
+        "recording": "refused",
+        "engine_error": "recording not replayed: it was made from a different contract"
+      }
+    },
+    {
+      "name": "not_json",
+      "values": {
+        "case": 8
+      },
+      "expected": {
+        "status": "error",
+        "recording": "refused",
+        "engine_error": "recording not replayed: it is not valid JSON"
+      }
+    },
+    {
+      "name": "replayed_warning",
+      "values": {
+        "case": 9
+      },
+      "expected": {
+        "status": "warning",
+        "recording": "replayed",
+        "sas_version": "9.04.01M0P061913",
+        "recorded_at": "2015-07-30T12:00:00Z",
+        "notice": "Replayed from 9.04.01M0P061913, recorded 2015-07-30T12:00:00Z.",
+        "log": "NOTE: SASHINY-BEGIN-PROGRAM\nNOTE: The data set WORK.OUT has 1 observations and 1 variables.\nWARNING: Case 9 is a warning on purpose.\nNOTE: SASHINY-END-PROGRAM\n",
+        "outputs": {
+          "out": {
+            "columns": [
+              {
+                "name": "case",
+                "type": "numeric",
+                "label": "",
+                "format": ""
+              }
+            ],
+            "rows": [
+              [
+                9
+              ]
+            ],
+            "total_rows": 1,
+            "truncated": false,
+            "formatted": false
+          },
+          "log": [
+            {
+              "level": "note",
+              "text": "NOTE: The data set WORK.OUT has 1 observations and 1 variables."
+            },
+            {
+              "level": "warning",
+              "text": "WARNING: Case 9 is a warning on purpose."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "invalid_value",
+      "values": {
+        "case": 10
+      },
+      "expected": {
+        "status": "error",
+        "issues": [
+          {
+            "code": "V003",
+            "input": "case"
+          }
+        ]
+      }
+    }
+  ]
+}

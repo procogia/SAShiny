@@ -19,7 +19,7 @@ from datetime import date, datetime, timezone
 from typing import TYPE_CHECKING, Any, Protocol
 
 from . import choices_cache
-from .engines._mock import resolve_files
+from .engines._offline import resolve_files
 from .recording import contract_sha256, program_sha256, upload_key_parts
 from .result import utc_timestamp
 from .upload import UploadError, upload_supplied

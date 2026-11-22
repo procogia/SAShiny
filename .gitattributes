@@ -13,3 +13,7 @@ R/inst/spec/fixtures/deploy/** text eol=lf
 # (spec/fixtures/README.md). Do not normalise it.
 spec/fixtures/wrapper/program_entry/program.sas -text
 R/inst/spec/fixtures/wrapper/program_entry/program.sas -text
+
+# Replay fixtures: recordings carry the SHA-256 of this contract and program
+# (spec/CONTRACT.md sections 6.6 and 8.3), so their bytes must not change.
+spec/fixtures/replay/** text eol=lf

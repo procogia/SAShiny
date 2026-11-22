@@ -1,0 +1,17 @@
+sashiny: 1
+program: replay.sas
+title: Replay fixture
+inputs:
+  case:
+    type: numeric
+    label: Case number
+    default: 1
+    min: 1
+    max: 9
+    integer: true
+outputs:
+  out:
+    type: table
+    from: work.out
+  log:
+    type: log

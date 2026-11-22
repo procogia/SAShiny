@@ -8,6 +8,25 @@ All notable changes to the Python library are documented here. The format follow
 
 ### Added
 
+- Replay and registered engines (spec §6.6, spec release 1.7). `program_server`, `app`, `run`
+  and `Pool` now also accept:
+  - `sashiny.replay(recordings_dir)` (`ReplayEngine`), which replays recordings (§8.3) of runs
+    made on a live, licensed SAS system. A recording is replayed only when it carries its
+    `sas_version` (`&SYSVLONG`), `recorded_at` and the SHA-256 of the contract and program it
+    was made from, both matching the files on disk. Otherwise the run is an error result with
+    `metadata["recording"] == "refused"` and the reason in `metadata["engine_error"]`; inputs
+    never recorded give `"missing"`. A replayed result has `metadata["recording"] ==
+    "replayed"` and a `metadata["notice"]` such as "Replayed from 9.04.01M0P061913, recorded
+    2015-07-30T12:00:00Z.", which the module's status text shows.
+  - instances of an `Engine` subclass registered with
+    `sashiny.register_engine(cls, license_ack=True, description=...)`. The registrant
+    acknowledges that the engine runs every program on a live, licensed SAS system;
+    `SASHINY_LICENSE_ACK` does not register an engine. `registered_engines()` and
+    `unregister_engine()` list and remove registrations.
+- `sashiny.engine_result()` builds a result with the §8.4 metadata for a registered engine, and
+  `sashiny.record()` writes a live or registered engine's result as a recording. It refuses
+  results without a SAS version, replays, cache hits and results from another contract or
+  program. The recording key is unchanged, so existing recordings keep their names.
 - `values` in `program_server()` can now supply a dataset input: pass a pandas `DataFrame` and it
   replaces the upload control. It is written as CSV in a canonical form (spec §7.1) and checked
   like an uploaded file, so a missing declared column is `V014`. `run(uploads=)` accepts

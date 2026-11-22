@@ -682,7 +682,8 @@ def program_server(  # noqa: PLR0913, PLR0915, PLR0917 - Shiny module: one react
         output: Shiny outputs.
         session: Shiny session.
         contract: The loaded contract.
-        engine: A :func:`sashiny.connect` engine or a :class:`sashiny.Pool`.
+        engine: A :func:`sashiny.connect` engine, a :class:`sashiny.Pool`, a
+            :func:`sashiny.replay` engine or a registered engine (spec §6.6).
         server_override: An optional callable `(input, output, session,
             contract, engine)` that replaces the auto-generated server.
         chart_render: An optional mapping of chart render callbacks keyed by

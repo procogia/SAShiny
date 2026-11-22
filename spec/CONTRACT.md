@@ -1,6 +1,6 @@
 # SAShiny Contract Specification — Version 1
 
-Status: **Draft 1 (phase 1)**. Spec release: **1.6**. This document is normative for both the R package and the Python library.
+Status: **Draft 1 (phase 1)**. Spec release: **1.7**. This document is normative for both the R package and the Python library.
 The key words MUST, MUST NOT, SHOULD and MAY are used as described in RFC 2119.
 
 The machine-readable structure is [`sashiny.schema.json`](sashiny.schema.json) (JSON Schema 2020-12).
@@ -439,8 +439,8 @@ exception class name.
 
 ### 6.6 Supported backends and licence acknowledgement
 
-A run that users can reach through the public API MUST be executed by a live, licensed SAS system.
-Exactly three backends are supported through saspy, plus one in-session backend (Python only):
+A run that users can reach through the public API MUST be executed by a live, licensed SAS system, or be
+a replay of a recording of such a run (see *Two more backends* below). Exactly three backends are supported through saspy, plus one in-session backend (Python only):
 
 | Backend | saspy access method | Configuration that identifies it |
 |---|---|---|
@@ -475,9 +475,78 @@ Rules:
   Without an acknowledgement the run returns an error `Result` whose `metadata.engine_error` starts with
   `SAS licence not acknowledged`. Building an engine without an acknowledgement is allowed, so
   configuration can be inspected offline.
-- SAS logs come only from SAS. The public API MUST NOT offer a way to supply a log, a result or a
-  recording that did not come from a live SAS run, and live engines MUST NOT write recordings.
+- SAS logs come only from SAS. Apart from the two backends below, the public API MUST NOT offer a way
+  to supply a log, a result or a recording that did not come from a live SAS run, and live engines
+  MUST NOT write recordings on their own (an app writes one only by calling the recording writer below).
 - The offline mock engine (8.3) is an internal test fixture. It is not part of the public API.
+
+**Two more backends.** Besides the rows above, the public entry points (the module server
+`sas_program_server()` / `program_server()`, the app helpers, `sas_run()` / `run()` and pools) accept
+exactly two more kinds of engine. Every other engine class is rejected when the entry point is
+called, with an error naming the supported engines.
+
+*(a) Replay of recordings made on a live, licensed SAS system.* `sas_replay(recordings_dir)` (R) /
+`sashiny.replay(recordings_dir)` (Python) returns an engine that serves recordings (8.3) instead of
+submitting to SAS. It replays a recording only when the recording carries provenance from a licensed
+SAS run, checked on every run in this order; the first failed check is the reason:
+
+| Check | Reason when it fails |
+|---|---|
+| `sashiny_recording` is `1` | `it is not a version 1 SAShiny recording` |
+| `sas_version` (`&SYSVLONG` of the run) is a non-empty string | `it has no SAS version` |
+| `recorded_at` is a non-empty string | `it has no recording time` |
+| `contract_sha256` is a non-empty string equal to the SHA-256 of the contract on disk (8.4) | `it was made from a different contract` |
+| `program_sha256` is a non-empty string equal to the SHA-256 of the program on disk (8.4) | `it was made from a different version of the program` |
+
+The run proceeds as follows. Values are validated and rendered exactly as for a live run (§4, §5,
+V001–V014; dataset files as in §7), and a run whose values do not validate returns the usual error
+result without reading a recording. The recording key (8.3) selects `<recordings_dir>/<key>.json`.
+- No such file: status `error`, `metadata.recording = "missing"`, `metadata.engine_error` =
+  `no recording of this run: these inputs were not recorded on SAS`. Outputs and log are empty.
+- A file that fails a provenance check (or is not valid JSON, reason `it is not valid JSON`): the
+  recording is **refused**, not replayed: status `error`, `metadata.recording = "refused"`,
+  `metadata.engine_error` = `recording not replayed: <reason>`. Outputs and log are empty.
+- Otherwise the recording is **replayed**: status, log and outputs are the recording's; the
+  metadata is that of 8.4 with `engine = "replay"`, `sas_version` and `recorded_at` from the
+  recording, `recording = "replayed"`, and `notice` = `Replayed from <sas_version>, recorded
+  <recorded_at>.` (for example `Replayed from 9.04.01M0P061913, recorded 2015-07-30T12:00:00Z.`).
+  The module's status text shows the notice (it already shows every `metadata.notice`), so a user
+  always sees that the result is a replay and which SAS run made it.
+
+The replay engine runs no `choices_from` query (§6.4): it returns no choices. It needs no licence
+acknowledgement, because it submits nothing to SAS; the licence that matters is the one of the run
+that made the recording.
+
+*(b) Registered engines.* An engine class that an app registers with an explicit licence
+acknowledgement is accepted like a saspy engine:
+
+- R: `sas_register_engine(class, license_ack = TRUE, description = "...")`, where `class` is an S3
+  class with a `sas_engine_run()` method. Python: `sashiny.register_engine(cls, license_ack=True,
+  description="...")`, where `cls` is a subclass of `sashiny.Engine`. An engine is accepted when it
+  inherits from a registered class.
+- `license_ack` MUST be the literal `TRUE` / `True` argument; the option and environment variable
+  acknowledgements above do not register an engine. `description` MUST be a non-empty string naming
+  the SAS system the engine runs on. Registration fails with an error otherwise, and for SAShiny's own
+  engine classes (names starting with `sashiny_` in R, classes defined in the `sashiny` package in
+  Python).
+- `sas_registered_engines()` / `sashiny.registered_engines()` list the registrations (class name to
+  description); `sas_unregister_engine(class)` / `sashiny.unregister_engine(cls)` remove one.
+  Registrations live for the R or Python process.
+- **A registered engine MUST execute every run on a live, licensed SAS system**, and its log and
+  outputs MUST be the ones that SAS run produced. SAShiny cannot verify this: by registering, the
+  app's author acknowledges it, as `license_ack` does for saspy engines.
+- To return a result, a registered engine uses `sas_engine_result()` / `sashiny.engine_result()`,
+  which builds a result with the metadata of 8.4 (hashes from the contract and program on disk,
+  timestamps, `engine_version`). The engine supplies the status (§6.5), log, outputs (8.1),
+  rendered macros, engine name and `sas_version` (`&SYSVLONG`).
+
+**Writing recordings.** `sas_record(directory, contract, result, uploads = NULL)` /
+`sashiny.record(directory, contract, result, uploads=None)` writes `result` as a recording (8.3)
+and returns its path. It refuses (raises an error) when the result has no `sas_version`, when it is
+itself a replay (`metadata.recording` is set) or a cache hit (`metadata.cache_hit`), when the contract
+has no file on disk, or when the result's `contract_sha256` or `program_sha256` differs from the files
+on disk. The recording's `macros` are the result's `metadata.macros`, and the key uses those macros and
+the supplied dataset files (8.3). An empty `macros` or `outputs` is written as a JSON object `{}`.
 
 ### 6.7 Publishing to Posit Connect
 
@@ -1342,8 +1411,8 @@ outputs. The failed output's value is `{"error": "<message>"}`, and the message 
 
 ### 8.1 Output values
 
-Each output has a **language-neutral JSON value**. Engines return it, and the internal test mock replays it
-from recordings (8.3), so R and Python see identical data.
+Each output has a **language-neutral JSON value**. Engines return it, and the replay engine (6.6) and the
+internal test mock replay it from recordings (8.3), so R and Python see identical data.
 
 | Output | Value |
 |---|---|
@@ -1442,9 +1511,11 @@ Numeric formatting in client-produced files may differ slightly between implemen
 
 ### 8.3 Recordings
 
-A recording replays a run without SAS. Recordings are **internal test fixtures only** (6.6). They let the
-automated checks (CRAN, PyPI, CI) exercise the module and collection code without SAS. They are
-not reachable through the public API. Users cannot create them from a live engine or feed them into an app.
+A recording replays a run without SAS. Recordings have two uses. Apps replay recordings that carry
+provenance from a live, licensed SAS run through the replay engine (6.6 (a)); `sas_record()` /
+`sashiny.record()` write them from a live or registered engine's result. The internal test mock also
+replays hand-written recordings without provenance checks, so the automated checks (CRAN, PyPI, CI)
+exercise the module and collection code without SAS; it is not reachable through the public API.
 A recording is a UTF-8 JSON file `<key>.json`:
 
 ```json
@@ -1464,8 +1535,13 @@ upload <input_id> <sha256>    one line per supplied dataset input, contract orde
 ```
 
 The key depends only on the contract bytes, the rendered values and the uploaded files. A recording
-written by either language's test suite therefore replays in both. The internal mock engine with no matching recording returns
-status `success` with empty outputs and sets `metadata.recording` to `"missing"`.
+written by either language therefore replays in both. The key is unchanged since spec release 1.0, so
+earlier recordings keep their names. The provenance fields `sas_version`, `recorded_at`,
+`contract_sha256` and `program_sha256` are required for the replay engine (6.6 (a)); a recording
+without them is refused there. The internal mock engine with no matching recording returns
+status `success` with empty outputs and sets `metadata.recording` to `"missing"`; it does not check
+provenance. `spec/fixtures/replay/` fixes the replay engine's outcomes (replayed, refused with each
+reason, missing).
 
 ### 8.4 Run metadata
 
@@ -1478,7 +1554,8 @@ Both languages write the same bytes for these fields:
   `YYYY-MM-DDTHH:MM:SSZ`: UTC, whole seconds, a literal `Z`. Readers MUST also accept other ISO 8601
   UTC forms (for example `+00:00` with fractional seconds, as written by Python up to 0.3.1).
 - `engine_version` is the SAShiny package version (equal in R and Python, section 11) for every
-  engine, including the internal test mock.
+  engine, including the replay engine and the internal test mock. A result built with
+  `sas_engine_result()` / `sashiny.engine_result()` for a registered engine also carries it.
 
 ### 8.5 Chart spec (client-side rendering)
 

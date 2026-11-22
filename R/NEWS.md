@@ -11,6 +11,32 @@ R/Python parity pass (spec release 1.5, `docs/parity.md`).
 
 ## New features
 
+* Replay and registered engines (spec section 6.6, spec release 1.7).
+  `sas_program_server()`, `sas_app()`, `sas_run()` and `sas_pool()` now also
+  accept:
+  * `sas_replay(recordings_dir)`, which replays recordings (spec section 8.3)
+    of runs made on a live, licensed 'SAS' system. A recording is replayed
+    only when it carries its `sas_version` (`&SYSVLONG`), `recorded_at` and the
+    SHA-256 of the contract and program it was made from, both matching the
+    files on disk. Otherwise the run is an error result with
+    `metadata$recording = "refused"` and the reason in
+    `metadata$engine_error`; inputs never recorded give
+    `metadata$recording = "missing"`. A replayed result has
+    `metadata$recording = "replayed"` and a `metadata$notice` such as
+    "Replayed from 9.04.01M0P061913, recorded 2015-07-30T12:00:00Z.", which
+    the module's status text shows.
+  * engines of an S3 class registered with
+    `sas_register_engine(class, license_ack = TRUE, description = )`. The
+    registrant acknowledges that the engine runs every program on a live,
+    licensed 'SAS' system; the licence option and environment variable do not
+    register an engine. `sas_registered_engines()` and
+    `sas_unregister_engine()` list and remove registrations.
+* `sas_engine_result()` builds a result with the run metadata of spec section
+  8.4 for a registered engine, and `sas_record()` writes a live or registered
+  engine's result as a recording. `sas_record()` refuses results without a
+  SAS version, replays, cache hits and results from another contract or
+  program, and writes empty `macros` and `outputs` as JSON objects. The
+  recording key is unchanged, so existing recordings keep their names.
 * `sas_cache_set_store()`, `sas_cache_store()`, `sas_cache_lru()` and
   `sas_cache_clear()` replace or inspect the result cache store (spec section
   6.11), as Python's `sashiny.result_cache` does.

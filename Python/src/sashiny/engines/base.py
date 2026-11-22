@@ -2,8 +2,8 @@
 
 An engine runs a contract against a live SAS system and returns a
 :class:`sashiny.result.Result`. The public engines are the saspy engine (SAS
-9.4, SAS Viya, SAS OnDemand for Academics) and pools of it; the offline mock is
-an internal test fixture (spec §6.6).
+9.4, SAS Viya, SAS OnDemand for Academics), pools of it, the replay engine and
+registered engines; the offline mock is an internal test fixture (spec §6.6).
 """
 
 from __future__ import annotations
@@ -27,25 +27,32 @@ def testing() -> bool:
 
 
 def check_engine(engine: Engine) -> Engine:
-    """Return ``engine`` if it runs on a live SAS system (spec §6.6).
+    """Return ``engine`` if the public entry points accept it (spec §6.6).
 
-    The public entry points accept only :class:`sashiny.SaspyEngine` (including
-    the in-session :class:`sashiny.ProcPythonEngine`) and :class:`sashiny.Pool`.
-    Any other engine (the internal mock, or a custom class that could return
-    logs that never came from SAS) is accepted only inside the test suite.
+    Accepted are :class:`sashiny.SaspyEngine` (including the in-session
+    :class:`sashiny.ProcPythonEngine`), :class:`sashiny.Pool`, the replay engine
+    (:func:`sashiny.replay`, which replays only recordings with provenance from
+    a licensed SAS run) and instances of classes registered with
+    :func:`sashiny.register_engine`. Any other engine (the internal mock, or an
+    unregistered class that could return logs that never came from SAS) is
+    accepted only inside the test suite.
 
     Raises:
-        TypeError: For any other engine outside the test suite.
+        EngineError: For any other engine outside the test suite.
 
     """
     from ..pool import Pool  # noqa: PLC0415 - avoid an import cycle
+    from .registry import is_registered  # noqa: PLC0415
+    from .replay import ReplayEngine  # noqa: PLC0415
     from .saspy import SaspyEngine  # noqa: PLC0415
 
-    if isinstance(engine, (SaspyEngine, Pool)) or testing():
+    if isinstance(engine, (SaspyEngine, Pool, ReplayEngine)) or is_registered(engine) or testing():
         return engine
     raise EngineError(
-        "engine must come from sashiny.connect(), SaspyEngine or Pool: SAShiny runs "
-        "programs only on a live SAS 9.4, SAS Viya or SAS OnDemand for Academics system"
+        "engine must come from sashiny.connect(), SaspyEngine, Pool or sashiny.replay(), or be of "
+        "a class registered with sashiny.register_engine(): SAShiny runs programs only on a live "
+        "SAS 9.4, SAS Viya or SAS OnDemand for Academics system, or replays recordings of such "
+        "runs"
     )
 
 

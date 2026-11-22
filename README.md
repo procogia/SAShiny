@@ -10,11 +10,14 @@ A sidecar YAML contract declares the program's inputs and outputs, and SAShiny d
 > Status: beta (R 0.2.0, Python 0.2.0). See [PLAN.md](PLAN.md).
 >
 > **Licensed SAS only.** Programs run only on a live **SAS 9.4**, **SAS Viya** or **SAS ODA
-> (OnDemand for Academics)** system; SAShiny does not provide SAS. There is no offline mode. You are responsible for holding a
+> (OnDemand for Academics)** system; SAShiny does not provide SAS. You are responsible for holding a
 > valid licence for that system, and you must acknowledge this before a run
 > (`license_ack=TRUE`/`True`, `options(SAShiny.license_ack = TRUE)` or
-> `SASHINY_LICENSE_ACK=true`). Automated checks (CRAN, PyPI, CI) use an internal test
-> fixture that users cannot reach. Live verification is tracked in
+> `SASHINY_LICENSE_ACK=true`). Apps can also replay recordings of such runs
+> (`sas_replay()` / `sashiny.replay()`, refused without SAS provenance and always labelled as
+> replays) and use their own engine class registered with an explicit licence acknowledgement
+> (`sas_register_engine()` / `sashiny.register_engine()`), see spec §6.6. Automated checks
+> (CRAN, PyPI, CI) use an internal test fixture that users cannot reach. Live verification is tracked in
 > [#11](https://github.com/procogia/SAShiny/issues/11).
 >
 > **Posit Connect.** You can deploy apps with `sas_publish()` (R), `sashiny.publish()` (Python), the
