@@ -35,7 +35,8 @@ def app(  # noqa: PLR0913 - the §8.6 chart settings are keyword-only options
     Args:
         contracts: A list of :class:`Contract` objects or paths to
             ``*.sashiny.yml`` files (loaded automatically).
-        engine: A :func:`sashiny.connect` engine or a :class:`sashiny.Pool`.
+        engine: A :func:`sashiny.connect` engine, a :class:`sashiny.Pool`, a
+            :func:`sashiny.replay` engine or a registered engine (spec §6.6).
         title: The app title.
         publish: Add a "Publish" tab that deploys the app to Posit Connect with
             :func:`sashiny.publish`. Off by default and never shown when the

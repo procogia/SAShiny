@@ -5,8 +5,9 @@
 # replays hand-written recordings (spec section 8.3) for that purpose only. It
 # is not exported and it refuses to run outside a testthat run, and the public
 # entry points accept only live engines outside tests (`.sashiny_check_engine()`).
-# Users therefore cannot feed logs or results that did not come from a live,
-# licensed 'SAS' system into an app (spec section 6.6).
+# Unlike the public replay engine (`sas_replay()`, engine-replay.R), it does not
+# check provenance, so users cannot feed it logs or results that did not come
+# from a live, licensed 'SAS' system (spec section 6.6).
 
 #' Whether the code is running inside a testthat test run.
 #'
@@ -102,48 +103,12 @@ sas_engine_run.sashiny_engine_mock <- function(engine, contract, values, today =
                                                uploads = NULL, run_id = NULL) {
   .sashiny_require_testing()
   run_id <- run_id %||% .sashiny_run_id()
-  flags <- lapply(uploads %||% list(), function(v) !is.null(v) && !isFALSE(v))
-  override <- .sashiny_choice_override(contract$cached_choices %||% sas_engine_choices(engine, contract))
-  res <- sas_render_values(contract$data, values, today,
-    choices_override = override, uploads = flags
-  )
-  base <- list(
-    contract_sha256 = .sashiny_contract_sha256(contract),
-    program_sha256 = .sashiny_program_sha256(contract),
-    macros = res$macros,
-    engine = "mock",
-    engine_version = as.character(utils::packageVersion("SAShiny"))
-  )
-  if (length(res$issues) > 0L) {
-    return(.sashiny_invalid_result(run_id, base, .sashiny_issue_list(res$issues)))
+  prep <- .sashiny_offline_prepare(engine, contract, values, today, uploads, run_id, "mock")
+  if (!is.null(prep$result)) {
+    return(prep$result)
   }
-  files <- tryCatch(.sashiny_resolve_files(contract, uploads),
-    sashiny_upload_error = function(e) e
-  )
-  if (inherits(files, "sashiny_upload_error")) {
-    return(.sashiny_invalid_result(run_id, base, list(list(
-      code = "V014", message = conditionMessage(files)
-    ))))
-  }
-  # Run the full section 7 conversion for every supplied dataset input, exactly
-  # like the live engine, so a missing declared column, an unparseable cell or
-  # an unreadable file is reported as V014 (spec section 6.1 step 2).
-  converted <- tryCatch(
-    {
-      for (iid in names(files)) {
-        .sashiny_read_upload(files[[iid]], contract$data$inputs[[iid]])
-      }
-      NULL
-    },
-    sashiny_upload_error = function(e) e
-  )
-  if (inherits(converted, "sashiny_upload_error")) {
-    return(.sashiny_invalid_result(run_id, base, list(list(
-      code = "V014", message = conditionMessage(converted)
-    ))))
-  }
-
-  key <- .sashiny_recording_key(contract, res$macros, files)
+  base <- prep$base
+  key <- .sashiny_recording_key(contract, prep$macros, prep$files)
   recording <- .sashiny_load_recording(engine$recordings_dir, key)
   if (is.null(recording)) {
     meta <- do.call(.sashiny_metadata, c(list(run_id = run_id, status = "success"), base))

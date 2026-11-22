@@ -1,8 +1,9 @@
 # Engine generics and shared engine helpers for SAShiny.
 #
-# Every engine (saspy, pool, and the internal test mock) implements the S3
-# generics `sas_engine_run()`, `sas_engine_choices()` and `sas_engine_close()`.
-# Public engines always run on a live, licensed 'SAS' system (spec section 6.6).
+# Every engine (saspy, pool, replay, registered engines and the internal test
+# mock) implements the S3 generics `sas_engine_run()`, `sas_engine_choices()`
+# and `sas_engine_close()`. Public engines run on a live, licensed 'SAS'
+# system, or replay recordings of such runs (spec section 6.6).
 
 #' SHA-256 of raw bytes, hex-encoded.
 #' @noRd
@@ -145,21 +146,26 @@ sas_engine_close.default <- function(engine) {
   lapply(choices, function(items) vapply(items, function(c) c$value, character(1)))
 }
 
-#' Stop unless `engine` runs on a live 'SAS' system (spec section 6.6).
+#' Stop unless `engine` is a supported engine (spec section 6.6).
 #'
-#' The public entry points accept only the saspy engine and pools. A pool
-#' checks each engine its factory makes. Any other engine class (the internal
-#' mock, or a user-defined class that could return logs that never came from
-#' 'SAS') is accepted only inside the package's own test suite.
+#' The public entry points accept the saspy engine, pools (a pool checks each
+#' engine its factory makes), the replay engine (`sas_replay()`, which replays
+#' only recordings with provenance from a licensed 'SAS' run) and engines of a
+#' class registered with `sas_register_engine()`. Any other engine class (the
+#' internal mock, or an unregistered class that could return logs that never
+#' came from 'SAS') is accepted only inside the package's own test suite.
 #' @param engine An engine object.
 #' @return Invisibly, `engine`.
 #' @noRd
 .sashiny_check_engine <- function(engine) {
-  if (inherits(engine, c("sashiny_engine_saspy", "sashiny_pool")) || .sashiny_testing()) {
+  builtin <- c("sashiny_engine_saspy", "sashiny_pool", "sashiny_engine_replay")
+  registered <- names(.sashiny_registry$engines)
+  if (inherits(engine, c(builtin, registered)) || .sashiny_testing()) {
     return(invisible(engine))
   }
   .sashiny_abort("engine",
-    "engine must come from sas_connect(), sas_engine_saspy() or sas_pool(): ",
+    "engine must come from sas_connect(), sas_engine_saspy(), sas_pool() or sas_replay(), ",
+    "or be of a class registered with sas_register_engine(): ",
     "SAShiny runs programs only on a live 'SAS' 9.4, 'SAS Viya' or ",
-    "'SAS OnDemand for Academics' system")
+    "'SAS OnDemand for Academics' system, or replays recordings of such runs")
 }

@@ -18,8 +18,7 @@ pak::pak("procogia/SAShiny/R")
 ## Supported SAS systems and licensing
 
 SAShiny runs programs only on a live SAS system: **SAS 9.4** (IOM or SSH),
-**SAS Viya** or **SAS OnDemand for Academics**. There is no offline or
-recorded mode. SAS is commercial software. **You are responsible for holding a
+**SAS Viya** or **SAS OnDemand for Academics**. SAS is commercial software. **You are responsible for holding a
 valid licence** for the system you connect to (or accepting ODA's terms of
 use). Before a run, acknowledge this with one of:
 
@@ -28,6 +27,19 @@ options(SAShiny.license_ack = TRUE)                 # per R session
 engine <- sas_connect(sas_oda(), license_ack = TRUE)    # per engine
 # or set SASHINY_LICENSE_ACK=true for a deployed app
 ```
+
+Two more engines are accepted (spec section 6.6):
+
+* `sas_replay(dir)` replays recordings of runs made on a licensed SAS system,
+  for offline demos. A recording is replayed only with its SAS version,
+  recording time and the SHA-256 of the contract and program it was made from
+  (matching the files on disk); otherwise it is refused with the reason.
+  Replayed results say so in the status text ("Replayed from
+  9.04.01M0P061913, recorded ..."). Write recordings with `sas_record()`.
+* Your own engine class, registered with
+  `sas_register_engine("my_engine", license_ack = TRUE, description = "...")`.
+  It MUST run every program on a live SAS system you are licensed to use, and
+  returns results built with `sas_engine_result()`.
 
 ## Publish to Posit Connect
 

@@ -36,7 +36,8 @@ def run(  # noqa: PLR0913 - mirrors the engine.run signature
     Args:
         contract: A loaded :class:`Contract`, or a path to a ``*.sashiny.yml``
             file (loaded automatically).
-        engine: A :func:`sashiny.connect` engine or a :class:`sashiny.Pool`.
+        engine: A :func:`sashiny.connect` engine, a :class:`sashiny.Pool`, a
+            :func:`sashiny.replay` engine or a registered engine (spec §6.6).
         values: Input values keyed by input id (JSON form, spec §2.1).
             Defaults to the contract's defaults (no values).
         today: The date used to resolve ``"today"``. Defaults to today.

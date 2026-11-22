@@ -750,3 +750,59 @@ def cache_key(
     import hashlib
 
     return hashlib.sha256(cache_key_text(contract_sha256, program_sha256, macros, uploads).encode("utf-8")).hexdigest()
+
+
+def replay_problem(recording: dict[str, Any], contract_sha256: str, program_sha256: str) -> str:
+    """Why the replay engine refuses a recording, or ``""`` (CONTRACT.md 6.6 (a))."""
+
+    def filled(name: str) -> bool:
+        value = recording.get(name)
+        return isinstance(value, str) and value != ""
+
+    if recording.get("sashiny_recording") != 1:
+        return "it is not a version 1 SAShiny recording"
+    if not filled("sas_version"):
+        return "it has no SAS version"
+    if not filled("recorded_at"):
+        return "it has no recording time"
+    if not filled("contract_sha256") or recording["contract_sha256"] != contract_sha256:
+        return "it was made from a different contract"
+    if not filled("program_sha256") or recording["program_sha256"] != program_sha256:
+        return "it was made from a different version of the program"
+    return ""
+
+
+def replay_outcome(contract_path: Path, recordings_dir: Path, values: dict[str, Any], today: date) -> dict[str, Any]:
+    """The status-level outcome of a replay run (CONTRACT.md 6.6 (a)), without uploads."""
+    import hashlib
+
+    contract = load(contract_path)
+    macros, issues = render_values(contract.data, values, today)
+    if issues:
+        return {"status": "error", "issues": [{"code": i.code, "input": i.path} for i in issues]}
+    csha = hashlib.sha256(contract_path.read_bytes()).hexdigest()
+    psha = hashlib.sha256((contract_path.parent / contract.data["program"]).read_bytes()).hexdigest()
+    path = recordings_dir / f"{recording_key(csha, list(macros.items()), [])}.json"
+    if not path.is_file():
+        return {
+            "status": "error",
+            "recording": "missing",
+            "engine_error": "no recording of this run: these inputs were not recorded on SAS",
+        }
+    try:
+        recording = json.loads(path.read_text(encoding="utf-8"))
+        problem = "" if isinstance(recording, dict) else "it is not valid JSON"
+    except ValueError:
+        recording, problem = {}, "it is not valid JSON"
+    problem = problem or replay_problem(recording, csha, psha)
+    if problem:
+        return {"status": "error", "recording": "refused", "engine_error": f"recording not replayed: {problem}"}
+    return {
+        "status": recording.get("status", "success"),
+        "recording": "replayed",
+        "sas_version": recording["sas_version"],
+        "recorded_at": recording["recorded_at"],
+        "notice": f"Replayed from {recording['sas_version']}, recorded {recording['recorded_at']}.",
+        "log": recording.get("log", ""),
+        "outputs": recording.get("outputs", {}),
+    }

@@ -212,6 +212,15 @@ def _diff(want: str, got: str) -> str:
     return "\n     ".join(difflib.unified_diff(want.splitlines(), got.splitlines(), "expected", "generated", lineterm=""))
 
 
+def check_replay(r: Report) -> None:
+    d = FIX / "replay"
+    spec = json.loads((d / "cases.json").read_text(encoding="utf-8"))
+    today = date.fromisoformat(spec["today"])
+    for case in spec["cases"]:
+        got = ref.replay_outcome(d / spec["contract"], d / "recordings", case["values"], today)
+        r.check(got == case["expected"], f"replay/{case['name']}", f"got {got}")
+
+
 def main() -> int:
     today = date(2026, 11, 11)
     r = Report()
@@ -221,6 +230,7 @@ def main() -> int:
     check_values(r)
     check_wrappers(r)
     check_collect(r)
+    check_replay(r)
     check_lint(r, today)
     check_deploy(r)
     check_streamlit(r)

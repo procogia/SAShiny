@@ -38,6 +38,20 @@ When adding a fixture, write the expected output by hand from CONTRACT.md first,
 
 `key_text` in `recording_key.json` is hand-written from §8.3. `key` is its SHA-256.
 
+### Replay fixtures (`replay/`)
+
+| Path | Pins down (CONTRACT.md §6.6 (a), §8.3) | Pass condition |
+|---|---|---|
+| `replay.sashiny.yml`, `replay.sas` | The contract and program the recordings were made from | Their SHA-256 are the recordings' `contract_sha256` / `program_sha256` |
+| `recordings/<key>.json` | One recording per case; the file name is the §8.3 key of the case's rendered values | |
+| `cases.json` | For each case, the replay engine's outcome: replayed (status, `sas_version`, `recorded_at`, `notice`, log, outputs), refused (with the reason), missing, or invalid values | A replay run of `values` with `today` gives `status` and `metadata.recording`, `metadata.engine_error`, `metadata.notice`, `metadata.issues` (`{code, input}`), log and outputs as listed; fields not listed are not checked |
+
+The recordings are hand-written fixture data, not output of a real SAS run. Their file names are
+computed from §8.3 (`check_spec.py` recomputes them), and the contract and program use LF line endings
+(`.gitattributes`) so their SHA-256 is the same on every platform. Like `deploy/`, this folder is not
+copied to `R/inst/spec` (its file paths are longer than the 100 bytes a CRAN tarball allows); the R
+tests skip these cases outside the source repository.
+
 ### Deployment fixtures (`deploy/`)
 
 | Path | Pins down (CONTRACT.md §6.8) | Pass condition |
