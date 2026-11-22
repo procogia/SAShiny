@@ -35,6 +35,8 @@ __all__ = [
 _INVALID = re.compile(r"[^A-Za-z0-9_]")
 MAX_NAME_BYTES = 32
 BYTES_PER_MB = 1024 * 1024
+# Blank cells are empty or ASCII whitespace only (spec §7, §8.1), as in R.
+_ASCII_WS = " \t\n\r\f\v"
 
 
 from .errors import UploadError  # noqa: E402 - re-exported for compatibility
@@ -306,11 +308,11 @@ def _check_file(upload: UploadFile, spec: dict[str, Any]) -> None:
 def _to_numeric(series: Any, name: str, all_text: bool) -> Any:
     import pandas as pd  # noqa: PLC0415 - optional dependency
 
-    blank = series.astype(str).str.strip() == "" if all_text else series.isna()
+    blank = series.astype(str).str.strip(_ASCII_WS) == "" if all_text else series.isna()
     if not all_text:
         # Non-CSV readers may leave whitespace-only cells as strings; treat them
         # as empty (spec §7 step 3 "empty = missing").
-        blank = blank | (series.astype(str).str.strip() == "")
+        blank = blank | (series.astype(str).str.strip(_ASCII_WS) == "")
     converted = pd.to_numeric(series.where(~blank), errors="coerce")
     if (converted.isna() & ~blank & series.notna()).any():
         raise UploadError(f"column {name} has values that are not numbers")
@@ -328,7 +330,7 @@ def _to_date(series: Any, name: str) -> Any:
     # Detect native date-like cells so they are not stringified to
     # "2024-01-01 00:00:00" (which would fail the YYYY-MM-DD check).
     native = series.map(_is_native_date)
-    text = series.astype(str).str.strip()
+    text = series.astype(str).str.strip(_ASCII_WS)
     # Only native missing and empty/whitespace are "missing" (spec §7 step 3);
     # any other non-ISO text (including the literal "NA", "nan", "NaT", "None")
     # is unparseable and reported as V014.
@@ -376,7 +378,7 @@ def _infer_csv_numbers(df: Any, declared: set[str]) -> None:
     for name in df.columns:
         if name in declared:
             continue
-        text = df[name].str.strip()
+        text = df[name].str.strip(_ASCII_WS)
         nonblank = text != ""
         converted = pd.to_numeric(text.where(nonblank), errors="coerce")
         if nonblank.any() and not (converted.isna() & nonblank).any():

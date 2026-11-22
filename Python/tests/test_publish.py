@@ -10,6 +10,7 @@ import pytest
 
 import sashiny
 from engines_helper import MockEngine
+from sashiny.errors import DeployError
 from sashiny.publish import on_connect, publish
 
 SECRETS = [".authinfo", "_authinfo", ".Renviron", ".env", "server.pem", "data/id.key"]
@@ -50,7 +51,7 @@ def test_publish_bundles_no_credentials_and_sends_names_only(
     monkeypatch.setenv("SASHINY_SAS_PASSWORD", "s3cret-Pa55")
     monkeypatch.delenv("SASHINY_LICENSE_ACK", raising=False)
     rec = Recorder()
-    res = publish(app_dir, title="Demo", name="srv", license_ack=True, runner=rec)
+    res = publish(app_dir, title="Demo", server="srv", license_ack=True, runner=rec)
     assert sorted(res.files) == ["app.py", "data/x.csv", "prog.sas"]
     assert sorted(res.excluded) == sorted(SECRETS)
     assert rec.staged == ["app.py", "data/x.csv", "prog.sas"]
@@ -60,6 +61,29 @@ def test_publish_bundles_no_credentials_and_sends_names_only(
     assert "s3cret-Pa55" not in " ".join(rec.args)
     assert rec.env["SASHINY_LICENSE_ACK"] == "true"
     assert "SASHINY_LICENSE_ACK" not in os.environ
+
+
+def test_publish_name_is_the_content_name_as_in_r(
+    app_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # R's sas_publish(name = ) is the content name; rsconnect-python derives the
+    # content name from the bundle directory when no title is given.
+    monkeypatch.setenv("SASHINY_SAS_USER", "me")
+    monkeypatch.setenv("SASHINY_SAS_PASSWORD", "pw")
+    rec = Recorder()
+    publish(app_dir, name="cars-explorer", license_ack=True, runner=rec)
+    assert Path(rec.args[2]).name == "cars-explorer"
+    assert "--name" not in rec.args
+    assert "--title" not in rec.args
+
+    rec = Recorder()
+    publish(app_dir, license_ack=True, runner=rec)
+    assert Path(rec.args[2]).name == app_dir.name
+
+    with pytest.warns(UserWarning, match="content name follows title"):
+        publish(app_dir, name="cars", title="Cars", license_ack=True, runner=Recorder())
+    with pytest.raises(DeployError, match="plain content name"):
+        publish(app_dir, name="../x", license_ack=True, runner=Recorder())
 
 
 def test_publish_refuses_without_ack_or_credentials(

@@ -265,6 +265,13 @@ def _clean_cell(value: Any, numeric: bool) -> Any:
     return str(value).rstrip(_ASCII_WS)
 
 
+def _text_or_empty(value: Any) -> str:
+    """``""`` for a missing label or format, otherwise the ASCII-trimmed text (as in R)."""
+    if value is None or (isinstance(value, float) and math.isnan(value)):
+        return ""
+    return str(value).strip(_ASCII_WS)
+
+
 def build_table(
     meta: Sequence[dict[str, Any]],
     rows: Iterable[Sequence[Any]],
@@ -298,8 +305,8 @@ def build_table(
             {
                 "name": str(m["name"]),
                 "type": m["type"],
-                "label": str(m.get("label") or ""),
-                "format": str(m.get("format") or ""),
+                "label": _text_or_empty(m.get("label")),
+                "format": _text_or_empty(m.get("format")),
             }
             for m in meta
         ],

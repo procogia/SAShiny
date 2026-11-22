@@ -92,7 +92,7 @@ test_that("each backend constructor builds the same configuration as the old for
 })
 
 test_that("constructors validate their own arguments", {
-  expect_error(sas_oda("xx9"), "must be one of")
+  expect_error(sas_oda("xx9"), "unknown ODA region xx9", class = "sashiny_error_engine")
   expect_error(sas_viya("viya.example.com"), "must be one 'SAS Viya' URL", class = "sashiny_error_engine")
   expect_error(sas_viya("https://v", verify = NA), "verify must be TRUE or FALSE")
   expect_error(sas_94_iom(""), "host must be one", class = "sashiny_error_engine")

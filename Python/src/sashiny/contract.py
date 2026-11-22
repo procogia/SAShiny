@@ -260,10 +260,12 @@ def default_module_id(program: str) -> str:
     replace each character outside ``[a-z0-9_]`` with ``_``, prefix ``p_`` if it
     does not start with a letter, and truncate to 32 characters.
     """
-    base = Path(program).name
+    # Both separators on every platform, as in R.
+    base = program.replace("\\", "/").rsplit("/", 1)[-1]
     if base.lower().endswith(".sas"):
         base = base[:-4]
-    base = "".join(c for c in base.lower() if not unicodedata.combining(c))
+    # Combining marks are the Unicode general categories Mn, Mc and Me, as R's \p{M}.
+    base = "".join(c for c in base.lower() if not unicodedata.category(c).startswith("M"))
     base = re.sub(r"[^a-z0-9_]", "_", base)
     if not base or not base[0].isalpha():
         base = "p_" + base

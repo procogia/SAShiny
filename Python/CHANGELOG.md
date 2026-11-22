@@ -37,6 +37,42 @@ All notable changes to the Python library are documented here. The format follow
   trailing whitespace (spec §8.1, §8.2), as R does; a trailing U+00A0, U+2003, U+3000 or U+0085
   now stays (#154).
 
+R/Python parity pass (spec release 1.5, `docs/parity.md`).
+
+### Changed (breaking)
+
+- `publish(name=)` is the content name, as in R's `sas_publish()` (it defaults to the
+  directory name). The rsconnect server nickname moved to the new `server=` argument.
+  `rsconnect-python` derives the content name from the title, so with both `name` and
+  `title` the content name follows the title, with a `UserWarning`.
+- `metadata["engine_error"]` holds the message only, without the exception class name.
+- `parse_profile()` raises `DeployError` (still a `ValueError`); `PoolExhausted` is an
+  `EngineError`.
+
+### Added
+
+- `program_server(render=)`: the R argument name for chart render callbacks
+  (`chart_render=` still works).
+- `render_values()` defaults `today` to today and `render_chart()` defaults `spec` to
+  `None`, as in R.
+
+### Fixed
+
+- `SaspyEngine.close()` clears the `choices_from` cache too (spec §6.4).
+- Upload blank detection and table `label`/`format` strip ASCII blanks only, as in R (spec §8.1).
+- `""` for a `multichoice` or `daterange` input is `V002` (spec §4), and an integer too
+  large for a double is `V003` instead of an `OverflowError`.
+- A second run on a busy `SaspyEngine` waits up to 30 s, then returns
+  `engine busy: another run is in progress` (it used to cancel the first run).
+- `connect(backend, region=...)` rejects connection arguments next to a backend, as in R.
+- `connect_from_env()` treats an empty `SASHINY_ODA_REGION` or `SASHINY_SAS94_PORT` as unset.
+- An empty `cached_choices` is used instead of being re-queried.
+- Lint uses ASCII word boundaries, as R's PCRE does.
+- `default_module_id()` splits on `/` and `\` on every platform and strips every combining
+  mark (Unicode category M).
+- matplotlib honours `xlab`/`ylab` and the faceted `subtitle`, and refuses `color`/`fill`
+  mappings it cannot draw; plotly refuses `color` and `fill` together (spec §8.5).
+
 ## [0.3.1] - 2026-11-20
 
 ### Deprecated

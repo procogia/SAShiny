@@ -231,6 +231,10 @@ def _check_host(host: object) -> None:
         raise EngineValueError("host must be one SAS 9.4 host name")
 
 
+# How long a run waits for the engine's previous run to finish (as in R).
+BUSY_WAIT_SECONDS = 30.0
+
+
 def connect(  # noqa: PLR0913 - the deprecated keyword form keeps its parameters
     backend: Backend | str,
     *,
@@ -307,6 +311,19 @@ def connect(  # noqa: PLR0913 - the deprecated keyword form keeps its parameters
             raise EngineValueError(
                 f"unknown profile {backend!r}; expected 'oda', 'viya' or 'sas94'"
             )
+    elif (region, url, context, verify, host, port, saspath, ssh_user, java) != (
+        "us1",
+        None,
+        None,
+        True,
+        None,
+        8591,
+        None,
+        None,
+        None,
+    ):
+        # As R's sas_connect(): a backend carries its own settings.
+        raise EngineValueError("connection arguments go to the backend constructor, not connect()")
     if not isinstance(backend, Backend):
         raise EngineValueError("backend must come from oda(), viya(), sas94_iom() or sas94_ssh()")
     return SaspyEngine(backend.cfg, license_ack=license_ack)
@@ -609,6 +626,8 @@ class SaspyEngine(Engine):
         self._choices: dict[tuple[str, str], list[dict[str, str]]] = {}
         self._generation = 0
         self._run_generation = threading.local()
+        # One run at a time per engine (one SAS session), as in R (spec §6.5).
+        self._busy = threading.Lock()
 
     # ------------------------------------------------------------------ session
 
@@ -659,6 +678,9 @@ class SaspyEngine(Engine):
 
     def close(self) -> None:
         """Close the SAS session and remove the temporary configuration."""
+        from ..choices_cache import clear  # noqa: PLC0415 - avoid an import cycle
+
+        clear(self)  # spec §6.4: the session is gone, as in R's sas_close()
         self._choices.clear()
         self._sas_version_text = None
         if self._sas is not None:
@@ -748,6 +770,23 @@ class SaspyEngine(Engine):
             refused = Result.new(run_id, "error", engine=self.name, engine_version=self.version)
             refused.metadata["engine_error"] = LICENSE_MESSAGE
             return refused
+        if not self._busy.acquire(timeout=BUSY_WAIT_SECONDS):
+            busy = Result.new(run_id, "error", engine=self.name, engine_version=self.version)
+            busy.metadata["engine_error"] = "engine busy: another run is in progress"
+            return busy
+        try:
+            return self._run_locked(contract, values, today, uploads, run_id)
+        finally:
+            self._busy.release()
+
+    def _run_locked(
+        self,
+        contract: Contract,
+        values: dict[str, Any],
+        today: date,
+        uploads: dict[str, Any] | None,
+        run_id: str,
+    ) -> Result:
         started = datetime.now(timezone.utc)
         timeout = float((contract.data.get("run") or {}).get("timeout_seconds", 300))
 
@@ -764,7 +803,7 @@ class SaspyEngine(Engine):
                 box["result"] = self._run(contract, values, today, uploads, run_id, started)
             except Exception as exc:  # reported on the result, never raised
                 failed = Result.new(run_id, "error", engine=self.name, engine_version=self.version)
-                failed.metadata["engine_error"] = f"{type(exc).__name__}: {exc}"
+                failed.metadata["engine_error"] = str(exc)
                 box["result"] = failed
 
         thread = threading.Thread(target=work, name=f"sashiny-run-{run_id}", daemon=True)
@@ -792,11 +831,12 @@ class SaspyEngine(Engine):
         data = contract.data
         flags = {k: upload_supplied(v) for k, v in (uploads or {}).items()}
         try:
-            found = getattr(contract, "cached_choices", None) or self.choices(contract)
+            cached = getattr(contract, "cached_choices", None)
+            found = cached if cached is not None else self.choices(contract)
             override = {k: [c["value"] for c in v] for k, v in found.items()}
         except Exception as exc:  # reported on the result, never raised
             failed = Result.new(run_id, "error", engine=self.name, engine_version=self.version)
-            failed.metadata["engine_error"] = f"{type(exc).__name__}: {exc}"
+            failed.metadata["engine_error"] = str(exc)
             self._discard_session()
             return failed
         macros, issues = render_values(
@@ -826,7 +866,7 @@ class SaspyEngine(Engine):
             return result
         except Exception as exc:
             result = Result.new(run_id, "error", **base)
-            result.metadata["engine_error"] = f"{type(exc).__name__}: {exc}"
+            result.metadata["engine_error"] = str(exc)
             self._discard_session()  # the next run starts a fresh session
             return result
 

@@ -449,6 +449,9 @@ def render_values(
         if isinstance(raw, str) and kind == "text":
             raw = _ws_strip(raw)
         optional = spec.get("optional", False)
+        if kind in {"multichoice", "daterange"} and raw is not None and not isinstance(raw, list):
+            issues.append(Issue("V002", iid))  # section 4: not an array, even ""
+            continue
         if kind == "multichoice" and raw == []:
             absent = optional
             if not optional and spec.get("min_selected", 1) >= 1:
@@ -488,7 +491,11 @@ def _render_one(
     if kind == "numeric":
         if isinstance(raw, bool) or not isinstance(raw, (int, float)):
             return Issue("V002", iid), []
-        if not math.isfinite(raw):
+        try:
+            finite = math.isfinite(raw)
+        except OverflowError:  # an integer beyond the double range
+            finite = False
+        if not finite:
             return Issue("V003", iid), []
         if spec.get("integer") and not float(raw).is_integer():
             return Issue("V012", iid), []
@@ -679,7 +686,7 @@ def split_log(log: str) -> list[str]:
     lines = re.split(r"\r\n|\r|\n", log)
     if lines and lines[-1] == "" and re.search(r"(\r\n|\r|\n)$", log):
         lines.pop()
-    return [ln.rstrip() for ln in lines] if log else []
+    return [ln.rstrip(" \t\n\r\f\v") for ln in lines] if log else []  # 8.1: ASCII blanks
 
 
 def log_level(line: str) -> str:

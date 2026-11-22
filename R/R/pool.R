@@ -157,6 +157,15 @@ sas_pool <- function(engine, min_size = 0L, max_size = 4L,
   .sashiny_top_up(pool)
 }
 
+#' Why no pooled session was acquired: closed, or every session busy.
+#' @noRd
+.sashiny_pool_unavailable <- function(pool) {
+  if (isTRUE(pool$closed)) {
+    return("pool closed")
+  }
+  sprintf("pool exhausted: all %d sessions busy", pool$max_size)
+}
+
 #' @export
 sas_engine_run.sashiny_pool <- function(engine, contract, values, today = Sys.Date(),
                                         uploads = NULL, run_id = NULL) {
@@ -174,10 +183,7 @@ sas_engine_run.sashiny_pool <- function(engine, contract, values, today = Sys.Da
     return(session)
   }
   if (is.null(session)) {
-    return(.sashiny_engine_error(
-      run_id, list(engine = "pool"),
-      simpleError(sprintf("pool exhausted: all %d sessions busy", pool$max_size))
-    ))
+    return(.sashiny_engine_error(run_id, list(engine = "pool"), simpleError(.sashiny_pool_unavailable(pool))))
   }
   discard <- FALSE
   result <- tryCatch(
@@ -226,8 +232,7 @@ sas_engine_run.sashiny_pool <- function(engine, contract, values, today = Sys.Da
       return(s)
     }
     if (is.null(s)) {
-      return(.sashiny_engine_error(run_id, list(engine = "pool"),
-        simpleError(sprintf("pool exhausted: all %d sessions busy", pool$max_size))))
+      return(.sashiny_engine_error(run_id, list(engine = "pool"), simpleError(.sashiny_pool_unavailable(pool))))
     }
     p <- .sashiny_run_async(s$engine, contract, values, uploads, today, run_id, session)
     p <- promises::then(p, function(result) {
@@ -247,7 +252,7 @@ sas_engine_run.sashiny_pool <- function(engine, contract, values, today = Sys.Da
 sas_engine_choices.sashiny_pool <- function(engine, contract) {
   session <- .sashiny_acquire(engine)
   if (is.null(session)) {
-    .sashiny_abort("engine", sprintf("pool exhausted: all %d sessions busy", engine$max_size))
+    .sashiny_abort("engine", .sashiny_pool_unavailable(engine))
   }
   on.exit(.sashiny_release(engine, session), add = TRUE)
   sas_engine_choices(session$engine, contract)
