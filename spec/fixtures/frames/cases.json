@@ -1,0 +1,65 @@
+{
+  "about": "Canonical CSV of data frames (CONTRACT.md 7.1). Each case builds a data frame from its columns, in order; type is character, factor, integer, double, logical, date (YYYY-MM-DD) or datetime (ISO 8601 UTC); JSON null is a missing value. csv is the exact expected file text.",
+  "cases": [
+    {
+      "name": "every column type, with quoting and missing values",
+      "columns": [
+        {"name": "txt", "type": "character", "values": ["plain", "a,b", "say \"hi\""]},
+        {"name": "lines", "type": "character", "values": ["line1\nline2", "", null]},
+        {"name": "fac", "type": "factor", "values": ["Placebo", null, "Active"]},
+        {"name": "int", "type": "integer", "values": [1, -2, null]},
+        {"name": "dbl", "type": "double", "values": [0.1, 0.3333333333333333, null]},
+        {"name": "dbl2", "type": "double", "values": [1e-05, 1e20, 0.30000000000000004]},
+        {"name": "lgl", "type": "logical", "values": [true, false, null]},
+        {"name": "dt", "type": "date", "values": ["2025-03-01", null, "1960-01-01"]},
+        {"name": "ts", "type": "datetime", "values": ["2025-03-01T08:00:00Z", "2025-03-01T08:00:00.5Z", null]}
+      ],
+      "csv": "txt,lines,fac,int,dbl,dbl2,lgl,dt,ts\nplain,\"line1\nline2\",Placebo,1,0.10000000000000001,1.0000000000000001e-05,1,2025-03-01,2025-03-01T08:00:00Z\n\"a,b\",,,-2,0.33333333333333331,1e+20,0,,2025-03-01T08:00:00.5Z\n\"say \"\"hi\"\"\",,Active,,,0.30000000000000004,,1960-01-01,\n"
+    },
+    {
+      "name": "date-times keep up to six fractional digits, before 1970 too",
+      "columns": [
+        {"name": "ts", "type": "datetime", "values": ["2025-03-01T08:00:00.123456Z", "1969-12-31T23:59:59.75Z", "2000-02-29T00:00:00Z"]}
+      ],
+      "csv": "ts\n2025-03-01T08:00:00.123456Z\n1969-12-31T23:59:59.75Z\n2000-02-29T00:00:00Z\n"
+    },
+    {
+      "name": "doubles are written with 17 significant digits, whole numbers without decimals",
+      "columns": [
+        {"name": "AGE", "type": "double", "values": [64, 100, 2.5]},
+        {"name": "BIG", "type": "double", "values": [123456789012345, 1.5e-300, 12345678901234567890]}
+      ],
+      "csv": "AGE,BIG\n64,123456789012345\n100,1.5000000000000001e-300\n2.5,1.2345678901234567e+19\n"
+    },
+    {
+      "name": "17 digits are rounded correctly, where some C libraries are off by one",
+      "columns": [
+        {"name": "x", "type": "double", "values": [1.1481065982557005e-227, -3.8711446289335058e-295]}
+      ],
+      "csv": "x\n1.1481065982557005e-227\n-3.8711446289335058e-295\n"
+    },
+    {
+      "name": "a header with a comma is quoted",
+      "columns": [
+        {"name": "ID", "type": "integer", "values": [1]},
+        {"name": "Visit, day", "type": "double", "values": [2]}
+      ],
+      "csv": "ID,\"Visit, day\"\n1,2\n"
+    },
+    {
+      "name": "no rows gives only the header",
+      "columns": [
+        {"name": "USUBJID", "type": "character", "values": []},
+        {"name": "AGE", "type": "double", "values": []}
+      ],
+      "csv": "USUBJID,AGE\n"
+    },
+    {
+      "name": "non-ASCII text is written as UTF-8",
+      "columns": [
+        {"name": "site", "type": "character", "values": ["Zürich", "日本"]}
+      ],
+      "csv": "site\nZürich\n日本\n"
+    }
+  ]
+}

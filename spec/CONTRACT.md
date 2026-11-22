@@ -1174,10 +1174,18 @@ lets other Shiny code, such as a filter panel in a parent module, drive a contra
 
 **Precedence.** For every id that `values()` supplies, the supplied value replaces the UI value; ids it
 does not supply are read from the UI as usual. A supplied `null` / `NULL` replaces the UI value with an
-absent value (so a required input gives `V001`). Dataset inputs are always read from the UI; a value
-supplied for a dataset id is ignored. The merged values are validated
+absent value (so a required input gives `V001`). The merged values are validated
 (§4, V001–V014) exactly like UI values, so an invalid or unknown external value gives the same codes
 (for example `V003`, `V004`, `V011`) and no SAS code is submitted.
+
+**Dataset inputs.** A value supplied for a dataset id is a data frame: an R `data.frame` (a tibble
+counts) or a pandas `DataFrame`. It replaces the upload control and the `sample` checkbox: it is
+written as a CSV file named `<id>.csv` in the canonical form of §7.1, and that file goes through the
+same conversion and checks as an uploaded file (§7; `accept` must include `csv`, `max_size_mb` applies
+to the CSV bytes, declared `columns` must be present), so a problem gives `V014` and no SAS code is
+submitted. A supplied `null` / `NULL` makes the dataset input absent. Any other value for a dataset
+id is `V014`. Because the CSV bytes are canonical, the same data frame gives the same upload SHA-256
+in R and Python, so result-cache and recording keys (§6.11, §8.3) agree across languages.
 
 **Triggers.** A run starts on a Run click, as before. In addition, when `ui.auto_run` is `true`, every
 change of `values()` starts a run once `values()` has been stable for the debounce interval
@@ -1234,6 +1242,9 @@ numbers, or data outside its inputs (database tables, files, `SASHELP` views tha
 
 ## 7. Dataset upload conversion
 
+A data frame supplied through `values` (§6.10) or `sas_run(uploads = )` / `run(uploads=)` is
+first written as CSV in the canonical form of §7.1 and then converted like any other file.
+
 1. Read the file by extension: `csv` (UTF-8, comma, header row, RFC 4180), `xlsx` (first sheet, header
    row), `xpt` (SAS transport v5/v8), `sas7bdat`.
 2. Column names: replace characters outside `[A-Za-z0-9_]` with `_`; prefix `_` if the first character is
@@ -1260,6 +1271,35 @@ runs at the earliest SAShiny-controlled point, in `shiny_values`). A file over o
 under the largest is still stored by the transport and then rejected by the per-input `read_upload`
 check (V014). This is the best the Shiny upload protocol allows; the per-input limit is always
 enforced before any SAS work.
+
+### 7.1 Canonical CSV for data frames
+
+R and Python write the same bytes for the same data frame:
+
+1. UTF-8 without a byte order mark. Every line, including the last, ends with LF.
+2. The first line holds the column names, as given (§7 step 2 cleans them later). One line per row
+   follows, in row order. Row names (R) and the index (pandas) are not written.
+3. Fields are separated by `,`. A field is enclosed in `"` only when it contains `,`, `"`, CR or LF;
+   a `"` inside is doubled.
+4. A missing value (R `NA`, Python `None`, `NaN`, `NaT`, `pd.NA`) is an empty field. So is an empty
+   string.
+5. Values by column type:
+
+| Column | Field |
+|---|---|
+| character, string | the text |
+| factor (R), category (pandas) | the label, written by the rule for its values' type |
+| logical (R), bool (pandas) | `1` for true, `0` for false |
+| integer | the decimal digits, with `-` if negative |
+| double, float | C `printf` `%.17g`, correctly rounded (so `0.1` is `0.10000000000000001` and `64` is `64`), which always reads back to the same number; infinite values are `V014` |
+| date: R `Date`; Python `datetime.date` values | `YYYY-MM-DD` |
+| date-time: R `POSIXct`; pandas `datetime64`, Python `datetime.datetime` values | `YYYY-MM-DDTHH:MM:SS` in UTC, then `.` and up to six fractional digits without trailing zeros when the time, rounded to the microsecond, has a fraction, then `Z`. A date-time without a time zone (naive) counts as UTC |
+
+   A pandas `object` column is written value by value with the rule for each value's type. Any
+   other type (R list columns, complex numbers, durations, nested objects) is `V014`, naming the
+   column. A data frame with no columns is `V014`; one with no rows is just the header line.
+
+`spec/fixtures/frames/cases.json` pins this down byte for byte.
 
 ---
 

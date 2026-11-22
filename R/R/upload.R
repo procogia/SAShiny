@@ -27,9 +27,10 @@
 #'
 #' `TRUE` selects the contract's `sample`. A path, a Shiny `fileInput` value
 #' (a data frame with `datapath` and `name`) or an upload file selects that
-#' file.
+#' file. Any other data frame is written as canonical CSV `<id>.csv`
+#' (spec section 7.1).
 #' @noRd
-.sashiny_resolve_upload <- function(value, spec, base_dir) {
+.sashiny_resolve_upload <- function(value, spec, base_dir, id = "data") {
   if (is.null(value) || isFALSE(value) || (is.character(value) && !nzchar(value[[1]]))) {
     return(NULL)
   }
@@ -43,8 +44,15 @@
   if (inherits(value, "sashiny_upload_file")) {
     return(value)
   }
+  # A data frame value (spec sections 6.10 and 7.1): written as canonical CSV.
+  if (inherits(value, "sashiny_upload_frame")) {
+    return(.sashiny_frame_upload(value$frame, value$id))
+  }
   if (is.data.frame(value) && all(c("datapath", "name") %in% names(value))) {
     return(.sashiny_upload_file(value$datapath[[1]], value$name[[1]]))
+  }
+  if (is.data.frame(value)) {
+    return(.sashiny_frame_upload(value, id))
   }
   .sashiny_upload_file(as.character(value[[1]]))
 }
@@ -57,7 +65,7 @@
   for (iid in names(inputs)) {
     spec <- inputs[[iid]]
     if (!identical(spec$type, "dataset")) next
-    upload <- .sashiny_resolve_upload(uploads[[iid]], spec, contract$base_dir)
+    upload <- .sashiny_resolve_upload(uploads[[iid]], spec, contract$base_dir, iid)
     if (!is.null(upload)) {
       # Check extension, existence and size (section 7 step 1); a bad file is
       # reported as V014 rather than a raw error.

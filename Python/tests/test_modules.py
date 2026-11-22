@@ -160,10 +160,13 @@ def test_merge_values_precedence_and_forms() -> None:
         modules.merge_values(contract, {}, [1])  # type: ignore[arg-type]
 
 
-def test_merge_values_ignores_dataset_ids() -> None:
+def test_merge_values_leaves_dataset_ids_to_merge_uploads() -> None:
     contract = sashiny.load(FIX / "contracts" / "valid" / "dataset" / "contract.sashiny.yml")
     dataset_ids = [i for i, s in contract.data["inputs"].items() if s["type"] == "dataset"]
-    assert modules.merge_values(contract, {}, {dataset_ids[0]: "ignored"}) == {}
+    assert modules.merge_values(contract, {}, {dataset_ids[0]: "not a frame"}) == {}
+    # The value goes to the uploads (spec 6.10) and is refused with V014 at run time.
+    merged = modules.merge_uploads(contract, {}, {dataset_ids[0]: "not a frame"})
+    assert isinstance(merged[dataset_ids[0]], modules.FrameUpload)
 
 
 def test_snapshot_merges_external_values_and_validates() -> None:
