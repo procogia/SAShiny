@@ -1590,6 +1590,7 @@ The accessors are fixed by `spec/fixtures/collect/frames.json`.
 | `L003` | `table`/`chart`/`download` `from` dataset, or the `chart.from` of a paired `plot`, never created in the program and not a dataset input target or a permanent library. |
 | `L004` | More than one `rtf`/`pdf` download: each receives the same output; usually unintended. |
 | `L005` | `entry: macro` but `%macro <MACRO>` not found in the program. |
+| `L006` | `entry: macro` and an input macro name (§6.3 passes every one as a keyword argument, order of 5.7) that is not a parameter of the entry macro (a name in the parenthesised list of `%macro <MACRO>(...)`, matched case-insensitively; `/* */` comments ignored). SAS rejects the call (`ERROR: The keyword parameter <NAME> was not defined with the macro.`). Reported once per input at `/inputs/<id>`. A definition without a parameter list has no parameters. Not reported when the definition has the `PARMBUFF` (`PBUFF`) option, which accepts any argument, or when the parameter list contains `(` (a default such as `x=%str(a,b)`). Macro parameters that no input sets are not reported: they keep their defaults. |
 
 ## 11. Versioning
 

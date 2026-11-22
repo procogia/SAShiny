@@ -13,6 +13,9 @@ All notable changes to the Python library are documented here. The format follow
   like an uploaded file, so a missing declared column is `V014`. `run(uploads=)` accepts
   DataFrames too. The same data frame gives the same CSV bytes in R and Python, so result-cache
   and recording keys agree. This lets a parent app pass its filtered data to SAS.
+- Lint `L006` (spec §10): with `run.entry: macro`, an input macro name that the entry macro has
+  no parameter for. SAS rejects such a call (`The keyword parameter ... was not defined with the
+  macro`). A `/ parmbuff` macro is not checked. Same code, message and fixtures as R (#163).
 
 ### Changed
 

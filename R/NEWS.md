@@ -21,6 +21,11 @@ R/Python parity pass (spec release 1.5, `docs/parity.md`).
   accepts data frames too. The same data frame gives the same CSV bytes in R
   and Python, so result-cache and recording keys agree. This lets a parent
   app, such as a teal app, pass its filtered data to SAS.
+* `sas_lint()` reports `L006` (spec section 10): with `run.entry: macro`, an
+  input macro name that the entry macro has no parameter for. 'SAS' rejects
+  such a call (`The keyword parameter ... was not defined with the macro`). A
+  `/ parmbuff` macro is not checked. Same code, message and fixtures as Python
+  (#163).
 
 ## Bug fixes
 

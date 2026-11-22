@@ -195,3 +195,54 @@ test_that("lint fixtures match expected findings (spec section 10)", {
     expect_identical(got, want, label = basename(d))
   }
 })
+lint_macro_data <- function() {
+  lint_data(
+    inputs = list(
+      min_msrp = list(type = "numeric", label = "Min MSRP"),
+      label = list(type = "text", label = "Label")
+    ),
+    run = list(entry = "macro", macro = "report")
+  )
+}
+
+test_that("L006 flags an input without a macro parameter (#163)", {
+  # SAS rejects a keyword the entry macro does not define.
+  program <- "%macro report(Min_Msrp=);\n%put &min_msrp &label;\n%mend report;"
+  issues <- sas_lint(lint_macro_data(), program)
+  l006 <- issues[lint_codes(issues) == "L006"]
+  expect_length(l006, 1L)
+  expect_identical(l006[[1]]$path, "/inputs/label")
+  expect_identical(l006[[1]]$message, "%macro report has no parameter LABEL")
+})
+
+test_that("L006 flags every input when the macro has no parameter list", {
+  program <- "%macro report;\n%put &min_msrp &label;\n%mend report;"
+  issues <- sas_lint(lint_macro_data(), program)
+  paths <- vapply(issues[lint_codes(issues) == "L006"], function(i) i$path, character(1))
+  expect_identical(paths, c("/inputs/min_msrp", "/inputs/label"))
+})
+
+test_that("L006 accepts positional and commented parameters", {
+  program <- "%macro report(min_msrp, /* text */ LABEL=x);\n%put &min_msrp &label;\n%mend;"
+  expect_false("L006" %in% lint_codes(sas_lint(lint_macro_data(), program)))
+})
+
+test_that("L006 skips parmbuff and nested parentheses", {
+  for (program in c(
+    "%macro report / parmbuff;\n%put &min_msrp &label;\n%mend;",
+    "%macro report(min_msrp=) / PBUFF;\n%put &min_msrp &label;\n%mend;",
+    "%macro report(min_msrp=%str(a,b));\n%put &min_msrp &label;\n%mend;"
+  )) {
+    expect_false("L006" %in% lint_codes(sas_lint(lint_macro_data(), program)), info = program)
+  }
+})
+
+test_that("L006 needs entry: macro and a definition", {
+  program <- "%macro report;\n%put &min_msrp &label;\n%mend;"
+  data <- lint_macro_data()
+  data$run <- NULL
+  expect_false("L006" %in% lint_codes(sas_lint(data, program)))
+  codes <- lint_codes(sas_lint(lint_macro_data(), "%put &min_msrp &label;"))
+  expect_true("L005" %in% codes)
+  expect_false("L006" %in% codes)
+})
