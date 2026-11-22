@@ -1,0 +1,14 @@
+sashiny: 1
+program: program.sas
+title: Entry macro with PARMBUFF accepts any keyword
+inputs:
+  region:
+    type: choice
+    label: Region
+    choices: [Asia, Europe, USA]
+outputs:
+  log:
+    type: log
+run:
+  entry: macro
+  macro: report

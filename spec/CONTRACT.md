@@ -1238,6 +1238,20 @@ numbers, or data outside its inputs (database tables, files, `SASHELP` views tha
 `run.cache` off; otherwise users see stale results. The program file is hashed, but files it
 `%include`s are not.
 
+### 6.12 Scripted runs and defaults
+
+`sas_run(contract, engine, values)` (R) and `run(contract, engine, values)` (Python) start a run
+without the Shiny module, with the same precedence as §6.10 and the contract's defaults in place of
+the UI. For every id that `values` supplies, the supplied value is used; every other non-dataset
+input that has a `default` takes that default, with `"today"` (in a `date` default or either item of
+a `daterange` default) resolved to the run's `today` date in `YYYY-MM-DD` form, exactly as the module
+shows it when the app starts. A supplied `null` / `NULL` (R `list(id = NULL)`, Python `{"id": None}`)
+makes the input absent, so a required input gives `V001`. Inputs without a `default`, and dataset
+inputs (which are supplied through `uploads`), are absent unless supplied. Omitting `values`, or
+passing `NULL` / `None` or an empty list / dict, therefore runs every input at its default, which is
+what a first click of Run in the generated app submits. The merged values are then validated (§4) and
+keyed (§6.11) like any other values.
+
 ---
 
 ## 7. Dataset upload conversion
@@ -1576,6 +1590,7 @@ The accessors are fixed by `spec/fixtures/collect/frames.json`.
 | `L003` | `table`/`chart`/`download` `from` dataset, or the `chart.from` of a paired `plot`, never created in the program and not a dataset input target or a permanent library. |
 | `L004` | More than one `rtf`/`pdf` download: each receives the same output; usually unintended. |
 | `L005` | `entry: macro` but `%macro <MACRO>` not found in the program. |
+| `L006` | `entry: macro` and an input macro name (§6.3 passes every one as a keyword argument, order of 5.7) that is not a parameter of the entry macro (a name in the parenthesised list of `%macro <MACRO>(...)`, matched case-insensitively; `/* */` comments ignored). SAS rejects the call (`ERROR: The keyword parameter <NAME> was not defined with the macro.`). Reported once per input at `/inputs/<id>`. A definition without a parameter list has no parameters. Not reported when the definition has the `PARMBUFF` (`PBUFF`) option, which accepts any argument, or when the parameter list contains `(` (a default such as `x=%str(a,b)`). Macro parameters that no input sets are not reported: they keep their defaults. |
 
 ## 11. Versioning
 

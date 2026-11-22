@@ -1,0 +1,25 @@
+sashiny: 1
+program: program.sas
+title: Entry macro without a parameter for some input macro names
+inputs:
+  period:
+    type: daterange
+    label: Period
+  rows:
+    type: numeric
+    label: Rows
+    macro: n_rows
+  origins:
+    type: multichoice
+    label: Origins
+    choices: [Asia, Europe, USA]
+    count_macro: n_origins
+  title:
+    type: text
+    label: Title
+outputs:
+  log:
+    type: log
+run:
+  entry: macro
+  macro: report

@@ -13,6 +13,9 @@ All notable changes to the Python library are documented here. The format follow
   like an uploaded file, so a missing declared column is `V014`. `run(uploads=)` accepts
   DataFrames too. The same data frame gives the same CSV bytes in R and Python, so result-cache
   and recording keys agree. This lets a parent app pass its filtered data to SAS.
+- Lint `L006` (spec §10): with `run.entry: macro`, an input macro name that the entry macro has
+  no parameter for. SAS rejects such a call (`The keyword parameter ... was not defined with the
+  macro`). A `/ parmbuff` macro is not checked. Same code, message and fixtures as R (#163).
 
 ### Changed
 
@@ -40,6 +43,10 @@ All notable changes to the Python library are documented here. The format follow
   value is missing or `""`: with a single header field every line after the header is a row, so
   an empty line is a missing value (spec §7). They were dropped as blank lines, so SAS
   got fewer rows (#164).
+- `run(contract, engine)` without `values` uses the contract's defaults, as its docs say: every
+  input `values` does not supply takes its `default`, with `"today"` resolved against `today`, so
+  a scripted run submits what a first click of Run does (spec §6.12). It passed no values, so
+  every required input was `V001`. A supplied `None` still makes an input absent (#162).
 
 R/Python parity pass (spec release 1.5, `docs/parity.md`).
 
