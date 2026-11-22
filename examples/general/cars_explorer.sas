@@ -7,12 +7,21 @@
   Outputs : WORK.CARS_FILTERED, WORK.CARS_STATS, two ODS graphs, one listing
   Notes   : Runs standalone with the defaults below. SAShiny sets the macro
             variables before the program runs, so the defaults are skipped.
-            Requires SAS 9.4M5+ (open-code %IF).
+            Runs on any SAS 9.4 release or SAS Viya.
 ----------------------------------------------------------------------------*/
 
-%if not %symexist(origins)  %then %do; %let origins  = 'Asia' 'Europe' 'USA'; %end;
-%if not %symexist(types)    %then %do; %let types    = 'Sedan' 'SUV' 'Sports' 'Truck' 'Wagon' 'Hybrid'; %end;
-%if not %symexist(min_msrp) %then %do; %let min_msrp = 0; %end;
+/* Standalone defaults. The guard runs inside a macro so the program works on
+   every SAS 9.4 release (open-code %IF needs 9.4M5+). */
+%macro _default(_name, _value);
+  %if not %symexist(&_name) %then %do;
+    %global &_name;
+    %let &_name = &_value;
+  %end;
+%mend _default;
+
+%_default(origins, 'Asia' 'Europe' 'USA')
+%_default(types, 'Sedan' 'SUV' 'Sports' 'Truck' 'Wagon' 'Hybrid')
+%_default(min_msrp, 0)
 
 data work.cars_filtered;
   set sashelp.cars;

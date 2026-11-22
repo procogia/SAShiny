@@ -114,10 +114,18 @@
 .sashiny_read_file <- function(upload) {
   ext <- .sashiny_extension(upload$name)
   if (identical(ext, "csv")) {
-    df <- utils::read.csv(upload$path,
-      colClasses = "character", na.strings = character(0),
-      check.names = FALSE, encoding = "UTF-8", fileEncoding = "UTF-8"
-    )
+    read_csv <- function(skip_blank) {
+      utils::read.csv(upload$path,
+        colClasses = "character", na.strings = character(0),
+        check.names = FALSE, encoding = "UTF-8", fileEncoding = "UTF-8",
+        blank.lines.skip = skip_blank
+      )
+    }
+    df <- read_csv(TRUE)
+    # With a one-column header every line after it is a row, so an empty line
+    # is a missing value (spec section 7 step 1, RFC 4180); the final line
+    # terminator adds no row. Wider files keep skipping blank lines.
+    if (ncol(df) == 1L) df <- read_csv(FALSE)
     return(list(df = df, all_text = TRUE))
   }
   if (identical(ext, "xlsx")) {

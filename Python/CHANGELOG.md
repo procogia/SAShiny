@@ -13,6 +13,9 @@ All notable changes to the Python library are documented here. The format follow
   like an uploaded file, so a missing declared column is `V014`. `run(uploads=)` accepts
   DataFrames too. The same data frame gives the same CSV bytes in R and Python, so result-cache
   and recording keys agree. This lets a parent app pass its filtered data to SAS.
+- Lint `L006` (spec §10): with `run.entry: macro`, an input macro name that the entry macro has
+  no parameter for. SAS rejects such a call (`The keyword parameter ... was not defined with the
+  macro`). A `/ parmbuff` macro is not checked. Same code, message and fixtures as R (#163).
 
 ### Changed
 
@@ -31,11 +34,22 @@ All notable changes to the Python library are documented here. The format follow
 
 ### Fixed
 
+- The General (`cars_explorer.sas`) and AML (`cash_aggregation_tuning.sas`) example programs set
+  their standalone defaults inside a macro instead of with open-code `%if`, so they run on every
+  SAS 9.4 release. On 9.4M0 to M4 the open-code `%if` was an error and every output came back empty.
 - `Pool` clears its `choices_from` cache when it discards a failed session (spec §6.4), as
   R does; choices from the discarded SAS session were offered and validated against (#152).
 - `split_log` (the `log` output, `Result.log_frame()`, failure reasons) strips only ASCII
   trailing whitespace (spec §8.1, §8.2), as R does; a trailing U+00A0, U+2003, U+3000 or U+0085
   now stays (#154).
+- A one-column CSV upload, or a one-column DataFrame for a dataset input, keeps its rows whose
+  value is missing or `""`: with a single header field every line after the header is a row, so
+  an empty line is a missing value (spec §7). They were dropped as blank lines, so SAS
+  got fewer rows (#164).
+- `run(contract, engine)` without `values` uses the contract's defaults, as its docs say: every
+  input `values` does not supply takes its `default`, with `"today"` resolved against `today`, so
+  a scripted run submits what a first click of Run does (spec §6.12). It passed no values, so
+  every required input was `V001`. A supplied `None` still makes an input absent (#162).
 
 R/Python parity pass (spec release 1.5, `docs/parity.md`).
 

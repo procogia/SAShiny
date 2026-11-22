@@ -1,0 +1,6 @@
+{
+  "findings": [
+    {"code": "L006", "path": "/inputs/period"},
+    {"code": "L006", "path": "/inputs/origins"}
+  ]
+}

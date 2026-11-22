@@ -47,3 +47,54 @@ test_that("the new forms do not warn", {
   expect_no_warning(sas_run(contract, pool, today = .sashiny_today))
   expect_no_warning(sas_close(pool))
 })
+
+.sashiny_valid_contract <- function(name) {
+  sas_contract(file.path(.sashiny_fixtures(), "contracts", "valid", name, "contract.sashiny.yml"))
+}
+
+test_that("sas_run without values uses the contract defaults (#162)", {
+  # Inputs not supplied take their `default` (spec section 6.12).
+  for (values in list(NULL, list())) {
+    result <- sas_run(.sashiny_valid_contract("numeric"), .sashiny_engine_mock(), values,
+      today = .sashiny_today)
+    expect_identical(result$status, "success")
+    expect_identical(result$metadata$macros$MIN_MSRP, "20000")
+    expect_identical(result$metadata$macros$RATIO_VALUE, "0.5")
+    expect_identical(result$metadata$macros$BIG, "")
+  }
+})
+
+test_that("sas_run resolves today defaults against today", {
+  result <- sas_run(.sashiny_valid_contract("dates"), .sashiny_engine_mock(), today = .sashiny_today)
+  expect_identical(result$status, "success")
+  macros <- result$metadata$macros
+  expect_identical(macros$CUTOFF, "'11NOV2026'd")
+  expect_identical(macros$PERIOD_START, "'01JAN2026'd")
+  expect_identical(macros$PERIOD_END, "'30JUN2026'd")
+})
+
+test_that("supplied values replace defaults and NULL makes an input absent", {
+  result <- sas_run(.sashiny_valid_contract("numeric"), .sashiny_engine_mock(),
+    list(min_msrp = 5000), today = .sashiny_today)
+  expect_identical(result$metadata$macros$MIN_MSRP, "5000")
+  expect_identical(result$metadata$macros$RATIO_VALUE, "0.5")
+  absent <- sas_run(.sashiny_valid_contract("numeric"), .sashiny_engine_mock(),
+    list(ratio = NULL), today = .sashiny_today)
+  expect_identical(absent$status, "error")
+  expect_identical(vapply(absent$metadata$issues, function(i) i$code, character(1)), "V001")
+  expect_identical(absent$metadata$issues[[1]]$input, "ratio")
+})
+
+test_that("sas_run defaults fill multichoice inputs", {
+  # `types` has no default, so it is absent unless supplied (spec section 6.12).
+  missing <- sas_run(.sashiny_valid_contract("multichoice"), .sashiny_engine_mock(),
+    today = .sashiny_today)
+  expect_identical(missing$metadata$issues[[1]]$code, "V001")
+  expect_identical(missing$metadata$issues[[1]]$input, "types")
+  expect_length(missing$metadata$issues, 1L)
+  result <- sas_run(.sashiny_valid_contract("multichoice"), .sashiny_engine_mock(),
+    list(types = list()), today = .sashiny_today)
+  expect_identical(result$status, "success")
+  expect_identical(result$metadata$macros$ORIGINS, "'Asia' 'Europe' 'USA'")
+  expect_identical(result$metadata$macros$N_ORIGINS, "3")
+})

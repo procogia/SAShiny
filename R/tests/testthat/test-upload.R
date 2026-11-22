@@ -57,6 +57,31 @@ test_that("CSV uploads convert declared and inferred columns", {
   expect_true(is.character(df$hex))
 })
 
+test_that("in a one-column CSV every line after the header is a row", {
+  # Spec section 7: an empty line is a missing value; the final terminator adds no row (#164).
+  read_text <- function(text) {
+    path <- tempfile(fileext = ".csv")
+    writeBin(charToRaw(text), path) # exact line endings
+    .sashiny_read_upload(.sashiny_upload_file(path, "a.csv"),
+                         list(type = "dataset", target = "work.a"))$df
+  }
+  cases <- list(
+    list("A\nx\n\ny\n", c("x", "", "y")),
+    list("A\r\nx\r\n\r\ny\r\n", c("x", "", "y")),
+    list("A\n\n", ""),
+    list("A\nx\n\n", c("x", "")),
+    list("A\nx", "x"),
+    list("A\n\"\"\n\n", c("", "")),
+    list("A\n", character(0))
+  )
+  for (case in cases) {
+    df <- suppressWarnings(read_text(case[[1]]))
+    expect_identical(names(df), "A", label = case[[1]])
+    expect_identical(df$A, case[[2]], label = case[[1]])
+  }
+  expect_identical(read_text("A,B\nx,1\n\ny,2\n")$A, c("x", "y"))
+})
+
 test_that("bad uploads are rejected with V014 messages", {
   expect_error(
     .sashiny_read_upload(write_csv(c("USUBJID,AGE", "S1,40")), upload_spec),
