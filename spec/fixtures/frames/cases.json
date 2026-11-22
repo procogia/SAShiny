@@ -1,5 +1,5 @@
 {
-  "about": "Canonical CSV of data frames (CONTRACT.md 7.1). Each case builds a data frame from its columns, in order; type is character, factor, integer, double, logical, date (YYYY-MM-DD) or datetime (ISO 8601 UTC); JSON null is a missing value. csv is the exact expected file text.",
+  "about": "Canonical CSV of data frames (CONTRACT.md 7.1). Each case builds a data frame from its columns, in order; type is character, factor, integer, double, logical, date (YYYY-MM-DD) or datetime (ISO 8601 UTC); JSON null is a missing value. csv is the exact expected file text; read back as a csv upload (CONTRACT.md 7), it has one row per value.",
   "cases": [
     {
       "name": "every column type, with quoting and missing values",
@@ -60,6 +60,27 @@
         {"name": "site", "type": "character", "values": ["Zürich", "日本"]}
       ],
       "csv": "site\nZürich\n日本\n"
+    },
+    {
+      "name": "one column: a missing value or empty string is an empty line, still a row",
+      "columns": [
+        {"name": "A", "type": "character", "values": ["x", null, "", "y"]}
+      ],
+      "csv": "A\nx\n\n\ny\n"
+    },
+    {
+      "name": "one numeric column with a missing value",
+      "columns": [
+        {"name": "AGE", "type": "double", "values": [30, null, 41]}
+      ],
+      "csv": "AGE\n30\n\n41\n"
+    },
+    {
+      "name": "one column whose missing values come last",
+      "columns": [
+        {"name": "FLAG", "type": "logical", "values": [true, null, null]}
+      ],
+      "csv": "FLAG\n1\n\n\n"
     }
   ]
 }

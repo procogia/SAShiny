@@ -61,6 +61,38 @@ def test_read_csv_converts_declared_and_inferred_columns(tmp_path: Path) -> None
 
 
 @pytest.mark.parametrize(
+    ("text", "values"),
+    [
+        ("A\nx\n\ny\n", ["x", "", "y"]),
+        ("A\r\nx\r\n\r\ny\r\n", ["x", "", "y"]),
+        ("A\n\n", [""]),
+        ("A\nx\n\n", ["x", ""]),
+        ("A\nx", ["x"]),
+        ('A\n""\n\n', ["", ""]),
+        ("A\n", []),
+    ],
+)
+def test_read_csv_one_column_blank_lines_are_rows(
+    tmp_path: Path, text: str, values: list[str]
+) -> None:
+    # Spec §7: with a one-column header every line after it is a row (#164).
+    path = tmp_path / "a.csv"
+    path.write_bytes(text.encode("utf-8"))  # exact line endings
+    df, _ = read_upload(
+        UploadFile(path=path, name="a.csv"), {"type": "dataset", "target": "work.a"}
+    )
+    assert list(df.columns) == ["A"]
+    assert df["A"].tolist() == values
+
+
+def test_read_csv_wider_files_skip_blank_lines(tmp_path: Path) -> None:
+    df, _ = read_upload(
+        _csv(tmp_path, "A,B\nx,1\n\ny,2\n"), {"type": "dataset", "target": "work.a"}
+    )
+    assert df["A"].tolist() == ["x", "y"]
+
+
+@pytest.mark.parametrize(
     ("text", "message"),
     [
         ("USUBJID,AGE\nS1,40\n", "no column trtsdt"),

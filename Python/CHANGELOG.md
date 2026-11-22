@@ -36,6 +36,10 @@ All notable changes to the Python library are documented here. The format follow
 - `split_log` (the `log` output, `Result.log_frame()`, failure reasons) strips only ASCII
   trailing whitespace (spec §8.1, §8.2), as R does; a trailing U+00A0, U+2003, U+3000 or U+0085
   now stays (#154).
+- A one-column CSV upload, or a one-column DataFrame for a dataset input, keeps its rows whose
+  value is missing or `""`: with a single header field every line after the header is a row, so
+  an empty line is a missing value (spec §7). They were dropped as blank lines, so SAS
+  got fewer rows (#164).
 
 R/Python parity pass (spec release 1.5, `docs/parity.md`).
 

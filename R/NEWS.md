@@ -36,6 +36,11 @@ R/Python parity pass (spec release 1.5, `docs/parity.md`).
   A base histogram honours `ylab`.
 * A licence-refused or failed saspy run reports the package version as
   `engine_version`, as in Python.
+* A one-column CSV upload, or a one-column data frame for a dataset input,
+  keeps its rows whose value is missing or `""`: with a single header field
+  every line after the header is a row, so an empty line is a missing value
+  (spec section 7). They were dropped as blank lines, so SAS got fewer rows
+  (#164).
 
 ## Changes
 

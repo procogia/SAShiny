@@ -265,9 +265,22 @@ def _read(upload: UploadFile) -> tuple[Any, bool]:
         # (pandas otherwise mangles "x,x" to "x,x.1" before §7 step 2 can
         # resolve them to "x","x_2"). The first row is the header; sanitise it
         # before assigning so the frame never holds duplicate column names.
-        raw = pd.read_csv(
-            upload.path, header=None, dtype=str, keep_default_na=False, encoding="utf-8"
-        )
+        def read_csv(skip_blank_lines: bool) -> Any:
+            return pd.read_csv(
+                upload.path,
+                header=None,
+                dtype=str,
+                keep_default_na=False,
+                encoding="utf-8",
+                skip_blank_lines=skip_blank_lines,
+            )
+
+        raw = read_csv(True)
+        # With a one-column header every line after it is a row, so an empty
+        # line is a missing value (§7 step 1, RFC 4180); the final line
+        # terminator adds no row. Wider files keep skipping blank lines.
+        if raw.shape[1] == 1:
+            raw = read_csv(False)
         header = [str(c) for c in raw.iloc[0].tolist()]
         df = raw.iloc[1:].reset_index(drop=True)
         df.columns = sanitize_names(header)
