@@ -1,4 +1,4 @@
-# SAShiny (development version)
+# SAShiny 0.4.0
 
 R/Python parity pass (spec release 1.5, `docs/parity.md`).
 
