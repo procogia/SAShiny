@@ -34,6 +34,9 @@ All notable changes to the Python library are documented here. The format follow
 
 ### Fixed
 
+- The General (`cars_explorer.sas`) and AML (`cash_aggregation_tuning.sas`) example programs set
+  their standalone defaults inside a macro instead of with open-code `%if`, so they run on every
+  SAS 9.4 release. On 9.4M0 to M4 the open-code `%if` was an error and every output came back empty.
 - `Pool` clears its `choices_from` cache when it discards a failed session (spec §6.4), as
   R does; choices from the discarded SAS session were offered and validated against (#152).
 - `split_log` (the `log` output, `Result.log_frame()`, failure reasons) strips only ASCII

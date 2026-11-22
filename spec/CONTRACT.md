@@ -1568,7 +1568,10 @@ The accessors are fixed by `spec/fixtures/collect/frames.json`.
   program's value wins. Lint reports this (`L001`) by scanning for `%let <NAME>` and
   `call symput[x]('<NAME>'`, except assignments inside a
   `%if not %symexist(<NAME>) %then %do; ... %end;` guard. Programs written for standalone use SHOULD guard defaults with
-  `%if not %symexist(NAME) %then %do; %let NAME = ...; %end;` (SAS 9.4M5+ open-code `%if`).
+  `%if not %symexist(NAME) %then %do; %let NAME = ...; %end;` (SAS 9.4M5+ open-code `%if`). On
+  releases before 9.4M5, put the same test inside a macro that runs `%global NAME;` before the
+  `%let`, as `examples/general/cars_explorer.sas` does; the wrapper creates injected macro variables
+  as global (`call symputx(..., 'G')`), so the default is skipped.
 - A program that ends the session (`endsas;`) or leaves unbalanced quotes produces status `error`
   (missing END sentinel). So does a program that leaves `options nonotes;` in effect, because SAS then
   drops the `NOTE:` sentinels.
