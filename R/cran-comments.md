@@ -1,15 +1,24 @@
 ## Submission
 
-This is an update of SAShiny 0.2.0. Version 0.3.1 aligns the version with
-the companion Python library (released together from now on) and adds
-persistent background 'SAS' sessions, a `choices_from` cache, data frame
-accessors, classed errors and an opt-in result cache; see NEWS.md.
+This is a new submission of SAShiny (version 0.4.1). SAShiny 0.1.0, 0.1.1 and
+0.1.6 were submitted in November 2026 and did not reach CRAN; this version
+replaces them.
 
-New hard dependencies: 'callr' (one persistent background R session per 'SAS'
-connection, so a slow 'SAS' run never blocks the 'Shiny' app), 'cli' (classed
-error messages) and 'lifecycle' (deprecation of renamed functions). All are
-widely used, have no system requirements and are already installed with
-'shiny'. No new 'Suggests' need the network or 'SAS' during checks.
+**Maintainer email change.** The maintainer is the same person, Mehar Pratap
+Singh. Earlier submissions used meharpsingh@gmail.com; from this version the
+maintainer address is meharpratap.singh@procogia.com. Both addresses belong to
+the maintainer, and the package was never on CRAN under the old one.
+
+Since 0.1.6 the R package and the companion Python library are released
+together with the same version number. The main additions are persistent
+background 'SAS' sessions, replay of recorded runs from a licensed 'SAS'
+system, registered third-party engines, data frame accessors and classed
+errors; see NEWS.md.
+
+Hard dependencies added since 0.1.6: 'callr' (one persistent background R
+session per 'SAS' connection, so a slow 'SAS' run never blocks the 'Shiny'
+app), 'cli' (classed error messages) and 'lifecycle' (deprecation of renamed
+functions). All are widely used and have no system requirements.
 
 ## Test environments
 

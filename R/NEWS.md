@@ -1,3 +1,8 @@
+# SAShiny 0.4.1
+
+* The maintainer's email address is now meharpratap.singh@procogia.com (same
+  maintainer, Mehar Pratap Singh). No code changes.
+
 # SAShiny 0.4.0
 
 R/Python parity pass (spec release 1.5, `docs/parity.md`).

@@ -4,6 +4,13 @@ All notable changes to the Python library are documented here. The format follow
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [0.4.1] - 2026-11-22
+
+### Changed
+
+- The maintainer's email address is now meharpratap.singh@procogia.com (same maintainer,
+  Mehar Pratap Singh). No code changes.
+
 ## [0.4.0] - 2026-11-22
 
 ### Added

@@ -34,11 +34,11 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: Mehar Pratap Singh \email{meharpsingh@gmail.com} [copyright holder]
+\strong{Maintainer}: Mehar Pratap Singh \email{meharpratap.singh@procogia.com} [copyright holder]
 
 Authors:
 \itemize{
-  \item Mehar Pratap Singh \email{meharpsingh@gmail.com} [copyright holder]
+  \item Mehar Pratap Singh \email{meharpratap.singh@procogia.com} [copyright holder]
 }
 
 Other contributors:

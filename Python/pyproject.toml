@@ -10,9 +10,9 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
 license-files = ["LICENSE"]
-authors = [{ name = "Mehar Pratap Singh", email = "meharpsingh@gmail.com" }]
+authors = [{ name = "Mehar Pratap Singh", email = "meharpratap.singh@procogia.com" }]
 maintainers = [
-  { name = "Mehar Pratap Singh", email = "meharpsingh@gmail.com" },
+  { name = "Mehar Pratap Singh", email = "meharpratap.singh@procogia.com" },
   { name = "Shreya Sharma" },
   { name = "Love ProCogia" },
   { name = "Igor ProCogia" },
