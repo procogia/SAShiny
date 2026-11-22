@@ -1,6 +1,6 @@
 # Advisory lint for SAShiny (spec section 10).
 #
-# Reports program-vs-contract consistency findings (L001-L005). These are
+# Reports program-vs-contract consistency findings (L001-L006). These are
 # advisory, not errors. The implementation scans the SAS program text with
 # conservative, case-insensitive regular expressions; it deliberately avoids a
 # full SAS parser and prefers to miss a finding over raising a false positive.
@@ -113,6 +113,54 @@
   list(start = as.integer(m), end = end, params = params)
 }
 
+# `list(params, options)` of the entry macro definition `%macro <MACRO>`: the
+# text of the optional parenthesised parameter list and of the optional
+# `/ options`, up to the closing `;`. NULL when the definition is absent.
+.sashiny_entry_macro_definition <- function(macro, text) {
+  re <- paste0("%macro\\s+\\Q", macro, "\\E\\b\\s*(?:\\(([^)]*)\\))?\\s*(?:/([^;]*))?;")
+  m <- regexpr(re, text, perl = TRUE, ignore.case = TRUE)
+  if (m == -1L) {
+    return(NULL)
+  }
+  cs <- attr(m, "capture.start")[1, ]
+  cl <- attr(m, "capture.length")[1, ]
+  part <- function(i) if (cs[[i]] < 1L) "" else substr(text, cs[[i]], cs[[i]] + cl[[i]] - 1L)
+  list(params = part(1L), options = part(2L))
+}
+
+# L006 findings: under `run.entry: macro` every input macro name is passed as a
+# keyword argument (spec section 6.3), and 'SAS' rejects a keyword the macro does
+# not define. A definition with `/ parmbuff` (or `pbuff`) accepts any argument
+# and is not checked; neither is a parameter list with nested parentheses (a
+# default such as `x=%str(a,b)`), which these regular expressions cannot split.
+.sashiny_lint_l006 <- function(data, text, injected) {
+  run <- data$run %||% list()
+  macro <- run$macro
+  if (!identical(run$entry, "macro") || is.null(macro)) {
+    return(list())
+  }
+  stripped <- gsub("/\\*.*?\\*/", " ", text, perl = TRUE)
+  found <- .sashiny_entry_macro_definition(macro, stripped)
+  if (is.null(found)) {
+    return(list()) # L005
+  }
+  if (grepl("\\bp(arm)?buff\\b", found$options, perl = TRUE, ignore.case = TRUE) ||
+    grepl("(", found$params, fixed = TRUE)) {
+    return(list())
+  }
+  plist <- strsplit(found$params, ",", fixed = TRUE)[[1]]
+  params <- toupper(trimws(sub("=.*$", "", plist)))
+  out <- list()
+  for (name in setdiff(injected, params)) {
+    out[[length(out) + 1L]] <- sashiny_issue(
+      "L006",
+      paste0("/inputs/", .sashiny_input_id_for_macro(data, name)),
+      sprintf("%%macro %s has no parameter %s", macro, name)
+    )
+  }
+  out
+}
+
 # Upper-cased WORK member names that dataset inputs target.
 .sashiny_dataset_targets <- function(data) {
   targets <- character()
@@ -137,7 +185,7 @@
 
 #' Lint a contract against its program text
 #'
-#' Returns advisory findings (L001-L005) by scanning the SAS program text with
+#' Returns advisory findings (L001-L006) by scanning the SAS program text with
 #' conservative, case-insensitive regular expressions.
 #'
 #' @param data The parsed contract data (a list).
@@ -269,6 +317,9 @@ sas_lint <- function(data, program_text) {
       )
     }
   }
+
+  # L006: entry: macro and an injected macro the entry macro has no parameter for.
+  issues <- c(issues, .sashiny_lint_l006(data, text, injected))
 
     # A daterange or multichoice input sets several macro names that all map to
     # the same input id, so the same (code, path) can be reported more than once.

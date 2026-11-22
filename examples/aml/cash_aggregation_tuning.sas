@@ -11,17 +11,28 @@
             START_DT       first transaction date, SAS date literal
             END_DT         last transaction date, SAS date literal
   Outputs : WORK.ALERTS, WORK.ATL_BTL, one ODS graph, two listings
-  Notes   : Runs standalone with the defaults below; requires SAS 9.4M5+.
+  Notes   : Runs standalone with the defaults below. SAShiny sets the macro
+            variables before the program runs, so the defaults are skipped.
+            Runs on any SAS 9.4 release or SAS Viya.
             SAR_FLAG marks customers with a prior SAR and is used only to
             estimate how many known cases each threshold would catch.
 ----------------------------------------------------------------------------*/
 
-%if not %symexist(txn_data)      %then %do; %let txn_data      = work.transactions; %end;
-%if not %symexist(segments)      %then %do; %let segments      = 'Retail' 'SME' 'Corporate'; %end;
-%if not %symexist(threshold)     %then %do; %let threshold     = 10000; %end;
-%if not %symexist(lookback_days) %then %do; %let lookback_days = 30; %end;
-%if not %symexist(start_dt)      %then %do; %let start_dt      = '01JAN2026'd; %end;
-%if not %symexist(end_dt)        %then %do; %let end_dt        = '30JUN2026'd; %end;
+/* Standalone defaults. The guard runs inside a macro so the program works on
+   every SAS 9.4 release (open-code %IF needs 9.4M5+). */
+%macro _default(_name, _value);
+  %if not %symexist(&_name) %then %do;
+    %global &_name;
+    %let &_name = &_value;
+  %end;
+%mend _default;
+
+%_default(txn_data, work.transactions)
+%_default(segments, 'Retail' 'SME' 'Corporate')
+%_default(threshold, 10000)
+%_default(lookback_days, 30)
+%_default(start_dt, '01JAN2026'd)
+%_default(end_dt, '30JUN2026'd)
 
 /* Cash deposits in scope */
 data work._cash;

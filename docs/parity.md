@@ -25,7 +25,7 @@ Legend: ✅ same behaviour · 🟡 idiomatic difference only (same behaviour, la
 | Huge JSON integer (`1e400` as int) | `V003` | `OverflowError` | 🔧 Python |
 | `render_values` `today` default | `Sys.Date()` | required | 🔧 Python (defaults to today) |
 | Wrapper / reset code (byte-exact) | `sas_wrapper_code`, `sas_reset_code` | `wrapper_code`, `reset_code` | ✅ (shared `wrapper/` fixtures) |
-| Lint `L001`–`L005` | PCRE `\b` (ASCII) | `re` `\b` (Unicode) | 🔧 Python (ASCII word boundaries) |
+| Lint `L001`–`L006` | PCRE `\b` (ASCII) | `re` `\b` (Unicode) | 🔧 Python (ASCII word boundaries) |
 
 ## 2. Running, engines and pools (§6.1–6.6, §6.11)
 

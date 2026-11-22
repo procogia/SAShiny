@@ -13,7 +13,14 @@ import pytest
 import sashiny
 from engines_helper import MockEngine
 from sashiny import modules
-from sashiny.upload import FrameUpload, UploadError, frame_csv, resolve_upload
+from sashiny.upload import (
+    FrameUpload,
+    UploadError,
+    UploadFile,
+    frame_csv,
+    read_upload,
+    resolve_upload,
+)
 
 pd = pytest.importorskip("pandas")
 
@@ -54,6 +61,32 @@ def _frame(columns: list[dict[str, Any]]) -> Any:
 @pytest.mark.parametrize("case", _cases(), ids=lambda c: c["name"])
 def test_frame_cases_write_the_expected_bytes(case: dict[str, Any]) -> None:
     assert frame_csv(_frame(case["columns"])) == case["csv"].encode("utf-8")
+
+
+@pytest.mark.parametrize("case", _cases(), ids=lambda c: c["name"])
+def test_frame_cases_read_back_one_row_per_value(case: dict[str, Any], tmp_path: Path) -> None:
+    # A one-column frame's missing rows are empty lines and must stay rows (spec §7, #164).
+    path = tmp_path / "x.csv"
+    path.write_bytes(case["csv"].encode("utf-8"))
+    df, _ = read_upload(
+        UploadFile(path=path, name="x.csv"), {"type": "dataset", "target": "work.x"}
+    )
+    assert df.shape == (len(case["columns"][0]["values"]), len(case["columns"]))
+
+
+def test_one_column_frame_keeps_its_missing_rows(tmp_path: Path) -> None:
+    frame = pd.DataFrame({"AGE": [30.0, None, 41.0]})
+    spec = {
+        "type": "dataset",
+        "target": "work.adsl",
+        "columns": [{"name": "age", "type": "numeric"}],
+    }
+    upload = resolve_upload(frame, spec, tmp_path, "adsl")
+    assert upload is not None
+    df, _ = read_upload(upload, spec)
+    assert df["AGE"].tolist()[0::2] == [30, 41]
+    assert len(df) == 3
+    assert pd.isna(df["AGE"].tolist()[1])
 
 
 def test_object_columns_are_written_value_by_value() -> None:

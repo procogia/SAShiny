@@ -30,7 +30,7 @@ contract (`<program>.sashiny.yml`) declares inputs and outputs. Read these befor
 | `examples/` | general / pharma / aml demo programs + contracts + synthetic data |
 
 Planned modules (same names in both languages where possible): contract (load + validate), values (validate +
-render), wrapper (reset + main code), lint (L001–L005), engines (mock, saspy), pool, run, result, Shiny modules
+render), wrapper (reset + main code), lint (L001–L006), engines (mock, saspy), pool, run, result, Shiny modules
 (auto-UI + custom override), app helpers.
 
 ## R conventions (target: CRAN)

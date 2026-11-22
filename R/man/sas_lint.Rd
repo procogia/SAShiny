@@ -15,6 +15,6 @@ sas_lint(data, program_text)
 A list of \code{sashiny_issue} objects with \code{L0xx} codes.
 }
 \description{
-Returns advisory findings (L001-L005) by scanning the SAS program text with
+Returns advisory findings (L001-L006) by scanning the SAS program text with
 conservative, case-insensitive regular expressions.
 }

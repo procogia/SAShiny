@@ -47,9 +47,18 @@ R/Python parity pass (spec release 1.5, `docs/parity.md`).
   accepts data frames too. The same data frame gives the same CSV bytes in R
   and Python, so result-cache and recording keys agree. This lets a parent
   app, such as a teal app, pass its filtered data to SAS.
+* `sas_lint()` reports `L006` (spec section 10): with `run.entry: macro`, an
+  input macro name that the entry macro has no parameter for. 'SAS' rejects
+  such a call (`The keyword parameter ... was not defined with the macro`). A
+  `/ parmbuff` macro is not checked. Same code, message and fixtures as Python
+  (#163).
 
 ## Bug fixes
 
+* The General (`cars_explorer.sas`) and AML (`cash_aggregation_tuning.sas`)
+  example programs set their standalone defaults inside a macro instead of
+  with open-code `%if`, so they run on every 'SAS' 9.4 release. On 9.4M0 to
+  M4 the open-code `%if` was an error and every output came back empty.
 * `S013`: a directory is not a program or sample file.
 * Default module ids strip every combining mark (Unicode category M), as
   Python does.
@@ -62,6 +71,17 @@ R/Python parity pass (spec release 1.5, `docs/parity.md`).
   A base histogram honours `ylab`.
 * A licence-refused or failed saspy run reports the package version as
   `engine_version`, as in Python.
+* A one-column CSV upload, or a one-column data frame for a dataset input,
+  keeps its rows whose value is missing or `""`: with a single header field
+  every line after the header is a row, so an empty line is a missing value
+  (spec section 7). They were dropped as blank lines, so SAS got fewer rows
+  (#164).
+* `sas_run(contract, engine)` without `values` uses the contract's defaults,
+  as its docs say: every input `values` does not supply takes its `default`,
+  with `"today"` resolved against `today`, so a scripted run submits what a
+  first click of Run does (spec section 6.12). It passed no values, so every
+  required input was `V001`. A supplied `NULL` (`list(id = NULL)`) still makes
+  an input absent. `values` now defaults to `NULL` (#162).
 
 ## Changes
 

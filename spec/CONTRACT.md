@@ -1307,6 +1307,20 @@ numbers, or data outside its inputs (database tables, files, `SASHELP` views tha
 `run.cache` off; otherwise users see stale results. The program file is hashed, but files it
 `%include`s are not.
 
+### 6.12 Scripted runs and defaults
+
+`sas_run(contract, engine, values)` (R) and `run(contract, engine, values)` (Python) start a run
+without the Shiny module, with the same precedence as §6.10 and the contract's defaults in place of
+the UI. For every id that `values` supplies, the supplied value is used; every other non-dataset
+input that has a `default` takes that default, with `"today"` (in a `date` default or either item of
+a `daterange` default) resolved to the run's `today` date in `YYYY-MM-DD` form, exactly as the module
+shows it when the app starts. A supplied `null` / `NULL` (R `list(id = NULL)`, Python `{"id": None}`)
+makes the input absent, so a required input gives `V001`. Inputs without a `default`, and dataset
+inputs (which are supplied through `uploads`), are absent unless supplied. Omitting `values`, or
+passing `NULL` / `None` or an empty list / dict, therefore runs every input at its default, which is
+what a first click of Run in the generated app submits. The merged values are then validated (§4) and
+keyed (§6.11) like any other values.
+
 ---
 
 ## 7. Dataset upload conversion
@@ -1341,6 +1355,12 @@ under the largest is still stored by the transport and then rejected by the per-
 check (V014). This is the best the Shiny upload protocol allows; the per-input limit is always
 enforced before any SAS work.
 
+Blank lines in `csv` (step 1): when the header line has exactly one field, every line after it is a
+row, so an empty line is a row whose value is missing, as RFC 4180 reads it. This is how §7.1 writes
+a missing value or `""` in a one-column data frame. The line terminator that ends the last row does
+not start another row (`A\nx\n\ny\n` has three rows). With more than one column, blank lines are
+skipped (the canonical writer never produces one: its empty rows are `,` or longer).
+
 ### 7.1 Canonical CSV for data frames
 
 R and Python write the same bytes for the same data frame:
@@ -1351,7 +1371,7 @@ R and Python write the same bytes for the same data frame:
 3. Fields are separated by `,`. A field is enclosed in `"` only when it contains `,`, `"`, CR or LF;
    a `"` inside is doubled.
 4. A missing value (R `NA`, Python `None`, `NaN`, `NaT`, `pd.NA`) is an empty field. So is an empty
-   string.
+   string. In a one-column data frame such a row is an empty line, which §7 reads back as a row.
 5. Values by column type:
 
 | Column | Field |
@@ -1625,7 +1645,10 @@ The accessors are fixed by `spec/fixtures/collect/frames.json`.
   program's value wins. Lint reports this (`L001`) by scanning for `%let <NAME>` and
   `call symput[x]('<NAME>'`, except assignments inside a
   `%if not %symexist(<NAME>) %then %do; ... %end;` guard. Programs written for standalone use SHOULD guard defaults with
-  `%if not %symexist(NAME) %then %do; %let NAME = ...; %end;` (SAS 9.4M5+ open-code `%if`).
+  `%if not %symexist(NAME) %then %do; %let NAME = ...; %end;` (SAS 9.4M5+ open-code `%if`). On
+  releases before 9.4M5, put the same test inside a macro that runs `%global NAME;` before the
+  `%let`, as `examples/general/cars_explorer.sas` does; the wrapper creates injected macro variables
+  as global (`call symputx(..., 'G')`), so the default is skipped.
 - A program that ends the session (`endsas;`) or leaves unbalanced quotes produces status `error`
   (missing END sentinel). So does a program that leaves `options nonotes;` in effect, because SAS then
   drops the `NOTE:` sentinels.
@@ -1647,6 +1670,7 @@ The accessors are fixed by `spec/fixtures/collect/frames.json`.
 | `L003` | `table`/`chart`/`download` `from` dataset, or the `chart.from` of a paired `plot`, never created in the program and not a dataset input target or a permanent library. |
 | `L004` | More than one `rtf`/`pdf` download: each receives the same output; usually unintended. |
 | `L005` | `entry: macro` but `%macro <MACRO>` not found in the program. |
+| `L006` | `entry: macro` and an input macro name (§6.3 passes every one as a keyword argument, order of 5.7) that is not a parameter of the entry macro (a name in the parenthesised list of `%macro <MACRO>(...)`, matched case-insensitively; `/* */` comments ignored). SAS rejects the call (`ERROR: The keyword parameter <NAME> was not defined with the macro.`). Reported once per input at `/inputs/<id>`. A definition without a parameter list has no parameters. Not reported when the definition has the `PARMBUFF` (`PBUFF`) option, which accepts any argument, or when the parameter list contains `(` (a default such as `x=%str(a,b)`). Macro parameters that no input sets are not reported: they keep their defaults. |
 
 ## 11. Versioning
 

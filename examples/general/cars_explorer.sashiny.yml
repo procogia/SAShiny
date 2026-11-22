@@ -3,7 +3,7 @@ program: cars_explorer.sas
 title: Car price explorer
 description: >
   Filters SASHELP.CARS by origin, vehicle type and minimum price, then summarises
-  price and fuel economy. Runs on any SAS 9.4M5+ or SAS Viya session.
+  price and fuel economy. Runs on any SAS 9.4 or SAS Viya session.
 version: "1.0"
 
 inputs:
