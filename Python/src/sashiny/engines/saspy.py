@@ -47,7 +47,7 @@ from ..contract import Contract
 from ..errors import EngineError, LicenseError, SashinyError
 from ..recording import contract_sha256, program_sha256
 from ..result import Result, utc_timestamp
-from ..upload import UploadError, read_upload, resolve_upload
+from ..upload import UploadError, read_upload, resolve_upload, upload_supplied
 from ..values import render_values
 from ..wrapper import reset_code, wrapper_code
 from .base import Engine
@@ -790,7 +790,7 @@ class SaspyEngine(Engine):
         started: datetime,
     ) -> Result:
         data = contract.data
-        flags = {k: bool(v) for k, v in (uploads or {}).items()}
+        flags = {k: upload_supplied(v) for k, v in (uploads or {}).items()}
         try:
             found = getattr(contract, "cached_choices", None) or self.choices(contract)
             override = {k: [c["value"] for c in v] for k, v in found.items()}
@@ -856,7 +856,7 @@ class SaspyEngine(Engine):
         for iid, spec in (data.get("inputs") or {}).items():
             if spec["type"] != "dataset":
                 continue
-            upload = resolve_upload((uploads or {}).get(iid), spec, contract.base_dir)
+            upload = resolve_upload((uploads or {}).get(iid), spec, contract.base_dir, iid)
             if upload is None:
                 continue
             df, datetimes = read_upload(upload, spec)

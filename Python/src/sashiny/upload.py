@@ -12,18 +12,24 @@ from __future__ import annotations
 
 import datetime
 import hashlib
+import math
 import re
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 __all__ = [
+    "FrameUpload",
     "UploadError",
     "UploadFile",
     "file_sha256",
+    "frame_csv",
+    "frame_upload",
     "read_upload",
     "resolve_upload",
     "sanitize_names",
+    "upload_supplied",
 ]
 
 _INVALID = re.compile(r"[^A-Za-z0-9_]")
@@ -53,12 +59,158 @@ class UploadFile:
         return Path(self.name).suffix.lower().lstrip(".")
 
 
-def resolve_upload(value: Any, spec: dict[str, Any], base_dir: Path) -> UploadFile | None:
+@dataclass(frozen=True)
+class FrameUpload:
+    """A data frame supplied for a dataset input (spec §6.10), not yet written.
+
+    Wrapping keeps it apart from a path or an :class:`UploadFile`.
+
+    Attributes:
+        frame: The pandas ``DataFrame``.
+        input_id: The dataset input id; the CSV file is named ``<input_id>.csv``.
+
+    """
+
+    frame: Any
+    input_id: str
+
+
+def _is_frame(value: Any) -> bool:
+    """Whether ``value`` is a pandas ``DataFrame`` (without importing pandas)."""
+    return type(value).__name__ == "DataFrame" and hasattr(value, "columns")
+
+
+def upload_supplied(value: Any) -> bool:
+    """Whether an ``uploads`` entry supplies a dataset (a DataFrame has no truth value)."""
+    if isinstance(value, FrameUpload) or _is_frame(value):
+        return True
+    return bool(value)
+
+
+def frame_upload(frame: Any, input_id: str) -> UploadFile:
+    """Write ``frame`` as canonical CSV ``<input_id>.csv`` in a new temporary folder (spec §7.1)."""
+    data = frame_csv(frame)
+    folder = Path(tempfile.mkdtemp(prefix="sashiny-frame-"))
+    path = folder / f"{input_id}.csv"
+    path.write_bytes(data)
+    return UploadFile(path=path, name=path.name)
+
+
+def frame_csv(frame: Any) -> bytes:
+    """Return the canonical CSV bytes of a pandas ``DataFrame`` (spec §7.1).
+
+    UTF-8 without a byte order mark, LF after every line, header row, fields
+    quoted only when they contain ``,``, ``"``, CR or LF. The same data frame
+    gives the same bytes in R.
+
+    Raises:
+        UploadError: ``frame`` is not a data frame, has no columns, or has a
+            value that cannot be written (reported as V014).
+
+    """
+    if not _is_frame(frame):
+        raise UploadError("a dataset value must be a data frame")
+    if len(frame.columns) == 0:
+        raise UploadError("the data frame has no columns")
+    columns = [_frame_column(frame.iloc[:, i], str(name)) for i, name in enumerate(frame.columns)]
+    lines = [",".join(_csv_field(str(name)) for name in frame.columns)]
+    lines.extend(",".join(row) for row in zip(*columns, strict=True))
+    return ("\n".join(lines) + "\n").encode("utf-8")
+
+
+def _frame_column(series: Any, name: str) -> list[str]:
+    """One column as quoted CSV fields (spec §7.1 rule 5)."""
+    import pandas as pd  # noqa: PLC0415 - optional dependency
+
+    dtype = series.dtype
+    if isinstance(dtype, pd.CategoricalDtype):
+        values = [None if pd.isna(v) else v for v in series.astype(object)]
+        return [_csv_field(_value_text(v, name)) for v in values]
+    if pd.api.types.is_bool_dtype(dtype):
+        return ["" if pd.isna(v) else ("1" if v else "0") for v in series.astype(object)]
+    if pd.api.types.is_integer_dtype(dtype):
+        return ["" if pd.isna(v) else str(int(v)) for v in series.astype(object)]
+    if pd.api.types.is_float_dtype(dtype):
+        return [_number_text(float(v), name) for v in series]
+    if pd.api.types.is_datetime64_any_dtype(dtype):
+        return [_datetime_text(v) for v in series]
+    if pd.api.types.is_object_dtype(dtype) or pd.api.types.is_string_dtype(dtype):
+        return [_csv_field(_value_text(v, name)) for v in series]
+    raise UploadError(f"column '{name}' has a type that cannot be written as CSV ({dtype})")
+
+
+def _value_text(value: Any, name: str) -> str:  # noqa: PLR0911 - one return per value type
+    """One value of an object or category column, by its own type."""
+    import pandas as pd  # noqa: PLC0415 - optional dependency
+
+    if value is None or (not isinstance(value, (str, list, dict, tuple)) and pd.isna(value)):
+        return ""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, bool):
+        return "1" if value else "0"
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, float):
+        return _number_text(value, name)
+    if isinstance(value, (pd.Timestamp, datetime.datetime)):
+        return _datetime_text(value)
+    if isinstance(value, datetime.date):
+        return value.isoformat()
+    raise UploadError(
+        f"column '{name}' has a type that cannot be written as CSV ({type(value).__name__})"
+    )
+
+
+def _number_text(value: float, name: str) -> str:
+    """``%.17g``, correctly rounded (Python's formatting is), so it reads back exactly."""
+    if math.isnan(value):
+        return ""
+    if math.isinf(value):
+        raise UploadError(f"column '{name}' has an infinite value, which CSV cannot hold")
+    return "%.17g" % value  # noqa: UP031 - C printf semantics, as the spec states
+
+
+def _datetime_text(value: Any) -> str:
+    """``YYYY-MM-DDTHH:MM:SS[.ffffff]Z`` in UTC, rounded to the microsecond."""
+    import pandas as pd  # noqa: PLC0415 - optional dependency
+
+    if value is None or pd.isna(value):
+        return ""
+    ts = pd.Timestamp(value)
+    ts = ts.tz_localize("UTC") if ts.tzinfo is None else ts.tz_convert("UTC")
+    nanos = ts.value  # nanoseconds since the epoch, an exact integer
+    micros = (nanos + 500) // 1000  # to the microsecond, halves up
+    whole, frac = divmod(micros, 1_000_000)
+    base = datetime.datetime(1970, 1, 1) + datetime.timedelta(seconds=whole)
+    text = base.strftime("%Y-%m-%dT%H:%M:%S")
+    if frac:
+        text += f".{frac:06d}".rstrip("0")
+    return text + "Z"
+
+
+def _csv_field(text: str) -> str:
+    """Quote a field that contains ``,``, ``"``, CR or LF."""
+    if any(c in text for c in ',"\r\n'):
+        return '"' + text.replace('"', '""') + '"'
+    return text
+
+
+def resolve_upload(
+    value: Any, spec: dict[str, Any], base_dir: Path, input_id: str = "data"
+) -> UploadFile | None:
     """Turn an ``uploads`` entry into an :class:`UploadFile`.
 
     ``True`` selects the contract's ``sample`` file. A path or
-    :class:`UploadFile` selects that file. Falsy values mean "not supplied".
+    :class:`UploadFile` selects that file. A pandas ``DataFrame`` (or a
+    :class:`FrameUpload`) is written as canonical CSV ``<input_id>.csv``
+    (spec §7.1). Falsy values mean "not supplied".
     """
+    if isinstance(value, FrameUpload):
+        return frame_upload(value.frame, value.input_id)
+    if _is_frame(value):
+        # Checked before the truth test below: a DataFrame has no truth value.
+        return frame_upload(value, input_id)
     if not value:
         return None
     if value is True:
