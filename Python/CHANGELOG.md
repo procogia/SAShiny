@@ -40,6 +40,10 @@ All notable changes to the Python library are documented here. The format follow
   value is missing or `""`: with a single header field every line after the header is a row, so
   an empty line is a missing value (spec §7). They were dropped as blank lines, so SAS
   got fewer rows (#164).
+- `run(contract, engine)` without `values` uses the contract's defaults, as its docs say: every
+  input `values` does not supply takes its `default`, with `"today"` resolved against `today`, so
+  a scripted run submits what a first click of Run does (spec §6.12). It passed no values, so
+  every required input was `V001`. A supplied `None` still makes an input absent (#162).
 
 R/Python parity pass (spec release 1.5, `docs/parity.md`).
 

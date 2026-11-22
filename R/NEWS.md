@@ -41,6 +41,12 @@ R/Python parity pass (spec release 1.5, `docs/parity.md`).
   every line after the header is a row, so an empty line is a missing value
   (spec section 7). They were dropped as blank lines, so SAS got fewer rows
   (#164).
+* `sas_run(contract, engine)` without `values` uses the contract's defaults,
+  as its docs say: every input `values` does not supply takes its `default`,
+  with `"today"` resolved against `today`, so a scripted run submits what a
+  first click of Run does (spec section 6.12). It passed no values, so every
+  required input was `V001`. A supplied `NULL` (`list(id = NULL)`) still makes
+  an input absent. `values` now defaults to `NULL` (#162).
 
 ## Changes
 

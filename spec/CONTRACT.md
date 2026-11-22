@@ -1238,6 +1238,20 @@ numbers, or data outside its inputs (database tables, files, `SASHELP` views tha
 `run.cache` off; otherwise users see stale results. The program file is hashed, but files it
 `%include`s are not.
 
+### 6.12 Scripted runs and defaults
+
+`sas_run(contract, engine, values)` (R) and `run(contract, engine, values)` (Python) start a run
+without the Shiny module, with the same precedence as §6.10 and the contract's defaults in place of
+the UI. For every id that `values` supplies, the supplied value is used; every other non-dataset
+input that has a `default` takes that default, with `"today"` (in a `date` default or either item of
+a `daterange` default) resolved to the run's `today` date in `YYYY-MM-DD` form, exactly as the module
+shows it when the app starts. A supplied `null` / `NULL` (R `list(id = NULL)`, Python `{"id": None}`)
+makes the input absent, so a required input gives `V001`. Inputs without a `default`, and dataset
+inputs (which are supplied through `uploads`), are absent unless supplied. Omitting `values`, or
+passing `NULL` / `None` or an empty list / dict, therefore runs every input at its default, which is
+what a first click of Run in the generated app submits. The merged values are then validated (§4) and
+keyed (§6.11) like any other values.
+
 ---
 
 ## 7. Dataset upload conversion
