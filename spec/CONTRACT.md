@@ -1272,6 +1272,12 @@ under the largest is still stored by the transport and then rejected by the per-
 check (V014). This is the best the Shiny upload protocol allows; the per-input limit is always
 enforced before any SAS work.
 
+Blank lines in `csv` (step 1): when the header line has exactly one field, every line after it is a
+row, so an empty line is a row whose value is missing, as RFC 4180 reads it. This is how §7.1 writes
+a missing value or `""` in a one-column data frame. The line terminator that ends the last row does
+not start another row (`A\nx\n\ny\n` has three rows). With more than one column, blank lines are
+skipped (the canonical writer never produces one: its empty rows are `,` or longer).
+
 ### 7.1 Canonical CSV for data frames
 
 R and Python write the same bytes for the same data frame:
@@ -1282,7 +1288,7 @@ R and Python write the same bytes for the same data frame:
 3. Fields are separated by `,`. A field is enclosed in `"` only when it contains `,`, `"`, CR or LF;
    a `"` inside is doubled.
 4. A missing value (R `NA`, Python `None`, `NaN`, `NaT`, `pd.NA`) is an empty field. So is an empty
-   string.
+   string. In a one-column data frame such a row is an empty line, which §7 reads back as a row.
 5. Values by column type:
 
 | Column | Field |

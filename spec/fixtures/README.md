@@ -11,7 +11,7 @@ with each other and with [CONTRACT.md](../CONTRACT.md). It never generates them.
 | `values/<name>.json` | Value validation and rendering for a valid contract | `ok`: macro names, values **and order** match. `invalid`: exact `{code, input}` set |
 | `lint/<name>/` | Advisory lint findings (§10) for a contract and its program | `expected.json` `findings` (`{code, path}`) match exactly, in order |
 | `wrapper/<name>/` | Byte-exact generated SAS | `expected_reset.sas` (absent when `reset_work: false`) and `expected_main.sas` match byte-for-byte, with `run_id = fixture` |
-| `frames/cases.json` | Canonical CSV of data frames supplied for dataset inputs (§7.1) | Each case's data frame is written as exactly its `csv` text, in R and Python |
+| `frames/cases.json` | Canonical CSV of data frames supplied for dataset inputs (§7.1) | Each case's data frame is written as exactly its `csv` text, in R and Python; read back as a `csv` upload (§7), that text has one row per value (blank lines of a one-column file are rows) |
 
 Conventions:
 - `today` is fixed at `2026-11-11` in fixtures, so `"today"` in contracts is deterministic.

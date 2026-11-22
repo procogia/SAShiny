@@ -46,6 +46,25 @@ test_that("every frame case writes the expected CSV bytes", {
   }
 })
 
+test_that("every frame case reads back with one row per value", {
+  # A one-column frame's missing rows are empty lines and must stay rows (spec section 7, #164).
+  for (case in frame_cases()) {
+    path <- tempfile(fileext = ".csv")
+    writeBin(charToRaw(enc2utf8(case$csv)), path)
+    df <- .sashiny_read_upload(.sashiny_upload_file(path, "x.csv"),
+                               list(type = "dataset", target = "work.x"))$df
+    expect_identical(dim(df), c(length(case$columns[[1]]$values), length(case$columns)),
+                     label = case$name)
+  }
+})
+
+test_that("a one-column data frame keeps its missing rows", {
+  spec <- list(type = "dataset", target = "work.adsl",
+               columns = list(list(name = "age", type = "numeric")))
+  upload <- .sashiny_resolve_upload(data.frame(AGE = c(30, NA, 41)), spec, tempfile(), "adsl")
+  expect_identical(.sashiny_read_upload(upload, spec)$df$AGE, c(30, NA, 41))
+})
+
 test_that("a tibble writes the same bytes as a data frame", {
   skip_if_not_installed("tibble")
   frame <- frame_from_case(frame_cases()[[1]]$columns)
