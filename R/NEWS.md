@@ -29,6 +29,10 @@ R/Python parity pass (spec release 1.5, `docs/parity.md`).
 
 ## Bug fixes
 
+* The General (`cars_explorer.sas`) and AML (`cash_aggregation_tuning.sas`)
+  example programs set their standalone defaults inside a macro instead of
+  with open-code `%if`, so they run on every 'SAS' 9.4 release. On 9.4M0 to
+  M4 the open-code `%if` was an error and every output came back empty.
 * `S013`: a directory is not a program or sample file.
 * Default module ids strip every combining mark (Unicode category M), as
   Python does.
