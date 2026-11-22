@@ -1,11 +1,11 @@
 # R / Python parity
 
 Status of every SAShiny feature in the R package (`R/`) and the Python library (`Python/src/sashiny`),
-measured against [`spec/CONTRACT.md`](../spec/CONTRACT.md) (release 1.5). The spec and the shared
+measured against [`spec/CONTRACT.md`](../spec/CONTRACT.md) (release 1.6). The spec and the shared
 fixtures under `spec/fixtures` are the contract; where the two languages differ, the spec decides.
 
 Legend: ✅ same behaviour · 🟡 idiomatic difference only (same behaviour, language-shaped API) ·
-🔧 gap closed by the parity pass (spec release 1.5) · 🅿 single-language by spec · 📝 deferred.
+🔧 gap closed by the parity pass (spec release 1.6) · 🅿 single-language by spec · 📝 deferred.
 
 ## 1. Contracts and validation (§1–4)
 
@@ -63,7 +63,8 @@ Legend: ✅ same behaviour · 🟡 idiomatic difference only (same behaviour, la
 | Table `label`/`format`: trim, missing → `""` | yes | no (`NaN` → `"nan"`) | 🔧 Python |
 | Plot extraction, paired outputs | same | same | ✅ (shared `plots.json`) |
 | Upload blank detection (numeric/date) | ASCII | Unicode | 🔧 Python (ASCII) |
-| Declared `character` column conversion | `as.character` | `str()` | 📝 deferred (needs a spec rule for bool/float/date cells) |
+| Declared `character` column conversion | §7.1 cell text | §7.1 cell text | 🔧 spec §7 step 3, shared fixture `uploads/character_cells` |
+| xlsx reading: blank rows, text spaces, date-times | kept, kept, date-time | kept, kept, date-time | 🔧 R (spec §7 step 1, fixture `uploads/xlsx_reading`) |
 | CSV download number text | 15 significant digits | `repr` | ✅ allowed by §8.2 ("may differ slightly") |
 | Data-frame accessors | `sas_result_table/log/outputs` | `Result.table/log_frame/frames` | 🟡 (shared `frames.json`) |
 | Chart spec backends | ggplot2, base, plotly | plotnine, matplotlib, plotly | 🅿 per-language by spec |
@@ -104,9 +105,12 @@ Legend: ✅ same behaviour · 🟡 idiomatic difference only (same behaviour, la
    without a `title` the content name (and title) is `name`, as in R. With both `name` and `title`
    the content name follows the title and Python warns. `server=` is the rsconnect nickname (R:
    `server`); R's `account` has no Python equivalent.
-2. **Deferred.** Declared `character` upload columns convert non-text cells with `as.character()`
-   in R and `str()` in Python (`TRUE`/`True`, xlsx date-times, float digits). Closing it needs a
-   spec rule for each cell type; it is left for a follow-up.
+2. **xlsx reading.** R reads xlsx with openxlsx, Python with pandas/openpyxl. R keeps blank rows,
+   strips the `xml:space="preserve">` prefix openxlsx leaves on inline strings with spaces, and turns
+   date-formatted columns into date-times with openpyxl's rule (day fraction rounded to the
+   millisecond), so both read the same cells (spec §7 step 1, fixture `uploads/xlsx_reading`).
+   Not covered: dates before 1900-03-01 in the 1900 date system, and columns that mix date and
+   non-date cells.
 3. **Tests.** `R/tests/testthat/test-parity.R` and `Python/tests/test_parity.py` pin the closed
    gaps; the shared fixtures (`values/*`, `collect/log_scope.json`) run in
    both suites and in `spec/tools/check_spec.py`.

@@ -134,10 +134,13 @@
       # leading-zero strings (spec section 7 step 3: only empty/whitespace is missing).
       # Without it openxlsx coerces literal "NA" to a missing value before the
       # declared-column conversion can distinguish it from a blank cell.
-    df <- openxlsx::read.xlsx(upload$path, sheet = 1L, detectDates = TRUE, check.names = FALSE,
-        sep.names = " ", na.strings = character(0)
+    # Blank rows are kept and date-formatted cells become date-times, as
+    # pandas/openpyxl read them (spec section 7 step 1): openxlsx skips blank
+    # rows and detects only some date formats, so serials are converted here.
+    df <- openxlsx::read.xlsx(upload$path, sheet = 1L, detectDates = FALSE, check.names = FALSE,
+        sep.names = " ", na.strings = character(0), skipEmptyRows = FALSE
     )
-    return(list(df = df, all_text = FALSE))
+    return(list(df = .sashiny_xlsx_fix(df, upload$path), all_text = FALSE))
   }
   if (ext %in% c("xpt", "sas7bdat")) {
     .sashiny_need("haven", "to read SAS data uploads")
@@ -146,6 +149,68 @@
     return(list(df = df, all_text = FALSE))
   }
   .sashiny_upload_error("unsupported file type .", ext)
+}
+
+#' Whether an Excel number format is a date or time format.
+#'
+#' The rule openpyxl (and so pandas) uses: a built-in date format id, or a
+#' format code that, without quoted text, escaped characters and `[...]`
+#' sections, contains one of `d m y h s`.
+#' @noRd
+.sashiny_xlsx_is_date_format <- function(num_fmt) {
+  if (is.null(num_fmt)) {
+    return(FALSE)
+  }
+  id <- suppressWarnings(as.integer(num_fmt$numFmtId %||% NA))
+  if (!is.na(id) && id %in% c(14:22, 45:47)) {
+    return(TRUE)
+  }
+  code <- num_fmt$formatCode %||% ""
+  if (!nzchar(code) || identical(tolower(code), "general")) {
+    return(FALSE)
+  }
+  code <- gsub("\"[^\"]*\"|\\\\.|\\[[^]]*\\]", "", code, perl = TRUE)
+  grepl("[dmyhsDMYHS]", code)
+}
+
+#' Align an openxlsx read with pandas/openpyxl (spec section 7 step 1).
+#'
+#' Columns whose non-empty data cells all carry a date format become UTC
+#' date-times from their Excel serials (1900 or 1904 date system). Text cells
+#' that openxlsx misreads from inline strings with `xml:space="preserve"`
+#' lose that markup prefix.
+#' @param df The data frame from `openxlsx::read.xlsx(detectDates = FALSE)`.
+#' @param path The xlsx file.
+#' @noRd
+.sashiny_xlsx_fix <- function(df, path) {
+  for (j in seq_along(df)) {
+    if (is.character(df[[j]])) {
+      df[[j]] <- sub("^xml:space=\"preserve\">", "", df[[j]])
+    }
+  }
+  if (nrow(df) == 0L) {
+    return(df)
+  }
+  wb <- openxlsx::loadWorkbook(path)
+  sheet <- wb$sheet_names[[1L]]
+  dated <- matrix(FALSE, nrow = nrow(df) + 1L, ncol = ncol(df))
+  for (so in wb$styleObjects) {
+    if (!identical(so$sheet, sheet) || !.sashiny_xlsx_is_date_format(so$style$numFmt)) next
+    keep <- so$rows <= nrow(dated) & so$cols <= ncol(dated)
+    dated[cbind(so$rows[keep], so$cols[keep])] <- TRUE
+  }
+  origin <- if (identical(openxlsx::getDateOrigin(path), "1904-01-01")) 24107 else 25569
+  for (j in seq_along(df)) {
+    x <- df[[j]]
+    present <- !is.na(x)
+    if (!is.numeric(x) || !any(present) || !all(dated[which(present) + 1L, j])) next
+    # As openpyxl's from_excel(): whole days plus the day fraction rounded to
+    # the millisecond (half to even in both languages).
+    day <- floor(x)
+    ms <- round((x - day) * 86400000)
+    df[[j]] <- as.POSIXct((day - origin) * 86400 + ms / 1000, origin = "1970-01-01", tz = "UTC")
+  }
+  df
 }
 
 #' Check extension, existence and size (section 7 step 1).
@@ -246,9 +311,12 @@
       df[[name]] <- .sashiny_upload_date(df[[name]], name)
       datetimes[[name]] <- "date"
     } else {
-      x <- as.character(df[[name]])
-      x[is.na(x)] <- ""
-      df[[name]] <- x
+      # Text stays as it is; other native cells take their spec section 7.1
+      # rule 5 text (1/0, %.17g, ISO dates), the same text Python writes.
+      x <- df[[name]]
+      if (inherits(x, "haven_labelled")) x <- unclass(x)
+      if (!inherits(x, c("Date", "POSIXct", "factor"))) attr(x, "class") <- NULL
+      df[[name]] <- .sashiny_frame_texts(x, name)
     }
   }
   if (read$all_text) {

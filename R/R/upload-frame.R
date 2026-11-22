@@ -49,11 +49,19 @@
 #' One column as quoted CSV fields (spec section 7.1, rule 5).
 #' @noRd
 .sashiny_frame_column <- function(x, name) {
+  .sashiny_frame_quote(.sashiny_frame_texts(x, name))
+}
+
+#' One column as unquoted spec section 7.1 rule 5 texts.
+#'
+#' Also used for declared character upload columns (spec section 7, step 3).
+#' @noRd
+.sashiny_frame_texts <- function(x, name) {
   if (is.factor(x)) {
     labels <- levels(x)
     x <- labels[as.integer(x)]
   }
-  fields <- if (inherits(x, "POSIXct")) {
+  if (inherits(x, "POSIXct")) {
     .sashiny_frame_datetime(x)
   } else if (inherits(x, "Date")) {
     out <- format(x, "%Y-%m-%d")
@@ -76,7 +84,6 @@
     .sashiny_upload_error("column '", name, "' has a type that cannot be written as CSV (",
                           paste(class(x), collapse = "/"), ")")
   }
-  .sashiny_frame_quote(fields)
 }
 
 #' Doubles as C printf "%.17g", correctly rounded; NA and NaN are empty.

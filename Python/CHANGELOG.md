@@ -72,6 +72,9 @@ R/Python parity pass (spec release 1.5, `docs/parity.md`).
 
 ### Fixed
 
+- Declared `character` upload columns turn native cells into the spec §7.1 text, as R
+  does: `1`/`0` for booleans (was `True`/`False`), `%.17g` numbers and ISO dates
+  (spec §7, step 3).
 - `SaspyEngine.close()` clears the `choices_from` cache too (spec §6.4).
 - Upload blank detection and table `label`/`format` strip ASCII blanks only, as in R (spec §8.1).
 - `""` for a `multichoice` or `daterange` input is `V002` (spec §4), and an integer too
