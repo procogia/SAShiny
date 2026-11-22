@@ -41,10 +41,21 @@ def failure_reason(result: Result) -> str:
     return "no ERROR line in the log"
 
 
+def utc_stamp(moment: datetime | None = None) -> str:
+    """Return a UTC timestamp in the spec §8.4 form ``YYYY-MM-DDTHH:MM:SS.sssZ``."""
+    moment = (moment or datetime.now(timezone.utc)).astimezone(timezone.utc)
+    return moment.isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
+
+def parse_stamp(text: str) -> datetime:
+    """Parse an ISO 8601 UTC timestamp, with ``Z`` or ``+00:00`` (Python 3.10 safe)."""
+    return datetime.fromisoformat(text[:-1] + "+00:00" if text.endswith("Z") else text)
+
+
 def _duration(started: Any, ended: Any) -> float | None:
     try:
-        return (datetime.fromisoformat(ended) - datetime.fromisoformat(started)).total_seconds()
-    except (TypeError, ValueError):
+        return (parse_stamp(ended) - parse_stamp(started)).total_seconds()
+    except (TypeError, ValueError, AttributeError):
         return None
 
 
@@ -192,8 +203,8 @@ class Result:
                 "contract_sha256": contract_sha256,
                 "program_sha256": program_sha256,
                 "macros": macros or {},
-                "started_at": started_at.isoformat(),
-                "ended_at": ended_at.isoformat(),
+                "started_at": utc_stamp(started_at),
+                "ended_at": utc_stamp(ended_at),
                 "engine": engine,
                 "engine_version": engine_version,
                 "sas_version": sas_version,

@@ -11,6 +11,7 @@ This module is the shipped equivalent of the reference oracle
 
 from __future__ import annotations
 
+import math
 import re
 import unicodedata
 from dataclasses import dataclass, field
@@ -74,14 +75,73 @@ def _has_anchor(pattern: str) -> bool:
     return False
 
 
+_INT_TAG = "tag:yaml.org,2002:int"
+_FLOAT_TAG = "tag:yaml.org,2002:float"
+# YAML 1.2 core schema numbers (spec §1.1): no `_` separators, no sexagesimal,
+# no leading-zero octal (`010` is 10) and no `0b`; `0o17`, `0x1F`, `1e5`, `-.5`.
+YAML12_INT = re.compile(r"^(?:[-+]?[0-9]+|0o[0-7]+|0x[0-9a-fA-F]+)$")
+YAML12_FLOAT = re.compile(
+    r"^(?:[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)(?:[eE][-+]?[0-9]+)?"
+    r"|[-+]?\.(?:inf|Inf|INF)|\.(?:nan|NaN|NAN))$"
+)
+
+
+def yaml12_number(text: str) -> int | float | None:  # noqa: PLR0911 - one return per form
+    """Return the YAML 1.2 core number a plain scalar denotes, or ``None`` (spec §1.1)."""
+    if YAML12_INT.match(text):
+        if text.startswith("0o"):
+            return int(text[2:], 8)
+        if text.startswith("0x"):
+            return int(text[2:], 16)
+        return int(text)
+    if YAML12_FLOAT.match(text):
+        low = text.lower()
+        if low.endswith(".nan"):
+            return math.nan
+        if low.endswith(".inf"):
+            return -math.inf if low.startswith("-") else math.inf
+        return float(text)
+    return None
+
+
 class SafeLoaderNoDates(yaml.SafeLoader):  # type: ignore[misc]
-    """Safe loader that keeps ISO dates as strings (spec §1.1)."""
+    """Safe loader for contracts (spec §1.1).
+
+    ISO dates stay strings, and numbers follow the YAML 1.2 core schema rather
+    than PyYAML's YAML 1.1 rules, so R and Python type every scalar the same.
+    """
 
 
 SafeLoaderNoDates.yaml_implicit_resolvers = {
-    k: [(tag, rx) for tag, rx in v if tag != "tag:yaml.org,2002:timestamp"]
+    k: [
+        (tag, rx)
+        for tag, rx in v
+        if tag not in {"tag:yaml.org,2002:timestamp", _INT_TAG, _FLOAT_TAG}
+    ]
     for k, v in yaml.SafeLoader.yaml_implicit_resolvers.items()
 }
+SafeLoaderNoDates.add_implicit_resolver(_INT_TAG, YAML12_INT, list("-+0123456789"))
+SafeLoaderNoDates.add_implicit_resolver(_FLOAT_TAG, YAML12_FLOAT, list("-+.0123456789"))
+
+
+def _construct_number(loader: yaml.SafeLoader, node: yaml.ScalarNode) -> int | float:
+    text = loader.construct_scalar(node)
+    number = yaml12_number(text)
+    if number is None:
+        raise yaml.constructor.ConstructorError(
+            None, None, f"not a YAML 1.2 number: {text!r}", node.start_mark
+        )
+    if node.tag == _FLOAT_TAG:
+        return float(number)
+    if isinstance(number, float):
+        raise yaml.constructor.ConstructorError(
+            None, None, f"not a YAML 1.2 integer: {text!r}", node.start_mark
+        )
+    return number
+
+
+SafeLoaderNoDates.add_constructor(_INT_TAG, _construct_number)
+SafeLoaderNoDates.add_constructor(_FLOAT_TAG, _construct_number)
 
 
 @dataclass
@@ -221,10 +281,12 @@ def default_module_id(program: str) -> str:
     replace each character outside ``[a-z0-9_]`` with ``_``, prefix ``p_`` if it
     does not start with a letter, and truncate to 32 characters.
     """
-    base = Path(program).name
+    # Both separators on every platform, as in R.
+    base = program.replace(chr(92), "/").rsplit("/", 1)[-1]
     if base.lower().endswith(".sas"):
         base = base[:-4]
-    base = "".join(c for c in base.lower() if not unicodedata.combining(c))
+    # Combining marks are the Unicode general categories Mn, Mc and Me, as R's \p{M}.
+    base = "".join(c for c in base.lower() if not unicodedata.category(c).startswith("M"))
     base = re.sub(r"[^a-z0-9_]", "_", base)
     if not base or not base[0].isalpha():
         base = "p_" + base

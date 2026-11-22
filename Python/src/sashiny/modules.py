@@ -639,6 +639,7 @@ def program_server(  # noqa: PLR0913, PLR0915, PLR0917 - Shiny module: one react
     values: Callable[[], dict[str, Any] | None] | None = None,
     hide_inputs: bool = False,
     debounce_ms: float = 500,
+    render: (dict[str, Callable[[dict[str, Any], dict[str, Any] | None], Any]] | None) = None,
 ) -> dict[str, Any]:
     """Serve a SAS program module (run the contract and render outputs).
 
@@ -666,12 +667,18 @@ def program_server(  # noqa: PLR0913, PLR0915, PLR0917 - Shiny module: one react
             `values()` (default `False`).
         debounce_ms: Debounce interval in milliseconds for auto-runs driven by
             `values()` (default 500).
+        render: The same mapping as `chart_render`, under the name R's
+            `sas_program_server(render = )` uses. Give one or the other.
 
     Returns:
         `{"result", "status", "log"}` reactive calcs for custom extensions.
 
     """
     check_engine(engine)
+    if render is not None:
+        if chart_render is not None:
+            raise ValuesError("give render or chart_render, not both")
+        chart_render = render
     if values is not None and not callable(values):
         raise ValuesError("values must be a reactive (or callable) returning a dict")
     if debounce_ms < 0:

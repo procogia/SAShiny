@@ -25,7 +25,7 @@ from .result import Result
 __all__ = ["Pool", "PoolExhausted", "PoolSession"]
 
 
-class PoolExhausted(Exception):
+class PoolExhausted(EngineError):
     """No pooled session became free within ``acquire_timeout``."""
 
 
@@ -136,14 +136,6 @@ class Pool(Engine):
         if self._factory is not None:
             session.engine.close()
 
-    def _discard(self, session: PoolSession) -> None:
-        from .choices_cache import clear  # noqa: PLC0415 - avoid an import cycle
-
-        clear(self)  # spec §6.4: a pooled SAS session was replaced
-        with self._cond:
-            self._sessions = [s for s in self._sessions if s is not session]
-        self._close(session)
-
     def choices(self, contract: Contract) -> dict[str, list[dict[str, str]]]:
         """Read ``choices_from`` choices on a pooled session (spec §6.4)."""
         session = self._acquire()
@@ -200,6 +192,10 @@ class Pool(Engine):
         return found
 
     def _release(self, session: PoolSession, discard: bool) -> None:
+        if discard:
+            from .choices_cache import clear  # noqa: PLC0415 - avoid an import cycle
+
+            clear(self)  # spec §6.4: a pooled SAS session was replaced (#152)
         with self._cond:
             session.in_use = False
             session.last_used = time.monotonic()
@@ -235,7 +231,7 @@ class Pool(Engine):
             return result
         except Exception as exc:  # a lazy factory/connection failure (issue #75)
             result = Result.new(run_id or str(uuid.uuid4()), "error", engine=self.name)
-            result.metadata["engine_error"] = f"{type(exc).__name__}: {exc}"
+            result.metadata["engine_error"] = str(exc)
             return result
         discard = False
         try:
@@ -246,7 +242,7 @@ class Pool(Engine):
             except Exception as exc:  # a raised failure poisons the session
                 discard = True
                 result = Result.new(run_id or str(uuid.uuid4()), "error", engine=self.name)
-                result.metadata["engine_error"] = f"{type(exc).__name__}: {exc}"
+                result.metadata["engine_error"] = str(exc)
                 return result
             session.runs += 1
             discard = result.status == "error" and "issues" not in result.metadata

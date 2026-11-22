@@ -36,7 +36,7 @@
   lines <- strsplit(log, "\r\n|\r|\n", perl = TRUE)[[1]]
   # strsplit drops one trailing empty piece already; a log ending in a break
   # therefore has no empty final line, matching the spec.
-  sub("[[:space:]]+$", "", lines, perl = TRUE)
+  sub("[ \t\r\n\f\v]+$", "", lines, perl = TRUE)
 }
 
 #' Classify one log line (section 8.2, log).
@@ -286,7 +286,11 @@
 #' `""` for NULL/NA, otherwise the trimmed text.
 #' @noRd
 .sashiny_text_or_empty <- function(x) {
-  if (is.null(x) || length(x) == 0L || is.na(x[[1]])) "" else trimws(as.character(x[[1]]))
+  if (is.null(x) || length(x) == 0L || is.na(x[[1]])) {
+    return("")
+  }
+  # Spec section 8.1: ASCII blanks, the same set as Python.
+  trimws(as.character(x[[1]]), whitespace = "[ \t\r\n\f\v]")
 }
 
 #' Pick the contract's `columns` (case-insensitive, contract order).

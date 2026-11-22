@@ -1,6 +1,6 @@
 # SAShiny Contract Specification — Version 1
 
-Status: **Draft 1 (phase 1)**. Spec release: **1.4**. This document is normative for both the R package and the Python library.
+Status: **Draft 1 (phase 1)**. Spec release: **1.5**. This document is normative for both the R package and the Python library.
 The key words MUST, MUST NOT, SHOULD and MAY are used as described in RFC 2119.
 
 The machine-readable structure is [`sashiny.schema.json`](sashiny.schema.json) (JSON Schema 2020-12).
@@ -26,6 +26,21 @@ Implementations MUST load contracts with a safe loader (no custom tags, no objec
 Authors MUST NOT rely on YAML 1.1 implicit typing. In particular, quote values such as `yes`, `no`,
 `on`, `off`, `Y`, `N` and ISO dates when they are meant as strings. Implementations MUST treat
 contract dates as strings matching `YYYY-MM-DD` and MUST NOT accept YAML timestamp objects.
+Implementations MUST resolve plain (unquoted) numbers by the YAML 1.2 core schema, whatever YAML
+library they use, so that a contract is typed the same in every language:
+
+| Plain scalar | Value | Examples |
+|---|---|---|
+| `[-+]?[0-9]+` | decimal integer (leading zeros are not octal) | `12`, `-3`, `+1`, `010` = 10 |
+| `0o[0-7]+` | octal integer | `0o17` = 15 |
+| `0x[0-9a-fA-F]+` | hexadecimal integer | `0x1F` = 31 |
+| `[-+]?(\.[0-9]+\|[0-9]+(\.[0-9]*)?)([eE][-+]?[0-9]+)?` | number | `-.5`, `12.`, `1e5`, `2.5E-3` |
+| `[-+]?\.(inf\|Inf\|INF)`, `\.(nan\|NaN\|NAN)` | infinity, NaN | `.inf` |
+
+Any other plain scalar is a string. In particular the YAML 1.1 forms `1_000`, `190:20:30`, `0b101`
+and `+0x1F` are strings, so a contract that uses them where a number is required fails with `E000`.
+Quoted scalars are always strings.
+
 Mapping order is significant: inputs and outputs are processed in the order written.
 
 ---
@@ -46,8 +61,9 @@ ui:      {...}             # optional
 ```
 
 Identifiers (`id`, input and output keys) match `^[a-z][a-z0-9_]{0,31}$` and are used directly as
-Shiny ids. The default module `id` is derived from the program file name. Take the base name without
-the `.sas` extension, lower-case it, remove combining marks (so `İ` lower-cases to `i`, not `i` plus a
+Shiny ids. The default module `id` is derived from the program file name. Take the base name (after
+the last `/` or `\`) without the `.sas` extension, lower-case it, remove combining marks (Unicode
+general category `M`, that is `Mn`, `Mc` and `Me`, so `İ` lower-cases to `i`, not `i` plus a
 combining dot), replace each character outside `[a-z0-9_]` with `_`, prefix `p_`
 if it does not start with a letter, and truncate to 32 characters. Two programs that resolve to the
 same module `id` (whether explicit or derived) MUST be rejected when the app is built.
@@ -411,7 +427,14 @@ once per worker), so they are tested without SAS.
 When every pooled session is busy, a pool MUST wait for a free session up to a configurable
 `acquire_timeout` (default 30 seconds) rather than failing immediately. If no session becomes free
 within the timeout, the run returns an error `Result` with `metadata.engine_error` set to
-`pool exhausted: all N sessions busy` (it MUST NOT raise).
+`pool exhausted: all N sessions busy` (it MUST NOT raise). A run on a closed pool returns an error
+`Result` with `metadata.engine_error` equal to `pool closed`.
+
+One engine runs one contract at a time on its one SAS session. A run that starts while another run
+on the same engine is in progress waits up to 30 seconds for it to finish; if it does not, the run
+returns an error `Result` with `metadata.engine_error` equal to `engine busy: another run is in
+progress`. `metadata.engine_error` holds the failure message only, never a language-specific
+exception class name.
 
 ### 6.6 Supported backends and licence acknowledgement
 
@@ -1196,7 +1219,7 @@ Implementations provide a hook to replace the in-memory store (for example with 
 they do not ship an external store.
 
 **Hits.** A reused result keeps its original `run_id`, `log`, outputs and metadata, and adds
-`metadata.cache_hit = true` and `metadata.cached_at` (UTC ISO 8601 time when it was stored). A run
+`metadata.cache_hit = true` and `metadata.cached_at` (the UTC time when it was stored, in the §8.4 form). A run
 that does not hit the cache has no `cache_hit` field. Each hit returns a copy, so changing a returned
 result does not change the cache.
 
@@ -1356,7 +1379,7 @@ A recording is a UTF-8 JSON file `<key>.json`:
 {"sashiny_recording": 1, "status": "...", "log": "<full main-submission log>",
  "outputs": {"<output_id>": <value from 8.1>}, "sas_version": "...",
  "contract_sha256": "...", "program_sha256": "...", "macros": {"NAME": "VALUE"},
- "recorded_at": "<UTC ISO 8601>"}
+ "recorded_at": "<UTC, §8.4 form>"}
 ```
 
 `<key>` is the lower-case hex SHA-256 of this UTF-8 text, built line by line with LF endings:
@@ -1375,8 +1398,13 @@ status `success` with empty outputs and sets `metadata.recording` to `"missing"`
 ### 8.4 Run metadata
 
 Every result carries run metadata: `run_id`, `contract_sha256` (of the YAML bytes), `program_sha256`
-(of the program file bytes as stored on disk), rendered macro values, start/end timestamps (UTC, ISO 8601),
+(of the program file bytes as stored on disk), rendered macro values, start/end timestamps (`started_at`, `ended_at`),
 engine name and version, SAS version (`&SYSVLONG`), status, and `collect_errors` (list, possibly empty).
+
+Every timestamp in run metadata (`started_at`, `ended_at`, `cached_at`) and in a recording
+(`recorded_at`) is UTC in the one form `YYYY-MM-DDTHH:MM:SS.sssZ`: milliseconds, then a literal `Z`
+(for example `2026-11-21T22:36:44.123Z`), so both languages write identical text. `engine_version`
+is the version of the SAShiny package that ran the engine (the same number in R and Python, §11).
 
 ### 8.5 Chart spec (client-side rendering)
 
@@ -1403,7 +1431,13 @@ Column names are matched case-insensitively against the collected columns. An un
 collection error. The exact visual output is backend-specific; the data and the mapping are the
 portable contract. A backend MUST honour every declared mapping (`x`, `y`, `color`, `fill`, `facet`)
 that its kind supports; if a backend cannot honour a mapping it MUST report a collection error rather
-than silently render a chart that ignores it.
+than silently render a chart that ignores it. The secondary backends (`base`, `matplotlib`) group
+`scatter` and `line` charts by `color` and `bar` charts by `fill`, and draw no other `color` or
+`fill` mapping, except a `box` chart whose `color` is its own `x` column. Any other `color`/`fill`
+mapping is the error `chart backend <backend> cannot map <field> for kind <kind>`. `plotly` draws
+`color` or `fill`, not both: both together are the error
+`chart backend plotly cannot map both color and fill`. `xlab`, `ylab`, `title` and `subtitle` are
+honoured by every backend (`subtitle` only together with `title` in `plotly`).
 
 **`render` (callback)** — a per-language extension, not part of the cross-language fixtures and not a
 YAML field. In R it is a function `function(value, spec, ...)` returning a plot object; in Python it

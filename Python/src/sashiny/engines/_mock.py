@@ -22,7 +22,7 @@ from ..recording import contract_sha256, key_for, load_recording, program_sha256
 from ..result import Result
 from ..upload import UploadError, UploadFile, _check_file, read_upload, resolve_upload
 from ..values import render_values
-from .base import Engine, testing
+from .base import Engine, _PackageVersion, testing
 
 __all__ = ["MockEngine"]
 
@@ -72,7 +72,7 @@ class MockEngine(Engine):
     """
 
     name = "mock"
-    version = "0.1.0"
+    version = _PackageVersion()
 
     def __init__(
         self,
@@ -108,7 +108,8 @@ class MockEngine(Engine):
         today = today or date.today()
         run_id = run_id or str(uuid.uuid4())
         flags = {k: bool(v) for k, v in (uploads or {}).items()}
-        found = getattr(contract, "cached_choices", None) or self.choices(contract)
+        cached = getattr(contract, "cached_choices", None)
+        found = cached if cached is not None else self.choices(contract)
         override = {k: [c["value"] for c in v] for k, v in found.items()}
         macros, issues = render_values(
             contract.data, values, today, choices_override=override or None, uploads=flags

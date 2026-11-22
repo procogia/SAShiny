@@ -16,27 +16,27 @@ from .contract import Issue, all_macro_names
 __all__ = ["lint"]
 
 # A `%let NAME = ...;` assignment (NAME captured, case-insensitive).
-_LET = re.compile(r"%let\s+([A-Za-z_][A-Za-z0-9_]*)\s*=", re.IGNORECASE)
+_LET = re.compile(r"%let\s+([A-Za-z_][A-Za-z0-9_]*)\s*=", re.IGNORECASE | re.ASCII)
 
 # A `call symput('NAME', ...)` or `call symputx('NAME', ...)` assignment.
 _SYMPUT = re.compile(
     r"call\s+symputx?\s*\(\s*['\"]([A-Za-z_][A-Za-z0-9_]*)['\"]",
-    re.IGNORECASE,
+    re.IGNORECASE | re.ASCII,
 )
 
 # A `%if not %symexist(NAME) %then %do;` guard opening (NAME captured).
 _GUARD_OPEN = re.compile(
     r"%if\s+not\s+%symexist\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)\s*%then\s*%do\s*;",
-    re.IGNORECASE,
+    re.IGNORECASE | re.ASCII,
 )
 
 # A `%end;` closing a guard block.
-_GUARD_CLOSE = re.compile(r"%end\s*;", re.IGNORECASE)
+_GUARD_CLOSE = re.compile(r"%end\s*;", re.IGNORECASE | re.ASCII)
 
 
 def _macro_reference(name: str) -> re.Pattern[str]:
     """Return a regex matching ``&NAME`` (case-insensitive), not ``&NAME_EXTRA``."""
-    return re.compile(rf"&{re.escape(name)}\b", re.IGNORECASE)
+    return re.compile(rf"&{re.escape(name)}\b", re.IGNORECASE | re.ASCII)
 
 
 def _assigned_names(program_text: str) -> set[str]:
@@ -87,12 +87,14 @@ def _entry_macro_scope(data: dict[str, Any], program_text: str) -> tuple[int, in
     macro = run.get("macro")
     if run.get("entry") != "macro" or not macro:
         return None
-    m = re.search(rf"%macro\s+{re.escape(macro)}\s*\(([^)]*)\)", program_text, re.IGNORECASE)
+    m = re.search(
+        rf"%macro\s+{re.escape(macro)}\s*\(([^)]*)\)", program_text, re.IGNORECASE | re.ASCII
+    )
     if m is None:
         return None
     params = {p.split("=", 1)[0].strip().upper() for p in m.group(1).split(",")}
     params.discard("")
-    mend = re.search(r"%mend\b", program_text[m.end() :], re.IGNORECASE)
+    mend = re.search(r"%mend\b", program_text[m.end() :], re.IGNORECASE | re.ASCII)
     end = m.end() + mend.start() if mend else len(program_text)
     return m.start(), end, params
 
@@ -189,7 +191,7 @@ def _lint_l003(data: dict[str, Any], text: str) -> list[Issue]:
             continue  # permanent library, not flagged
         if member.upper() in targets:
             continue
-        if re.search(rf"\b{re.escape(member)}\b", text, re.IGNORECASE):
+        if re.search(rf"\b{re.escape(member)}\b", text, re.IGNORECASE | re.ASCII):
             continue
         out.append(
             Issue(
@@ -225,7 +227,7 @@ def _lint_l005(data: dict[str, Any], text: str) -> list[Issue]:
     if run.get("entry") != "macro":
         return []
     macro = run.get("macro")
-    if macro and not re.search(rf"%macro\s+{re.escape(macro)}\b", text, re.IGNORECASE):
+    if macro and not re.search(rf"%macro\s+{re.escape(macro)}\b", text, re.IGNORECASE | re.ASCII):
         return [Issue("L005", "/run/macro", f"%macro {macro} not found in the program")]
     return []
 

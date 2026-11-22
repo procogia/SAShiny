@@ -1,3 +1,43 @@
+# SAShiny (development version)
+
+R/Python parity pass (spec release 1.5, `docs/parity.md`).
+
+## Breaking changes
+
+* Contract numbers follow the YAML 1.2 core schema (spec section 1.1, #155):
+  `0o17`, `1e5` and `1.0e5` are numbers, `010` is 10 (not octal 8), and
+  `1,000`, `190:20:30` and `+0x1F` are strings. R and Python now type every
+  contract the same.
+* Run timestamps (`started_at`, `ended_at`, `cached_at`) use one form in both
+  languages: `YYYY-MM-DDTHH:MM:SS.sssZ` (spec section 8.4, #156).
+* A run on a closed pool reports `pool closed` (was `pool exhausted: ...`),
+  as in Python.
+* `sas_oda()` with an unknown region raises a `sashiny_error_engine`, not an
+  rlang error.
+
+## New features
+
+* `sas_cache_set_store()`, `sas_cache_store()`, `sas_cache_lru()` and
+  `sas_cache_clear()` replace or inspect the result cache store (spec section
+  6.11), as Python's `sashiny.result_cache` does.
+
+## Bug fixes
+
+* `sas_check()` no longer puts a double space in upload-error reasons (#153).
+* A JSON object (`{}`) for a `multichoice` input is `V002`, as in Python.
+* `S013`: a directory is not a program or sample file.
+* Default module ids strip every combining mark (Unicode category M), as
+  Python does.
+* Table `label`/`format` metadata and log lines strip the same ASCII blanks
+  (space, tab, CR, LF, VT, FF) as Python (spec section 8.1).
+* Chart backends refuse mappings they cannot draw (spec section 8.5): base
+  graphics report `color` on bar/histogram/box and `fill` on
+  scatter/line/histogram/box as a collection error instead of ignoring them;
+  plotly refuses `color` and `fill` together and now shows the `subtitle`.
+  A base histogram honours `ylab`.
+* A licence-refused or failed saspy run reports the package version as
+  `engine_version`, as in Python.
+
 # SAShiny 0.3.1
 
 ## Versioning

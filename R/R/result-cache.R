@@ -4,7 +4,7 @@
 # match an earlier `success` or `warning` run reuses that result for
 # `run.cache_ttl_seconds`. The default is off. The cache is per R process and
 # shared by every engine and pool; the in-memory store is an LRU of 100
-# entries and can be replaced with `.sashiny_cache_set_store()`.
+# entries and can be replaced with `sas_cache_set_store()`.
 
 .sashiny_cache_state <- new.env(parent = emptyenv())
 
@@ -73,6 +73,56 @@
   previous <- .sashiny_cache_state$store
   .sashiny_cache_state$store <- store %||% .sashiny_lru_store()
   invisible(previous)
+}
+
+#' Replace or inspect the result cache store
+#'
+#' The opt-in result cache (`run.cache: true`, spec section 6.11) keeps
+#' results in a per-process, in-memory store of the 100 most recently used
+#' results. These functions replace that store, for example with an external
+#' cache, as Python's `sashiny.result_cache.set_store()`, `get_store()`,
+#' `clear()` and `LRUStore` do.
+#'
+#' A store is a list of functions: `get(key)` returns
+#' `list(result = <sashiny_result>, stored_at = <epoch seconds>)` or `NULL`;
+#' `set(key, result, stored_at)`, `delete(key)` and `clear()` return nothing.
+#' SAShiny ships only the in-memory store.
+#'
+#' @param store A store, or `NULL` for a fresh in-memory store.
+#' @param max_entries The most results the in-memory store keeps; the least
+#'   recently used is evicted.
+#' @return `sas_cache_set_store()` returns the previous store, invisibly;
+#'   `sas_cache_store()` the current store; `sas_cache_lru()` a new in-memory
+#'   store; `sas_cache_clear()` nothing.
+#' @examples
+#' previous <- sas_cache_set_store(sas_cache_lru(max_entries = 10))
+#' sas_cache_clear()
+#' sas_cache_set_store(previous)
+#' @export
+sas_cache_set_store <- function(store) {
+  if (!is.null(store)) {
+    needed <- c("get", "set", "delete", "clear")
+    ok <- is.list(store) && all(vapply(needed, function(f) is.function(store[[f]]), logical(1)))
+    if (!ok) {
+      .sashiny_abort("engine", "store must be a list of functions get, set, delete and clear")
+    }
+  }
+  .sashiny_cache_set_store(store)
+}
+
+#' @rdname sas_cache_set_store
+#' @export
+sas_cache_store <- function() .sashiny_cache_store()
+
+#' @rdname sas_cache_set_store
+#' @export
+sas_cache_lru <- function(max_entries = 100L) .sashiny_lru_store(max_entries)
+
+#' @rdname sas_cache_set_store
+#' @export
+sas_cache_clear <- function() {
+  .sashiny_cache_store()$clear()
+  invisible(NULL)
 }
 
 #' Whether a contract opts in with `run.cache: true`.
@@ -173,8 +223,8 @@
   }
   hit <- entry$result
   hit$metadata$cache_hit <- TRUE
-  hit$metadata$cached_at <- format(
-    as.POSIXct(entry$stored_at, origin = "1970-01-01", tz = "UTC"), "%Y-%m-%dT%H:%M:%SZ"
+  hit$metadata$cached_at <- .sashiny_now(
+    as.POSIXct(entry$stored_at, origin = "1970-01-01", tz = "UTC")
   )
   list(key = key, hit = hit)
 }

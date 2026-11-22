@@ -1,0 +1,12 @@
+sashiny: 1
+program: program.sas
+title: YAML 1.1 digit separators
+# Spec section 1.1: `1_000` is not a YAML 1.2 core number, so it is a string.
+inputs:
+  n:
+    type: numeric
+    label: N
+    max: 1_000
+outputs:
+  log:
+    type: log

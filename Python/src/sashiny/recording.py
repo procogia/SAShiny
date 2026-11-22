@@ -11,13 +11,12 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from .collect import recording_key
 from .contract import Contract
-from .result import Result
+from .result import Result, utc_stamp
 
 __all__ = [
     "contract_sha256",
@@ -76,7 +75,7 @@ def save_recording(directory: str | Path, key: str, result: Result) -> Path:
         "contract_sha256": result.metadata.get("contract_sha256", ""),
         "program_sha256": result.metadata.get("program_sha256", ""),
         "macros": result.metadata.get("macros", {}),
-        "recorded_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "recorded_at": utc_stamp(),
     }
     path = folder / f"{key}.json"
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")

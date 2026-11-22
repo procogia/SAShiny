@@ -142,7 +142,7 @@
       ".", ext, " is not accepted (accepted: ", paste(accept, collapse = ", "), ")"
     )
   }
-  if (!file.exists(upload$path)) {
+  if (!utils::file_test("-f", upload$path)) {
     .sashiny_upload_error("file not found: ", upload$name)
   }
   limit <- spec$max_size_mb %||% 50
@@ -166,7 +166,7 @@
   if (is.numeric(x)) {
     return(as.numeric(x))
   }
-  text <- trimws(as.character(x))
+  text <- trimws(as.character(x), whitespace = "[ \t\r\n\f\v]")
   blank <- is.na(x) | !nzchar(text)
   converted <- .sashiny_as_number(ifelse(blank, NA, text))
   if (any(is.na(converted) & !blank)) {
@@ -184,7 +184,7 @@
   if (inherits(x, "POSIXt")) {
     return(as.Date(x, tz = "UTC"))
   }
-  text <- trimws(as.character(x))
+  text <- trimws(as.character(x), whitespace = "[ \t\r\n\f\v]")
   # Only native missing and empty/whitespace are "missing" (spec section 7 step 3);
   # any other non-ISO text (including the literal "NA", "nan", "NaT", "None")
   # is unparseable and reported as V014.
@@ -237,7 +237,7 @@
   }
   if (read$all_text) {
     for (name in setdiff(names(df), declared)) {
-      text <- trimws(df[[name]])
+      text <- trimws(df[[name]], whitespace = "[ \t\r\n\f\v]")
       nonblank <- nzchar(text)
       converted <- .sashiny_as_number(ifelse(nonblank, text, NA))
       if (any(nonblank) && !any(is.na(converted) & nonblank)) {

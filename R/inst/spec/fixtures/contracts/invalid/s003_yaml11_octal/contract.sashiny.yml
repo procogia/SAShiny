@@ -1,0 +1,13 @@
+sashiny: 1
+program: program.sas
+title: No leading-zero octal
+# Spec section 1.1: `010` is decimal 10 (YAML 1.2 core), not octal 8, so min > max.
+inputs:
+  n:
+    type: numeric
+    label: N
+    min: 11
+    max: 010
+outputs:
+  log:
+    type: log

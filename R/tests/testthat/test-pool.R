@@ -114,7 +114,7 @@ test_that("pool run after close returns an error result (issue #80)", {
   sas_close(pool)
   result <- sas_run(contract, pool, list(), today = .sashiny_today)
   expect_identical(result$status, "error")
-  expect_match(result$metadata$engine_error, "pool exhausted")
+  expect_identical(result$metadata$engine_error, "pool closed") # as in Python
 })
 
 test_that("pool factory failure returns an error result (issue #75)", {

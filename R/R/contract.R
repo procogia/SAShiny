@@ -108,12 +108,13 @@ sas_contract <- function(path) {
   bool_no <- function(x) if (tolower(x) %in% c("y", "n")) x else FALSE
   # Preserve sequences as lists (matching PyYAML, which keeps arrays distinct
   # from scalars).
-  handlers <- list(
+  handlers <- c(list(
     "bool#yes" = bool_yes,
     "bool#no" = bool_no,
     "seq" = function(x) as.list(x)
-  )
-  data <- yaml::read_yaml(path, handlers = handlers)
+  ), .sashiny_yaml12_handlers())
+  text <- paste(readLines(path, encoding = "UTF-8", warn = FALSE), collapse = "\n")
+  data <- yaml::yaml.load(.sashiny_yaml12_tag(text), handlers = handlers)
   structure(
     list(data = data, base_dir = dirname(path), path = path),
     class = "sashiny_contract"
@@ -249,9 +250,9 @@ sas_validate <- function(contract, today = Sys.Date(), error = FALSE) {
     base <- substr(base, 1L, nchar(base) - 4L)
   }
   base <- tolower(base)
-  # Strip combining marks (U+0300-U+036F and the other Mn/Mc/Me blocks) so a
-  # decomposed lower-case form matches Python's `unicodedata.combining` strip.
-  base <- gsub("[\u0300-\u036f\u1ab0-\u1aff\u1dc0-\u1dff\u20d0-\u20ff\ufe20-\ufe2f]", "", base, perl = TRUE)
+  # Strip combining marks: every character of general category Mn, Mc or Me,
+  # the same set as Python's unicodedata.category(c).startswith("M").
+  base <- gsub("\\p{M}", "", base, perl = TRUE)
   base <- gsub("[^a-z0-9_]", "_", base)
   if (!nzchar(base) || !grepl("^[a-z]", base)) {
     base <- paste0("p_", base)
@@ -444,7 +445,7 @@ sas_validate <- function(contract, today = Sys.Date(), error = FALSE) {
         }
     # S013 (sample)
     if (identical(kind, "dataset") && !is.null(spec$sample) &&
-      !file.exists(file.path(contract$base_dir, spec$sample))) {
+      !utils::file_test("-f", file.path(contract$base_dir, spec$sample))) {
       add("S013", paste0(p, "/sample"), "sample file not found")
     }
     # S004
@@ -511,7 +512,7 @@ sas_validate <- function(contract, today = Sys.Date(), error = FALSE) {
     }
   }
   # S013 (program)
-  if (!file.exists(file.path(contract$base_dir, d$program))) {
+  if (!utils::file_test("-f", file.path(contract$base_dir, d$program))) {
     add("S013", "/program", "program file not found")
   }
   issues
@@ -536,4 +537,140 @@ sas_validate <- function(contract, today = Sys.Date(), error = FALSE) {
 
 .sashiny_render_values_for_default <- function(data, values, today, only) {
   sas_render_values(data, values, today, only = only)
+}
+
+# ---------------------------------------------------------------------------
+# YAML 1.2 core numbers (spec section 1.1)
+
+#' YAML 1.2 core schema integer pattern (spec section 1.1).
+#'
+#' No `_` separators, no sexagesimal, no leading-zero octal (`010` is 10) and
+#' no `0b`; `0o17`, `0x1F`, `1e5` and `-.5` are numbers.
+#' @noRd
+.sashiny_yaml12_int <- "^(?:[-+]?[0-9]+|0o[0-7]+|0x[0-9a-fA-F]+)$"
+
+#' YAML 1.2 core schema float pattern (spec section 1.1).
+#' @noRd
+.sashiny_yaml12_float <- paste0(
+  "^(?:[-+]?(?:\\.[0-9]+|[0-9]+(?:\\.[0-9]*)?)(?:[eE][-+]?[0-9]+)?",
+  "|[-+]?\\.(?:inf|Inf|INF)|\\.(?:nan|NaN|NAN))$"
+)
+
+#' The YAML 1.2 core number a plain scalar denotes, or `NULL`.
+#'
+#' Integers within R's integer range are returned as integers, other numbers
+#' as doubles.
+#' @param x The scalar text.
+#' @noRd
+.sashiny_yaml12_number <- function(x) {
+  if (grepl(.sashiny_yaml12_int, x, perl = TRUE)) {
+    value <- if (startsWith(x, "0o")) {
+      .sashiny_parse_base(substring(x, 3L), 8)
+    } else if (startsWith(x, "0x")) {
+      .sashiny_parse_base(substring(x, 3L), 16)
+    } else {
+      as.numeric(x)
+    }
+    if (abs(value) <= .Machine$integer.max) value <- as.integer(value)
+    return(value)
+  }
+  if (grepl(.sashiny_yaml12_float, x, perl = TRUE)) {
+    low <- tolower(x)
+    if (endsWith(low, ".nan")) {
+      return(NaN)
+    }
+    if (endsWith(low, ".inf")) {
+      return(if (startsWith(low, "-")) -Inf else Inf)
+    }
+    return(as.numeric(x))
+  }
+  NULL
+}
+
+#' Parse unsigned base-8 or base-16 digits as a double (no integer overflow).
+#' @noRd
+.sashiny_parse_base <- function(digits, base) {
+  d <- match(strsplit(tolower(digits), "")[[1]], c(0:9, letters[1:6])) - 1
+  Reduce(function(acc, v) acc * base + v, d, 0)
+}
+
+#' 'yaml' handlers that re-resolve numbers by the YAML 1.2 core schema.
+#'
+#' The 'yaml' package resolves numbers by YAML 1.1 rules. Every scalar it types
+#' as a number is checked again: a YAML 1.2 number is converted, anything else
+#' (`1,000`, `190:20:30`, `+0x1F`) stays a string, as in Python.
+#' @noRd
+.sashiny_yaml12_handlers <- function() {
+  as_number <- function(x) .sashiny_yaml12_number(x) %||% x
+  as_double <- function(x) {
+    n <- .sashiny_yaml12_number(x)
+    if (is.null(n)) x else as.double(n)
+  }
+  ints <- c("int", "int#hex", "int#oct", "int#base60")
+  floats <- c("float", "float#fix", "float#exp", "float#base60", "float#inf", "float#neginf", "float#nan")
+  c(
+    stats::setNames(rep(list(as_number), length(ints)), ints),
+    stats::setNames(rep(list(as_double), length(floats)), floats)
+  )
+}
+
+#' Tag plain YAML 1.2 numbers that the 'yaml' package would read as strings.
+#'
+#' The 'yaml' package leaves `0o17`, `1e5` and `1.0e5` untyped, and its string
+#' handler cannot tell a plain scalar from a quoted one. This pre-pass marks
+#' each *plain* number scalar with an explicit `!!int`/`!!float` tag, so the
+#' handlers above convert it, while quoted scalars stay strings. It covers
+#' block mapping values, block sequence items and single-line flow collections
+#' without quotes; text inside block scalars (`|`, `>`) is left alone.
+#' @param text The contract text.
+#' @noRd
+.sashiny_yaml12_tag <- function(text) {
+  lines <- strsplit(text, "\n", fixed = TRUE)[[1]]
+  tag_of <- function(tok) {
+    if (grepl(.sashiny_yaml12_int, tok, perl = TRUE)) {
+      "!!int "
+    } else if (grepl(.sashiny_yaml12_float, tok, perl = TRUE)) {
+      "!!float "
+    } else {
+      ""
+    }
+  }
+  key <- "(?:[^\\s'\"#?:,\\[\\]{}|>!&*%@`-][^#]*?|\"[^\"]*\"|'[^']*')"
+  lead <- paste0("^(\\s*(?:-\\s+)*(?:", key, ":\\s+)?)")
+  block_re <- paste0(lead, "([^\\s'\"#,\\[\\]{}!&*|>]+)(\\s*(?:#.*)?)$")
+  quoted <- "\"(?:[^\"\\\\]|\\\\.)*\"|'(?:[^']|'')*'"
+  flow_re <- paste0(lead, "([\\[{](?:", quoted, "|[^'\"#])*[\\]}])(\\s*(?:#.*)?)$")
+  block_scalar_re <- paste0(lead, "[|>][-+0-9]*\\s*(?:#.*)?$")
+  block_parent <- NA_integer_
+  for (i in seq_along(lines)) {
+    line <- sub("\r$", "", lines[[i]])
+    indent <- nchar(line) - nchar(sub("^ +", "", line))
+    if (!is.na(block_parent)) {
+      if (!nzchar(trimws(line)) || indent > block_parent) next
+      block_parent <- NA_integer_
+    }
+    if (grepl(block_scalar_re, line, perl = TRUE)) {
+      block_parent <- indent
+      next
+    }
+    m <- regmatches(line, regexec(block_re, line, perl = TRUE))[[1]]
+    if (length(m) == 4L) {
+      tag <- tag_of(m[[3]])
+      if (nzchar(tag)) lines[[i]] <- paste0(m[[2]], tag, m[[3]], m[[4]])
+      next
+    }
+    m <- regmatches(line, regexec(flow_re, line, perl = TRUE))[[1]]
+    if (length(m) == 4L) {
+      # Split the flow collection into its scalars and tag each plain number.
+      pieces <- regmatches(m[[3]], gregexpr(
+        # A `:` separates a key only when a blank follows it (`190:20:30` is one scalar).
+        paste0(quoted, "|(?:[^\\[\\]{},:\\s'\"]|:(?!\\s))+|(?:[\\[\\]{},\\s]|:(?=\\s))+"), m[[3]],
+        perl = TRUE
+      ))[[1]]
+      tokens <- !grepl("^((?:[\\[\\]{},\\s]|:(?=\\s|$))+|[\"'].*)$", pieces, perl = TRUE)
+      pieces[tokens] <- vapply(pieces[tokens], function(t) paste0(tag_of(t), t), "")
+      lines[[i]] <- paste0(m[[2]], paste(pieces, collapse = ""), m[[4]])
+    }
+  }
+  paste(lines, collapse = "\n")
 }

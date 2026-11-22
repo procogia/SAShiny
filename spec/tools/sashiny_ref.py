@@ -78,12 +78,41 @@ def _has_anchor(pattern: str) -> bool:
 
 
 class SafeLoaderNoDates(yaml.SafeLoader):
-    """Safe loader that keeps ISO dates as strings (1.1)."""
+    """Safe loader: ISO dates stay strings, numbers follow YAML 1.2 core (1.1)."""
 
 
+_INT = "tag:yaml.org,2002:int"
+_FLOAT = "tag:yaml.org,2002:float"
+YAML12_INT = re.compile(r"^(?:[-+]?[0-9]+|0o[0-7]+|0x[0-9a-fA-F]+)$")
+YAML12_FLOAT = re.compile(
+    r"^(?:[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)(?:[eE][-+]?[0-9]+)?|[-+]?\.(?:inf|Inf|INF)|\.(?:nan|NaN|NAN))$"
+)
 SafeLoaderNoDates.yaml_implicit_resolvers = {
-    k: [(tag, rx) for tag, rx in v if tag != "tag:yaml.org,2002:timestamp"] for k, v in yaml.SafeLoader.yaml_implicit_resolvers.items()
+    k: [(tag, rx) for tag, rx in v if tag not in {"tag:yaml.org,2002:timestamp", _INT, _FLOAT}]
+    for k, v in yaml.SafeLoader.yaml_implicit_resolvers.items()
 }
+SafeLoaderNoDates.add_implicit_resolver(_INT, YAML12_INT, list("-+0123456789"))
+SafeLoaderNoDates.add_implicit_resolver(_FLOAT, YAML12_FLOAT, list("-+.0123456789"))
+
+
+def _yaml12_number(loader: yaml.SafeLoader, node: yaml.ScalarNode) -> Any:
+    text = loader.construct_scalar(node)
+    if node.tag == _INT:
+        if text.startswith("0o"):
+            return int(text[2:], 8)
+        if text.startswith("0x"):
+            return int(text[2:], 16)
+        return int(text)
+    low = text.lower()
+    if low.endswith(".nan"):
+        return math.nan
+    if low.endswith(".inf"):
+        return -math.inf if low.startswith("-") else math.inf
+    return float(text)
+
+
+SafeLoaderNoDates.add_constructor(_INT, _yaml12_number)
+SafeLoaderNoDates.add_constructor(_FLOAT, _yaml12_number)
 
 
 @dataclass
@@ -423,6 +452,9 @@ def render_values(
         if isinstance(raw, str) and kind == "text":
             raw = _ws_strip(raw)
         optional = spec.get("optional", False)
+        if kind in {"multichoice", "daterange"} and raw is not None and not isinstance(raw, list):
+            issues.append(Issue("V002", iid))  # section 4: not an array, even ""
+            continue
         if kind == "multichoice" and raw == []:
             absent = optional
             if not optional and spec.get("min_selected", 1) >= 1:
@@ -462,7 +494,11 @@ def _render_one(
     if kind == "numeric":
         if isinstance(raw, bool) or not isinstance(raw, (int, float)):
             return Issue("V002", iid), []
-        if not math.isfinite(raw):
+        try:
+            finite = math.isfinite(raw)
+        except OverflowError:  # an integer beyond the double range
+            finite = False
+        if not finite:
             return Issue("V003", iid), []
         if spec.get("integer") and not float(raw).is_integer():
             return Issue("V012", iid), []
@@ -653,7 +689,7 @@ def split_log(log: str) -> list[str]:
     lines = re.split(r"\r\n|\r|\n", log)
     if lines and lines[-1] == "" and re.search(r"(\r\n|\r|\n)$", log):
         lines.pop()
-    return [ln.rstrip() for ln in lines] if log else []
+    return [ln.rstrip(" \t\n\r\f\v") for ln in lines] if log else []  # 8.1: ASCII blanks
 
 
 def log_level(line: str) -> str:
