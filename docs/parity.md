@@ -1,7 +1,7 @@
 # R / Python parity
 
 Status of every SAShiny feature in the R package (`R/`) and the Python library (`Python/src/sashiny`),
-measured against [`spec/CONTRACT.md`](../spec/CONTRACT.md) (release 1.6). The spec and the shared
+measured against [`spec/CONTRACT.md`](../spec/CONTRACT.md) (release 1.7). The spec and the shared
 fixtures under `spec/fixtures` are the contract; where the two languages differ, the spec decides.
 
 Legend: ✅ same behaviour · 🟡 idiomatic difference only (same behaviour, language-shaped API) ·
@@ -52,9 +52,9 @@ Legend: ✅ same behaviour · 🟡 idiomatic difference only (same behaviour, la
 | Result cache key / TTL / LRU | same | same | ✅ (shared `cache_key.json`) |
 | Result-cache store hook | internal `.sashiny_cache_set_store` | `result_cache.set_store` | 🔧 R (exported `sas_cache_set_store()`, `sas_cache_store()`) |
 | Mock engine (internal fixture) | `.sashiny_engine_mock` | `_mock.MockEngine` | ✅ (recordings replay in both) |
-| Replay engine with provenance check (§6.6 (a)) | `sas_replay(dir)` | `replay(dir)` / `ReplayEngine` | ✅ spec 1.6 (shared `replay/` fixtures; not shipped in the R tarball) |
-| Registered engines (§6.6 (b)) | `sas_register_engine`, `sas_registered_engines`, `sas_unregister_engine` | `register_engine`, `registered_engines`, `unregister_engine` | ✅ spec 1.6 (R: S3 class name; Python: `Engine` subclass) |
-| Result for a registered engine / recording writer | `sas_engine_result`, `sas_record` | `engine_result`, `record` | ✅ spec 1.6 |
+| Replay engine with provenance check (§6.6 (a)) | `sas_replay(dir)` | `replay(dir)` / `ReplayEngine` | ✅ spec 1.7 (shared `replay/` fixtures; not shipped in the R tarball) |
+| Registered engines (§6.6 (b)) | `sas_register_engine`, `sas_registered_engines`, `sas_unregister_engine` | `register_engine`, `registered_engines`, `unregister_engine` | ✅ spec 1.7 (R: S3 class name; Python: `Engine` subclass) |
+| Result for a registered engine / recording writer | `sas_engine_result`, `sas_record` | `engine_result`, `record` | ✅ spec 1.7 |
 | In-session PROC PYTHON engine | — | `connect_in_session` | 🅿 Python only (#146 tracks PROC R) |
 | `sas_check` / `Result.check` reason text | single space | single space | ✅ #153, fixed in #157 |
 

@@ -11,7 +11,7 @@ R/Python parity pass (spec release 1.5, `docs/parity.md`).
 
 ## New features
 
-* Replay and registered engines (spec section 6.6, spec release 1.6).
+* Replay and registered engines (spec section 6.6, spec release 1.7).
   `sas_program_server()`, `sas_app()`, `sas_run()` and `sas_pool()` now also
   accept:
   * `sas_replay(recordings_dir)`, which replays recordings (spec section 8.3)

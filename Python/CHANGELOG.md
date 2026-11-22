@@ -8,7 +8,7 @@ All notable changes to the Python library are documented here. The format follow
 
 ### Added
 
-- Replay and registered engines (spec §6.6, spec release 1.6). `program_server`, `app`, `run`
+- Replay and registered engines (spec §6.6, spec release 1.7). `program_server`, `app`, `run`
   and `Pool` now also accept:
   - `sashiny.replay(recordings_dir)` (`ReplayEngine`), which replays recordings (§8.3) of runs
     made on a live, licensed SAS system. A recording is replayed only when it carries its
