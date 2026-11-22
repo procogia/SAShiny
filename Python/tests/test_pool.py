@@ -11,10 +11,12 @@ import pytest
 import sashiny
 from _repo import repo_root
 from engines_helper import MockEngine
+from sashiny import choices_cache
 
 SPEC = repo_root() / "spec"
 FIX = SPEC / "fixtures"
 TODAY = date(2026, 11, 11)
+OLD_CHOICES = {"pick": [{"value": "old", "label": "old"}]}
 
 
 def _minimal_contract() -> sashiny.Contract:
@@ -68,6 +70,25 @@ def test_pool_discards_and_closes_factory_session_on_run_error() -> None:
     assert pool.run(contract, {}, today=TODAY).status == "error"
     assert len(pool._sessions) == 0
     assert _FailingEngine.closed == 1
+
+
+def test_pool_discard_clears_pool_choices_cache() -> None:
+    """Spec §6.4: replacing a failed pooled session clears its choices (#152, like R)."""
+    pool = sashiny.Pool(_FailingEngine, max_size=1)
+    contract = _minimal_contract()
+    choices_cache.store(pool, contract, OLD_CHOICES)
+    assert choices_cache.cached(pool, contract) is not None
+    assert pool.run(contract, {}, today=TODAY).status == "error"
+    assert choices_cache.cached(pool, contract) is None
+
+
+def test_pool_keeps_choices_cache_on_validation_error() -> None:
+    pool = sashiny.Pool(MockEngine(), max_size=1)
+    contract = sashiny.load(FIX / "contracts" / "valid" / "numeric" / "contract.sashiny.yml")
+    choices_cache.store(pool, contract, OLD_CHOICES)
+    assert pool.run(contract, {"min_msrp": "bad"}, today=TODAY).status == "error"
+    assert choices_cache.cached(pool, contract) == OLD_CHOICES
+    pool.close()
 
 
 def test_pool_factory_gives_each_session_its_own_engine() -> None:

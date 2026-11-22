@@ -21,6 +21,7 @@ from typing import TYPE_CHECKING, Any, Protocol
 from . import choices_cache
 from .engines._mock import resolve_files
 from .recording import contract_sha256, program_sha256, upload_key_parts
+from .result import utc_timestamp
 from .upload import UploadError
 from .values import render_values
 
@@ -212,11 +213,7 @@ def lookup(
         return key, None
     out = copy.deepcopy(result)
     out.metadata["cache_hit"] = True
-    out.metadata["cached_at"] = (
-        datetime.fromtimestamp(stored_at, timezone.utc)
-        .isoformat(timespec="seconds")
-        .replace("+00:00", "Z")
-    )
+    out.metadata["cached_at"] = utc_timestamp(datetime.fromtimestamp(stored_at, timezone.utc))
     return key, out
 
 

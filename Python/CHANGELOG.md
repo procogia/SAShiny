@@ -6,6 +6,26 @@ All notable changes to the Python library are documented here. The format follow
 
 ## [Unreleased]
 
+### Changed
+
+- Contract YAML numbers follow the shared rule of spec §1.1 (the YAML 1.2 core number forms
+  both languages' YAML parsers recognise), so a contract is valid in R and Python or in neither:
+  `-.5`, `+.5` and `-.5E-3` are now numbers; `1_000`, `017`, `0b101` and `1:30` are now strings
+  (`E000` where a number is expected) instead of 1000, 15, 5 and 90 (#155).
+- Run timestamps (`started_at`, `ended_at`, a recording's `recorded_at`) are written as
+  `YYYY-MM-DDTHH:MM:SSZ` (UTC, whole seconds), the form R writes and `cached_at` already used
+  (spec §8.4). Results with `+00:00` timestamps are still read, also on Python 3.10. Every engine
+  (mock, saspy, PROC PYTHON, pool) reports the package version as `engine_version` instead of
+  `"0.1.0"`, as R does (#156).
+
+### Fixed
+
+- `Pool` clears its `choices_from` cache when it discards a failed session (spec §6.4), as
+  R does; choices from the discarded SAS session were offered and validated against (#152).
+- `split_log` (the `log` output, `Result.log_frame()`, failure reasons) strips only ASCII
+  trailing whitespace (spec §8.1, §8.2), as R does; a trailing U+00A0, U+2003, U+3000 or U+0085
+  now stays (#154).
+
 ## [0.3.1] - 2026-11-20
 
 ### Deprecated

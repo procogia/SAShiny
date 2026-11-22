@@ -43,6 +43,14 @@ test_that("split_log handles every line break", {
   expect_identical(.sashiny_split_log(""), character(0))
 })
 
+test_that("split_log strips ASCII whitespace only (spec section 8.1, #154)", {
+  log <- "NOTE: a\u00a0 \t\nb\u3000\v\f\nc\u2003\nd\u0085\r\n"
+  expect_identical(
+    .sashiny_split_log(log),
+    c("NOTE: a\u00a0", "b\u3000", "c\u2003", "d\u0085")
+  )
+})
+
 test_that("SAS collection code is generated as specified", {
   code <- .sashiny_table_meta_code("WORK", "STATS")
   expect_match(code, 'where libname = "WORK" and memname = "STATS"', fixed = TRUE)

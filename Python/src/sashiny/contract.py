@@ -75,13 +75,52 @@ def _has_anchor(pattern: str) -> bool:
 
 
 class SafeLoaderNoDates(yaml.SafeLoader):  # type: ignore[misc]
-    """Safe loader that keeps ISO dates as strings (spec §1.1)."""
+    """Safe loader with the spec §1.1 scalar typing, shared with R (#155).
+
+    ISO dates stay strings. Numbers follow the YAML 1.2 core schema, restricted to
+    the forms R's yaml package also types as numbers: decimal integers without a
+    leading zero, ``0x`` hex, and floats whose exponent (if any) follows a ``.``
+    and has a sign. Every other plain scalar (``1_000``, ``017``, ``1e3``,
+    ``1:30``, ``0b101``, ``0o17``) is a string. Nulls and booleans are unchanged.
+    """
+
+
+_INT_TAG = "tag:yaml.org,2002:int"
+_FLOAT_TAG = "tag:yaml.org,2002:float"
+YAML_INT = re.compile(r"^(?:[-+]?(?:0|[1-9][0-9]*)|0x[0-9a-fA-F]+)$")
+YAML_FLOAT = re.compile(
+    r"^(?:[-+]?(?:\.[0-9]+|[0-9]+\.[0-9]*)(?:[eE][-+][0-9]+)?"
+    r"|[-+]?\.(?:inf|Inf|INF)|\.(?:nan|NaN|NAN))$"
+)
+
+
+def _construct_int(loader: yaml.SafeLoader, node: yaml.ScalarNode) -> int:
+    text = loader.construct_scalar(node)
+    return int(text[2:], 16) if text.startswith("0x") else int(text)
+
+
+def _construct_float(loader: yaml.SafeLoader, node: yaml.ScalarNode) -> float:
+    text = loader.construct_scalar(node)
+    bare = text.lstrip("+-").lower()
+    if bare == ".nan":
+        return float("nan")
+    if bare == ".inf":
+        return float("-inf") if text.startswith("-") else float("inf")
+    return float(text)
 
 
 SafeLoaderNoDates.yaml_implicit_resolvers = {
-    k: [(tag, rx) for tag, rx in v if tag != "tag:yaml.org,2002:timestamp"]
+    k: [
+        (tag, rx)
+        for tag, rx in v
+        if tag not in ("tag:yaml.org,2002:timestamp", _INT_TAG, _FLOAT_TAG)
+    ]
     for k, v in yaml.SafeLoader.yaml_implicit_resolvers.items()
 }
+SafeLoaderNoDates.add_implicit_resolver(_INT_TAG, YAML_INT, list("-+0123456789"))
+SafeLoaderNoDates.add_implicit_resolver(_FLOAT_TAG, YAML_FLOAT, list("-+0123456789."))
+SafeLoaderNoDates.add_constructor(_INT_TAG, _construct_int)
+SafeLoaderNoDates.add_constructor(_FLOAT_TAG, _construct_float)
 
 
 @dataclass

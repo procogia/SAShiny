@@ -12,7 +12,28 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 
-__all__ = ["LogLine", "Result", "TableResult", "failure_reason", "output_summary"]
+__all__ = [
+    "LogLine",
+    "Result",
+    "TableResult",
+    "failure_reason",
+    "output_summary",
+    "utc_timestamp",
+]
+
+
+def utc_timestamp(when: datetime | None = None) -> str:
+    """Return ``when`` (default: now) as ``YYYY-MM-DDTHH:MM:SSZ`` in UTC (spec §8.4).
+
+    The one timestamp form both languages write, byte for byte (#156).
+    """
+    when = datetime.now(timezone.utc) if when is None else when.astimezone(timezone.utc)
+    return when.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _parse_utc(text: str) -> datetime:
+    # Python 3.10's fromisoformat does not read a trailing "Z"; older results use "+00:00".
+    return datetime.fromisoformat(text[:-1] + "+00:00" if text.endswith("Z") else text)
 
 
 def first_error(log: str) -> tuple[int, str] | None:
@@ -43,7 +64,7 @@ def failure_reason(result: Result) -> str:
 
 def _duration(started: Any, ended: Any) -> float | None:
     try:
-        return (datetime.fromisoformat(ended) - datetime.fromisoformat(started)).total_seconds()
+        return (_parse_utc(ended) - _parse_utc(started)).total_seconds()
     except (TypeError, ValueError):
         return None
 
@@ -182,8 +203,6 @@ class Result:
         ended_at: datetime | None = None,
     ) -> Result:
         """Construct a :class:`Result` with the standard metadata fields."""
-        started_at = started_at or datetime.now(timezone.utc)
-        ended_at = ended_at or datetime.now(timezone.utc)
         return cls(
             run_id=run_id,
             status=status,
@@ -192,8 +211,8 @@ class Result:
                 "contract_sha256": contract_sha256,
                 "program_sha256": program_sha256,
                 "macros": macros or {},
-                "started_at": started_at.isoformat(),
-                "ended_at": ended_at.isoformat(),
+                "started_at": utc_timestamp(started_at),
+                "ended_at": utc_timestamp(ended_at),
                 "engine": engine,
                 "engine_version": engine_version,
                 "sas_version": sas_version,

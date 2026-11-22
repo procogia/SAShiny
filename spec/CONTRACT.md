@@ -28,6 +28,22 @@ Authors MUST NOT rely on YAML 1.1 implicit typing. In particular, quote values s
 contract dates as strings matching `YYYY-MM-DD` and MUST NOT accept YAML timestamp objects.
 Mapping order is significant: inputs and outputs are processed in the order written.
 
+**Plain scalar typing.** R and Python MUST type every plain (unquoted) scalar the same way, so a
+contract is valid in both languages or in neither (#155). The rule is the YAML 1.2 core schema,
+restricted to the number forms that both languages' YAML parsers recognise:
+
+| Type | Plain scalars (regular expressions match the whole scalar) |
+|---|---|
+| null | `~`, `null`, `Null`, `NULL`, or nothing |
+| boolean | `true`, `True`, `TRUE`, `false`, `False`, `FALSE`; also `yes`, `no`, `on`, `off` in the same three spellings (kept from YAML 1.1 for compatibility; prefer `true`/`false`) |
+| integer | `[-+]?(0\|[1-9][0-9]*)` or `0x[0-9a-fA-F]+` |
+| float | `[-+]?(\.[0-9]+\|[0-9]+\.[0-9]*)([eE][-+][0-9]+)?`, `[-+]?\.(inf\|Inf\|INF)` or `\.(nan\|NaN\|NAN)` |
+| string | everything else |
+
+So `-.5`, `.5`, `1.` and `1.5e+3` are numbers, while `1_000`, `1,000`, `017` (leading zero), `1e3` and
+`1.5e3` (an exponent needs a `.` before it and a sign), `0o17`, `0b101`, `1:30` and `y`/`n` are strings,
+and a string where the schema wants a number is an `E000` error. Quote a value to make it a string.
+
 ---
 
 ## 2. Structure (summary)
@@ -1327,7 +1343,8 @@ own `select` (plot form). Collect `sashiny` like a `chart` from the chart fields
 **html**: The ODS HTML listing returned by the main submission.
 
 **log**: Split the main-submission log on line breaks (`CRLF`, `CR` or `LF`). If the log ends with a line
-break, there is no empty final line. Drop trailing whitespace from each line.
+break, there is no empty final line. Drop trailing whitespace from each line: ASCII blanks only, as in
+8.1 (a no-break space, U+3000 or U+0085 stays).
 `program` scope keeps the lines strictly between the line equal to `NOTE: SASHINY-BEGIN-PROGRAM` and the
 line equal to `NOTE: SASHINY-END-PROGRAM`, or every line after BEGIN if END is missing. Source echo lines
 never match, because SAS prefixes them with line numbers. `full` keeps every line. Each line's `level`
@@ -1377,6 +1394,13 @@ status `success` with empty outputs and sets `metadata.recording` to `"missing"`
 Every result carries run metadata: `run_id`, `contract_sha256` (of the YAML bytes), `program_sha256`
 (of the program file bytes as stored on disk), rendered macro values, start/end timestamps (UTC, ISO 8601),
 engine name and version, SAS version (`&SYSVLONG`), status, and `collect_errors` (list, possibly empty).
+
+Both languages write the same bytes for these fields:
+- Timestamps (`started_at`, `ended_at`, `recorded_at` in 8.3 and `cached_at` in 6.11) have the form
+  `YYYY-MM-DDTHH:MM:SSZ`: UTC, whole seconds, a literal `Z`. Readers MUST also accept other ISO 8601
+  UTC forms (for example `+00:00` with fractional seconds, as written by Python up to 0.3.1).
+- `engine_version` is the SAShiny package version (equal in R and Python, section 11) for every
+  engine, including the internal test mock.
 
 ### 8.5 Chart spec (client-side rendering)
 
