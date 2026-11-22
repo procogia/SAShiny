@@ -27,9 +27,10 @@
 #'
 #' `TRUE` selects the contract's `sample`. A path, a Shiny `fileInput` value
 #' (a data frame with `datapath` and `name`) or an upload file selects that
-#' file.
+#' file. Any other data frame is written as canonical CSV `<id>.csv`
+#' (spec section 7.1).
 #' @noRd
-.sashiny_resolve_upload <- function(value, spec, base_dir) {
+.sashiny_resolve_upload <- function(value, spec, base_dir, id = "data") {
   if (is.null(value) || isFALSE(value) || (is.character(value) && !nzchar(value[[1]]))) {
     return(NULL)
   }
@@ -43,8 +44,15 @@
   if (inherits(value, "sashiny_upload_file")) {
     return(value)
   }
+  # A data frame value (spec sections 6.10 and 7.1): written as canonical CSV.
+  if (inherits(value, "sashiny_upload_frame")) {
+    return(.sashiny_frame_upload(value$frame, value$id))
+  }
   if (is.data.frame(value) && all(c("datapath", "name") %in% names(value))) {
     return(.sashiny_upload_file(value$datapath[[1]], value$name[[1]]))
+  }
+  if (is.data.frame(value)) {
+    return(.sashiny_frame_upload(value, id))
   }
   .sashiny_upload_file(as.character(value[[1]]))
 }
@@ -57,7 +65,7 @@
   for (iid in names(inputs)) {
     spec <- inputs[[iid]]
     if (!identical(spec$type, "dataset")) next
-    upload <- .sashiny_resolve_upload(uploads[[iid]], spec, contract$base_dir)
+    upload <- .sashiny_resolve_upload(uploads[[iid]], spec, contract$base_dir, iid)
     if (!is.null(upload)) {
       # Check extension, existence and size (section 7 step 1); a bad file is
       # reported as V014 rather than a raw error.
@@ -142,7 +150,7 @@
       ".", ext, " is not accepted (accepted: ", paste(accept, collapse = ", "), ")"
     )
   }
-  if (!file.exists(upload$path)) {
+  if (!utils::file_test("-f", upload$path)) {
     .sashiny_upload_error("file not found: ", upload$name)
   }
   limit <- spec$max_size_mb %||% 50
@@ -166,7 +174,7 @@
   if (is.numeric(x)) {
     return(as.numeric(x))
   }
-  text <- trimws(as.character(x))
+  text <- trimws(as.character(x), whitespace = "[ \t\r\n\f\v]")
   blank <- is.na(x) | !nzchar(text)
   converted <- .sashiny_as_number(ifelse(blank, NA, text))
   if (any(is.na(converted) & !blank)) {
@@ -184,7 +192,7 @@
   if (inherits(x, "POSIXt")) {
     return(as.Date(x, tz = "UTC"))
   }
-  text <- trimws(as.character(x))
+  text <- trimws(as.character(x), whitespace = "[ \t\r\n\f\v]")
   # Only native missing and empty/whitespace are "missing" (spec section 7 step 3);
   # any other non-ISO text (including the literal "NA", "nan", "NaT", "None")
   # is unparseable and reported as V014.
@@ -237,7 +245,7 @@
   }
   if (read$all_text) {
     for (name in setdiff(names(df), declared)) {
-      text <- trimws(df[[name]])
+      text <- trimws(df[[name]], whitespace = "[ \t\r\n\f\v]")
       nonblank <- nzchar(text)
       converted <- .sashiny_as_number(ifelse(nonblank, text, NA))
       if (any(nonblank) && !any(is.na(converted) & nonblank)) {

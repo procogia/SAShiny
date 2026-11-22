@@ -92,8 +92,9 @@ class Profile:
         return [] if self.method == "ssh" else list(SECRETS)
 
 
-def _fail(name: str, message: str) -> ValueError:
-    return ValueError(f"profile {name}: {message}")
+def _fail(name: str, message: str) -> DeployError:
+    # DeployError is a ValueError, and matches R's sashiny_error_deploy.
+    return DeployError(f"profile {name}: {message}")
 
 
 def _safe(name: str, field: str, value: Any, *, path: bool = False) -> str:
@@ -170,7 +171,7 @@ def connect_from_env(*, license_ack: bool | None = None) -> SaspyEngine:
     env = os.environ
     kind = env.get("SASHINY_PROFILE", "")
     if kind == "oda":
-        return connect(oda(env.get("SASHINY_ODA_REGION", "us1")), license_ack=license_ack)
+        return connect(oda(env.get("SASHINY_ODA_REGION") or "us1"), license_ack=license_ack)
     if kind == "viya":
         url = env.get("SASHINY_VIYA_URL")
         if not url:
@@ -181,7 +182,7 @@ def connect_from_env(*, license_ack: bool | None = None) -> SaspyEngine:
         if not host:
             raise DeployError("SASHINY_SAS94_HOST is required when SASHINY_PROFILE=sas94")
         saspath = env.get("SASHINY_SAS94_SASPATH") or None
-        port = int(env.get("SASHINY_SAS94_PORT", str(_DEFAULT_IOM_PORT)))
+        port = int(env.get("SASHINY_SAS94_PORT") or _DEFAULT_IOM_PORT)
         backend = sas94_ssh(host, saspath) if saspath else sas94_iom(host, port=port)
         return connect(backend, license_ack=license_ack)
     raise DeployError("SASHINY_PROFILE must be oda, viya or sas94")

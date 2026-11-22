@@ -15,6 +15,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import warnings
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
@@ -90,6 +91,7 @@ def publish(  # noqa: PLR0913 - explicit deployment options
     *,
     title: str | None = None,
     name: str | None = None,
+    server: str | None = None,
     sas_credentials: Literal["env", "server"] = "env",
     license_ack: bool = False,
     env_vars: Sequence[str] = (),
@@ -98,9 +100,15 @@ def publish(  # noqa: PLR0913 - explicit deployment options
     """Publish a SAShiny app to Posit Connect.
 
     **Authentication.** Either a server registered with ``rsconnect add`` (pass
-    its nickname as ``name``), or the environment variables ``CONNECT_SERVER``
+    its nickname as ``server``), or the environment variables ``CONNECT_SERVER``
     and ``CONNECT_API_KEY``, which ``rsconnect`` reads directly. The API key is
     never passed on the command line or written to the bundle.
+
+    **Content name.** As in R's ``sas_publish()``, ``name`` is the content name
+    and defaults to the directory name. ``rsconnect-python`` derives the content
+    name from the title, so the bundle is staged in a directory called ``name``:
+    without a ``title``, Connect uses ``name`` for both. With a ``title``, the
+    content name follows the title (a ``UserWarning`` says so).
 
     **SAS credentials.** Credential files (``.authinfo``, ``.Renviron``,
     ``.env``, ``*.pem``, ``*.key``) are never bundled. With
@@ -116,7 +124,10 @@ def publish(  # noqa: PLR0913 - explicit deployment options
     Args:
         app_dir: The app directory; it must contain ``app.py``.
         title: The content title.
-        name: The nickname of a server registered with ``rsconnect add``.
+        name: The content name (default: the directory name), as in R.
+        server: The nickname of a server registered with ``rsconnect add``
+            (R: ``server``). Ignored by ``rsconnect`` when ``CONNECT_SERVER``
+            and ``CONNECT_API_KEY`` are set.
         sas_credentials: ``"env"`` or ``"server"`` (see above).
         license_ack: Must be ``True``.
         env_vars: Names of further environment variables to send.
@@ -151,15 +162,24 @@ def publish(  # noqa: PLR0913 - explicit deployment options
 
     env = dict(os.environ)
     env["SASHINY_LICENSE_ACK"] = "true"
+    if name is not None and (not name or Path(name).name != name or name in {".", ".."}):
+        raise DeployError(f"name must be a plain content name, not a path: {name!r}")
+    if name and title:
+        warnings.warn(
+            "rsconnect-python derives the content name from the title; "
+            f"the content name follows title {title!r}, not name {name!r}",
+            UserWarning,
+            stacklevel=2,
+        )
     with tempfile.TemporaryDirectory(prefix="sashiny-bundle-") as tmp:
-        staged = Path(tmp) / root.name
+        staged = Path(tmp) / (name or root.name)
         for rel in files:
             target = staged / rel
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(root / rel, target)
         args = ["deploy", "shiny", str(staged)]
-        if name:
-            args += ["--name", name]
+        if server:
+            args += ["--name", server]  # rsconnect's --name is the server nickname
         if title:
             args += ["--title", title]
         for var in names:

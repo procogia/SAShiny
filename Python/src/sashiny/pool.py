@@ -26,7 +26,7 @@ from .result import Result
 __all__ = ["Pool", "PoolExhausted", "PoolSession"]
 
 
-class PoolExhausted(Exception):
+class PoolExhausted(EngineError):
     """No pooled session became free within ``acquire_timeout``."""
 
 
@@ -232,7 +232,7 @@ class Pool(Engine):
             return result
         except Exception as exc:  # a lazy factory/connection failure (issue #75)
             result = Result.new(run_id or str(uuid.uuid4()), "error", engine=self.name)
-            result.metadata["engine_error"] = f"{type(exc).__name__}: {exc}"
+            result.metadata["engine_error"] = str(exc)
             return result
         discard = False
         try:
@@ -243,7 +243,7 @@ class Pool(Engine):
             except Exception as exc:  # a raised failure poisons the session
                 discard = True
                 result = Result.new(run_id or str(uuid.uuid4()), "error", engine=self.name)
-                result.metadata["engine_error"] = f"{type(exc).__name__}: {exc}"
+                result.metadata["engine_error"] = str(exc)
                 return result
             session.runs += 1
             discard = result.status == "error" and "issues" not in result.metadata

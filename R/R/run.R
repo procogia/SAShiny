@@ -15,7 +15,8 @@
 #'   defaults (an empty list).
 #' @param today A `Date` used to resolve `"today"`.
 #' @param uploads A named list mapping dataset input ids to a file path, a
-#'   Shiny `fileInput` value, or `TRUE` for the input's `sample`.
+#'   Shiny `fileInput` value, `TRUE` for the input's `sample`, or a data frame,
+#'   which is written as CSV (spec section 7.1).
 #' @param run_id The run identifier.
 #' @return A `sashiny_result` object (see [sas_engine_run()]).
 #' @section Argument order:

@@ -1,8 +1,17 @@
 # SAShiny (development version)
 
+R/Python parity pass (spec release 1.5, `docs/parity.md`).
+
+## Breaking changes
+
+* A run on a closed pool reports `pool closed` (was `pool exhausted: ...`),
+  as in Python.
+* `sas_oda()` with an unknown region raises a `sashiny_error_engine`, not an
+  rlang error.
+
 ## New features
 
-* Replay and registered engines (spec section 6.6, spec release 1.5).
+* Replay and registered engines (spec section 6.6, spec release 1.6).
   `sas_program_server()`, `sas_app()`, `sas_run()` and `sas_pool()` now also
   accept:
   * `sas_replay(recordings_dir)`, which replays recordings (spec section 8.3)
@@ -28,6 +37,37 @@
   SAS version, replays, cache hits and results from another contract or
   program, and writes empty `macros` and `outputs` as JSON objects. The
   recording key is unchanged, so existing recordings keep their names.
+* `sas_cache_set_store()`, `sas_cache_store()`, `sas_cache_lru()` and
+  `sas_cache_clear()` replace or inspect the result cache store (spec section
+  6.11), as Python's `sashiny.result_cache` does.
+* `values` in `sas_program_server()` can now supply a dataset input: pass a
+  data frame (a tibble counts) and it replaces the upload control. It is
+  written as CSV in a canonical form (spec section 7.1) and checked like an
+  uploaded file, so a missing declared column is `V014`. `sas_run(uploads = )`
+  accepts data frames too. The same data frame gives the same CSV bytes in R
+  and Python, so result-cache and recording keys agree. This lets a parent
+  app, such as a teal app, pass its filtered data to SAS.
+
+## Bug fixes
+
+* `S013`: a directory is not a program or sample file.
+* Default module ids strip every combining mark (Unicode category M), as
+  Python does.
+* Table `label`/`format` metadata, log lines and upload cells strip the same
+  ASCII blanks (space, tab, CR, LF, VT, FF) as Python (spec section 8.1).
+* Chart backends refuse mappings they cannot draw (spec section 8.5): base
+  graphics report `color` on bar/histogram/box and `fill` on
+  scatter/line/histogram/box as a collection error instead of ignoring them;
+  plotly refuses `color` and `fill` together and now shows the `subtitle`.
+  A base histogram honours `ylab`.
+* A licence-refused or failed saspy run reports the package version as
+  `engine_version`, as in Python.
+
+## Changes
+
+* A value supplied through `values` for a dataset input is no longer ignored:
+  a data frame replaces the upload, `NULL` removes it, and anything else is
+  `V014`.
 
 ## Fixes
 

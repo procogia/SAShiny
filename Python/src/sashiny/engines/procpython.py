@@ -160,6 +160,7 @@ class ProcPythonEngine(SaspyEngine):
         self._choices = {}
         self._generation = 0
         self._run_generation = threading.local()
+        self._busy = threading.Lock()
         self.own_session = own_session
         self._callback = sas
         self._dead = False

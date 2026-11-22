@@ -290,9 +290,9 @@ sas_validate <- function(contract, today = Sys.Date(), error = FALSE) {
     base <- substr(base, 1L, nchar(base) - 4L)
   }
   base <- tolower(base)
-  # Strip combining marks (U+0300-U+036F and the other Mn/Mc/Me blocks) so a
-  # decomposed lower-case form matches Python's `unicodedata.combining` strip.
-  base <- gsub("[\u0300-\u036f\u1ab0-\u1aff\u1dc0-\u1dff\u20d0-\u20ff\ufe20-\ufe2f]", "", base, perl = TRUE)
+  # Strip combining marks: every character of general category Mn, Mc or Me,
+  # the same set as Python's unicodedata.category(c).startswith("M").
+  base <- gsub("\\p{M}", "", base, perl = TRUE)
   base <- gsub("[^a-z0-9_]", "_", base)
   if (!nzchar(base) || !grepl("^[a-z]", base)) {
     base <- paste0("p_", base)
@@ -485,7 +485,7 @@ sas_validate <- function(contract, today = Sys.Date(), error = FALSE) {
         }
     # S013 (sample)
     if (identical(kind, "dataset") && !is.null(spec$sample) &&
-      !file.exists(file.path(contract$base_dir, spec$sample))) {
+      !utils::file_test("-f", file.path(contract$base_dir, spec$sample))) {
       add("S013", paste0(p, "/sample"), "sample file not found")
     }
     # S004
@@ -552,7 +552,7 @@ sas_validate <- function(contract, today = Sys.Date(), error = FALSE) {
     }
   }
   # S013 (program)
-  if (!file.exists(file.path(contract$base_dir, d$program))) {
+  if (!utils::file_test("-f", file.path(contract$base_dir, d$program))) {
     add("S013", "/program", "program file not found")
   }
   issues
