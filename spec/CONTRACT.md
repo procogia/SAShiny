@@ -1329,7 +1329,12 @@ A data frame supplied through `values` (§6.10) or `sas_run(uploads = )` / `run(
 first written as CSV in the canonical form of §7.1 and then converted like any other file.
 
 1. Read the file by extension: `csv` (UTF-8, comma, header row, RFC 4180), `xlsx` (first sheet, header
-   row), `xpt` (SAS transport v5/v8), `sas7bdat`.
+   row), `xpt` (SAS transport v5/v8), `sas7bdat`. In `xlsx`, every row between the header and the last
+   non-empty row is read, blank rows included (their cells are missing). Text cells keep their leading
+   and trailing spaces. A column whose non-empty cells all carry a date or time number format (a
+   built-in date format, or a format code that, without quoted text, escaped characters and `[...]`
+   sections, contains `d`, `m`, `y`, `h` or `s`) is a native date-time column: the Excel serial (1900
+   or 1904 date system) gives whole days plus the day fraction rounded to the millisecond, in UTC.
 2. Column names: replace characters outside `[A-Za-z0-9_]` with `_`; prefix `_` if the first character is
    a digit; truncate to 32 bytes; resolve case-insensitive duplicates by suffixing `_2`, `_3`, ... (truncating
    further to fit). Declared `columns` are matched case-insensitively **after** this step.
@@ -1337,7 +1342,12 @@ first written as CSV in the canonical form of §7.1 and then converted like any 
    `date` (ISO `YYYY-MM-DD`, or a native date type; stored as SAS date with format `DATE9.`). For `numeric`
    and `date` columns, a value is "empty" (missing) when it is the empty string or whitespace only; any
    other non-conforming value (including the literal text `NA`, `nan`, `NaT` or `None`) is unparseable and
-   reported as `V014`.
+   reported as `V014`. A `character` column keeps text cells as they are. Any other cell (a number,
+   logical, date or date-time read natively from `xlsx`, `xpt` or `sas7bdat`) becomes the text that §7.1
+   rule 5 gives for its type, without CSV quoting: `1`/`0` for true/false, integers as digits, other
+   numbers as `%.17g` (so `1.0` is `1` and `0.1 + 0.2` is `0.30000000000000004`), dates as
+   `YYYY-MM-DD` and date-times as `YYYY-MM-DDTHH:MM:SS[.ffffff]Z` in UTC. A missing cell is empty, and an
+   infinite number is `V014`.
 4. Undeclared columns: native numeric/date types are kept. In `csv`, a column whose non-empty values all
    parse as numbers becomes numeric, otherwise character.
 5. The result is written to `target`. Column order is preserved.
