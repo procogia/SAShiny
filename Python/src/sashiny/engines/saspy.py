@@ -24,6 +24,7 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from .. import __version__
 from ..collect import (
     CSV_MAX_ROWS,
     build_table,
@@ -45,11 +46,11 @@ from ..collect import (
 from ..contract import Contract
 from ..errors import EngineError, LicenseError, SashinyError
 from ..recording import contract_sha256, program_sha256
-from ..result import Result, utc_stamp
+from ..result import Result, utc_timestamp
 from ..upload import UploadError, read_upload, resolve_upload
 from ..values import render_values
 from ..wrapper import reset_code, wrapper_code
-from .base import Engine, _PackageVersion
+from .base import Engine
 
 _MAX_PORT = 65535
 
@@ -601,7 +602,7 @@ class SaspyEngine(Engine):
     """
 
     name = "saspy"
-    version = _PackageVersion()
+    version = __version__
 
     def __init__(
         self,
@@ -877,7 +878,7 @@ class SaspyEngine(Engine):
         result.metadata["collect_errors"] = errors
         result.metadata["syscc"] = syscc
         ended = datetime.now(timezone.utc)
-        result.metadata["ended_at"] = utc_stamp(ended)
+        result.metadata["ended_at"] = utc_timestamp(ended)
         result.metadata["seconds"] = round((ended - started).total_seconds(), 2)
         result.metadata["backend"] = self.backend
         return result

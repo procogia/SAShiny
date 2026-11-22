@@ -1,7 +1,7 @@
 """R/Python parity (docs/parity.md). Each test pins a behaviour the R package shares.
 
 The R counterparts are in ``R/tests/testthat/test-parity.R``; the cross-language
-cases (values, log scope, YAML numbers) are shared fixtures under ``spec/fixtures``.
+cases (values, log scope) are shared fixtures under ``spec/fixtures``.
 """
 
 from __future__ import annotations
@@ -14,7 +14,6 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-import yaml
 
 import sashiny
 from _repo import repo_root
@@ -22,7 +21,6 @@ from engines_helper import MockEngine, fake_engine
 from fakesas import FakeSAS
 from sashiny import choices_cache
 from sashiny.collect import build_table, split_log
-from sashiny.contract import SafeLoaderNoDates
 from sashiny.engines import saspy as saspy_engine
 from sashiny.lint import lint
 from sashiny.pool import PoolExhausted
@@ -30,26 +28,11 @@ from sashiny.values import render_values
 
 FIX = repo_root() / "spec" / "fixtures"
 TODAY = date(2026, 11, 11)
-STAMP = re.compile(r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$")
+STAMP = re.compile(r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$")
 
 
 def _contract(name: str) -> sashiny.Contract:
     return sashiny.load(FIX / "contracts" / "valid" / name / "contract.sashiny.yml")
-
-
-# --------------------------------------------------------------------------- §1.1 YAML
-
-
-def test_yaml_numbers_follow_the_yaml_1_2_core_schema() -> None:
-    text = (
-        "[-.5, +.5, 12., 1e5, 1.0e5, 2E-2, 010, 0o17, 0x1F, .inf, -.Inf, "
-        "1_000, 0b101, 190:20:30, +0x1F, '1e5', 1,000]"
-    )
-    got = yaml.load(f"a: {text}", Loader=SafeLoaderNoDates)["a"]  # noqa: S506
-    assert got[:9] == [-0.5, 0.5, 12.0, 1e5, 1e5, 0.02, 10, 15, 31]
-    assert got[9] == float("inf")
-    assert got[10] == float("-inf")
-    assert got[11:] == ["1_000", "0b101", "190:20:30", "+0x1F", "1e5", 1, 0]
 
 
 # --------------------------------------------------------------------------- §2 module id
@@ -113,7 +96,7 @@ def test_lint_word_boundaries_are_ascii() -> None:
 # --------------------------------------------------------------------------- §8.4 metadata
 
 
-def test_mock_metadata_uses_package_version_and_millisecond_utc_stamps() -> None:
+def test_mock_metadata_uses_package_version_and_utc_stamps() -> None:
     result = MockEngine().run(_contract("minimal"), {}, today=TODAY)
     meta = result.metadata
     assert meta["engine_version"] == sashiny.__version__

@@ -6,21 +6,35 @@ All notable changes to the Python library are documented here. The format follow
 
 ## [Unreleased]
 
+### Changed
+
+- Contract YAML numbers follow the shared rule of spec §1.1 (the YAML 1.2 core number forms
+  both languages' YAML parsers recognise), so a contract is valid in R and Python or in neither:
+  `-.5`, `+.5` and `-.5E-3` are now numbers; `1_000`, `017`, `0b101` and `1:30` are now strings
+  (`E000` where a number is expected) instead of 1000, 15, 5 and 90 (#155).
+- Run timestamps (`started_at`, `ended_at`, a recording's `recorded_at`) are written as
+  `YYYY-MM-DDTHH:MM:SSZ` (UTC, whole seconds), the form R writes and `cached_at` already used
+  (spec §8.4). Results with `+00:00` timestamps are still read, also on Python 3.10. Every engine
+  (mock, saspy, PROC PYTHON, pool) reports the package version as `engine_version` instead of
+  `"0.1.0"`, as R does (#156).
+
+### Fixed
+
+- `Pool` clears its `choices_from` cache when it discards a failed session (spec §6.4), as
+  R does; choices from the discarded SAS session were offered and validated against (#152).
+- `split_log` (the `log` output, `Result.log_frame()`, failure reasons) strips only ASCII
+  trailing whitespace (spec §8.1, §8.2), as R does; a trailing U+00A0, U+2003, U+3000 or U+0085
+  now stays (#154).
+
 R/Python parity pass (spec release 1.5, `docs/parity.md`).
 
 ### Changed (breaking)
 
-- Contract numbers follow the YAML 1.2 core schema (spec §1.1, #155): `-.5`, `1e5`
-  and `0o17` are numbers, `010` is 10 (not octal 8), and `1_000`, `0b101`, `190:20:30`
-  and `+0x1F` are strings. R and Python now type every contract the same.
 - `publish(name=)` is the content name, as in R's `sas_publish()` (it defaults to the
   directory name). The rsconnect server nickname moved to the new `server=` argument.
   `rsconnect-python` derives the content name from the title, so with both `name` and
   `title` the content name follows the title, with a `UserWarning`.
-- Run timestamps (`started_at`, `ended_at`, `cached_at`, `recorded_at`) use one form in
-  both languages: `YYYY-MM-DDTHH:MM:SS.sssZ` (spec §8.4, #156).
 - `metadata["engine_error"]` holds the message only, without the exception class name.
-- `engine_version` is the package version for every engine (was `"0.1.0"`, #156).
 - `parse_profile()` raises `DeployError` (still a `ValueError`); `PoolExhausted` is an
   `EngineError`.
 
@@ -33,10 +47,8 @@ R/Python parity pass (spec release 1.5, `docs/parity.md`).
 
 ### Fixed
 
-- `Pool` clears the `choices_from` cache when it discards a failed session (#152), and
-  `SaspyEngine.close()` clears it too.
-- `split_log`, upload blank detection and table `label`/`format` strip ASCII blanks only,
-  as in R (spec §8.1, #154).
+- `SaspyEngine.close()` clears the `choices_from` cache too (spec §6.4).
+- Upload blank detection and table `label`/`format` strip ASCII blanks only, as in R (spec §8.1).
 - `""` for a `multichoice` or `daterange` input is `V002` (spec §4), and an integer too
   large for a double is `V003` instead of an `OverflowError`.
 - A second run on a busy `SaspyEngine` waits up to 30 s, then returns

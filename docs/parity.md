@@ -12,7 +12,7 @@ Legend: ✅ same behaviour · 🟡 idiomatic difference only (same behaviour, la
 | Feature | R | Python | Status |
 |---|---|---|---|
 | Load contract | `sas_contract(path)` | `load(path)` | 🟡 |
-| YAML number typing (`-.5`, `1e5`, `1_000`, `010`) | YAML 1.2 core (pre-pass + handlers) | YAML 1.2 core (resolvers) | 🔧 #155, spec §1.1, shared fixtures `yaml12_numbers`, `e_yaml11_underscore`, `s003_yaml11_octal` |
+| YAML number typing (`-.5`, `1_000`, `017`) | shared rule (spec §1.1) | shared rule (spec §1.1) | ✅ #155, fixed in #157 (fixtures `numeric_yaml_forms`, `e_numeric_yaml_forms`) |
 | Validate | `sas_validate(contract, today, error=FALSE)` | `validate(contract, today, raise_error=False)` | 🟡 argument name |
 | Schema layer `E000` | ajv | jsonschema | ✅ (messages differ; codes/paths match fixtures) |
 | Semantic codes `S001`–`S017` | all | all | ✅ (40 shared fixtures) |
@@ -36,8 +36,8 @@ Legend: ✅ same behaviour · 🟡 idiomatic difference only (same behaviour, la
 | Bad ODA region error class | rlang error | `EngineError` | 🔧 R (`sashiny_error_engine`) |
 | `connect` with backend + stray connection args | error | silently ignored | 🔧 Python (error) |
 | Licence acknowledgement | arg, option, env var | arg, env var | 🅿 R option is R-only by spec |
-| `engine_version` (saspy + mock) | package version | `"0.1.0"` | 🔧 Python (#156) |
-| Run timestamps | `…:SS.sssZ` | `…:SS.sssZ` | 🔧 #156, spec §8.4 |
+| `engine_version` (saspy + mock) | package version | package version | ✅ #156, fixed in #157; R licence-refused results 🔧 |
+| Run timestamps | `…:SSZ` | `…:SSZ` | ✅ #156, fixed in #157 (spec §8.4) |
 | `engine_error` text | bare message | `ExcClass: message` | 🔧 Python (bare message) |
 | Two concurrent runs on one engine | waits, then `engine busy: another run is in progress` | no guard (first run is cancelled) | 🔧 Python |
 | Timeout handling | worker killed, same message | session ended, same message | ✅ |
@@ -45,7 +45,7 @@ Legend: ✅ same behaviour · 🟡 idiomatic difference only (same behaviour, la
 | Pool exhausted | error result, same message | same | ✅ |
 | Run on a closed pool | `pool closed` | `pool closed` | 🔧 R (spec §6.5) |
 | Pool `choices` when exhausted | `sashiny_error_engine` | `PoolExhausted` (not a `SashinyError`) | 🔧 Python |
-| `choices_from` cache cleared on session replacement | yes | no (pool discard, `close()`) | 🔧 Python (#152) |
+| `choices_from` cache cleared on session replacement | yes | pool discard (#152, fixed in #157); `close()` | 🔧 Python `close()` |
 | Empty `cached_choices` | used | re-queried | 🔧 Python |
 | `connect_from_env` with empty `SASHINY_ODA_REGION` | `us1` | error | 🔧 Python |
 | Profile errors | `sashiny_error_deploy` | `ValueError` | 🔧 Python (`DeployError`) |
@@ -53,13 +53,13 @@ Legend: ✅ same behaviour · 🟡 idiomatic difference only (same behaviour, la
 | Result-cache store hook | internal `.sashiny_cache_set_store` | `result_cache.set_store` | 🔧 R (exported `sas_cache_set_store()`, `sas_cache_store()`) |
 | Mock engine (internal fixture) | `.sashiny_engine_mock` | `_mock.MockEngine` | ✅ (recordings replay in both) |
 | In-session PROC PYTHON engine | — | `connect_in_session` | 🅿 Python only (#146 tracks PROC R) |
-| `sas_check` / `Result.check` reason text | double space for upload issues | single space | 🔧 R (#153) |
+| `sas_check` / `Result.check` reason text | single space | single space | ✅ #153, fixed in #157 |
 
 ## 3. Collection and results (§7, §8)
 
 | Feature | R | Python | Status |
 |---|---|---|---|
-| Log splitting, trailing blanks | ASCII | Unicode `rstrip()` | 🔧 Python (#154, ASCII per §8.1) |
+| Log splitting, trailing blanks | ASCII | ASCII | ✅ #154, fixed in #157 |
 | Table `label`/`format`: trim, missing → `""` | yes | no (`NaN` → `"nan"`) | 🔧 Python |
 | Plot extraction, paired outputs | same | same | ✅ (shared `plots.json`) |
 | Upload blank detection (numeric/date) | ASCII | Unicode | 🔧 Python (ASCII) |
@@ -99,20 +99,14 @@ Legend: ✅ same behaviour · 🟡 idiomatic difference only (same behaviour, la
 
 ## Notes and limits
 
-1. **R YAML pre-pass.** The R `yaml` package resolves numbers by YAML 1.1 rules and cannot tell a
-   plain scalar from a quoted one, so `sas_contract()` tags plain YAML 1.2 numbers (`0o17`, `1e5`)
-   with `!!int`/`!!float` before parsing and re-resolves every number it does type. The pre-pass
-   covers block mapping values, block sequence items and single-line flow collections (quoted
-   strings included). A number inside a flow collection that spans several lines is not tagged and
-   stays a string in R only. No contract in `examples/` or `spec/fixtures` uses one.
-2. **Publish `name` in Python.** `rsconnect-python` has no content-name option: it derives the
+1. **Publish `name` in Python.** `rsconnect-python` has no content-name option: it derives the
    content name from the title. `publish(name=)` stages the bundle in a directory called `name`, so
    without a `title` the content name (and title) is `name`, as in R. With both `name` and `title`
    the content name follows the title and Python warns. `server=` is the rsconnect nickname (R:
    `server`); R's `account` has no Python equivalent.
-3. **Deferred.** Declared `character` upload columns convert non-text cells with `as.character()`
+2. **Deferred.** Declared `character` upload columns convert non-text cells with `as.character()`
    in R and `str()` in Python (`TRUE`/`True`, xlsx date-times, float digits). Closing it needs a
    spec rule for each cell type; it is left for a follow-up.
-4. **Tests.** `R/tests/testthat/test-parity.R` and `Python/tests/test_parity.py` pin the closed
-   gaps; the shared fixtures (`values/*`, `collect/log_scope.json`, the three YAML contracts) run in
+3. **Tests.** `R/tests/testthat/test-parity.R` and `Python/tests/test_parity.py` pin the closed
+   gaps; the shared fixtures (`values/*`, `collect/log_scope.json`) run in
    both suites and in `spec/tools/check_spec.py`.

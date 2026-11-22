@@ -4,12 +4,6 @@ R/Python parity pass (spec release 1.5, `docs/parity.md`).
 
 ## Breaking changes
 
-* Contract numbers follow the YAML 1.2 core schema (spec section 1.1, #155):
-  `0o17`, `1e5` and `1.0e5` are numbers, `010` is 10 (not octal 8), and
-  `1,000`, `190:20:30` and `+0x1F` are strings. R and Python now type every
-  contract the same.
-* Run timestamps (`started_at`, `ended_at`, `cached_at`) use one form in both
-  languages: `YYYY-MM-DDTHH:MM:SS.sssZ` (spec section 8.4, #156).
 * A run on a closed pool reports `pool closed` (was `pool exhausted: ...`),
   as in Python.
 * `sas_oda()` with an unknown region raises a `sashiny_error_engine`, not an
@@ -23,13 +17,11 @@ R/Python parity pass (spec release 1.5, `docs/parity.md`).
 
 ## Bug fixes
 
-* `sas_check()` no longer puts a double space in upload-error reasons (#153).
-* A JSON object (`{}`) for a `multichoice` input is `V002`, as in Python.
 * `S013`: a directory is not a program or sample file.
 * Default module ids strip every combining mark (Unicode category M), as
   Python does.
-* Table `label`/`format` metadata and log lines strip the same ASCII blanks
-  (space, tab, CR, LF, VT, FF) as Python (spec section 8.1).
+* Table `label`/`format` metadata, log lines and upload cells strip the same
+  ASCII blanks (space, tab, CR, LF, VT, FF) as Python (spec section 8.1).
 * Chart backends refuse mappings they cannot draw (spec section 8.5): base
   graphics report `color` on bar/histogram/box and `fill` on
   scatter/line/histogram/box as a collection error instead of ignoring them;
@@ -37,6 +29,17 @@ R/Python parity pass (spec release 1.5, `docs/parity.md`).
   A base histogram honours `ylab`.
 * A licence-refused or failed saspy run reports the package version as
   `engine_version`, as in Python.
+
+## Fixes
+
+* `sas_check()` and `print()` no longer put two spaces in the reason of an
+  input issue without an input id (upload errors, `V014`): the reason is
+  `invalid input V014 no column AGE`, as in Python (#153).
+* Contract YAML numbers follow one rule in R and Python (spec section 1.1):
+  the YAML 1.2 core number forms that both languages' YAML parsers recognise.
+  `1,000` (was `NA`), `017` (was octal 15) and `-0x1A` (was -26) are now
+  strings, so a contract using them where a number is expected fails with
+  `E000` in both languages (#155).
 
 # SAShiny 0.3.1
 

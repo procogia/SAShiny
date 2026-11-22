@@ -78,41 +78,38 @@ def _has_anchor(pattern: str) -> bool:
 
 
 class SafeLoaderNoDates(yaml.SafeLoader):
-    """Safe loader: ISO dates stay strings, numbers follow YAML 1.2 core (1.1)."""
+    """Safe loader with the 1.1 scalar typing: dates stay strings, numbers use the shared rule."""
 
 
-_INT = "tag:yaml.org,2002:int"
-_FLOAT = "tag:yaml.org,2002:float"
-YAML12_INT = re.compile(r"^(?:[-+]?[0-9]+|0o[0-7]+|0x[0-9a-fA-F]+)$")
-YAML12_FLOAT = re.compile(
-    r"^(?:[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)(?:[eE][-+]?[0-9]+)?|[-+]?\.(?:inf|Inf|INF)|\.(?:nan|NaN|NAN))$"
-)
-SafeLoaderNoDates.yaml_implicit_resolvers = {
-    k: [(tag, rx) for tag, rx in v if tag not in {"tag:yaml.org,2002:timestamp", _INT, _FLOAT}]
-    for k, v in yaml.SafeLoader.yaml_implicit_resolvers.items()
-}
-SafeLoaderNoDates.add_implicit_resolver(_INT, YAML12_INT, list("-+0123456789"))
-SafeLoaderNoDates.add_implicit_resolver(_FLOAT, YAML12_FLOAT, list("-+.0123456789"))
+_INT_TAG = "tag:yaml.org,2002:int"
+_FLOAT_TAG = "tag:yaml.org,2002:float"
+YAML_INT = re.compile(r"^(?:[-+]?(?:0|[1-9][0-9]*)|0x[0-9a-fA-F]+)$")
+YAML_FLOAT = re.compile(r"^(?:[-+]?(?:\.[0-9]+|[0-9]+\.[0-9]*)(?:[eE][-+][0-9]+)?|[-+]?\.(?:inf|Inf|INF)|\.(?:nan|NaN|NAN))$")
 
 
-def _yaml12_number(loader: yaml.SafeLoader, node: yaml.ScalarNode) -> Any:
+def _construct_int(loader: yaml.SafeLoader, node: yaml.ScalarNode) -> int:
     text = loader.construct_scalar(node)
-    if node.tag == _INT:
-        if text.startswith("0o"):
-            return int(text[2:], 8)
-        if text.startswith("0x"):
-            return int(text[2:], 16)
-        return int(text)
-    low = text.lower()
-    if low.endswith(".nan"):
-        return math.nan
-    if low.endswith(".inf"):
-        return -math.inf if low.startswith("-") else math.inf
+    return int(text[2:], 16) if text.startswith("0x") else int(text)
+
+
+def _construct_float(loader: yaml.SafeLoader, node: yaml.ScalarNode) -> float:
+    text = loader.construct_scalar(node)
+    bare = text.lstrip("+-").lower()
+    if bare == ".nan":
+        return float("nan")
+    if bare == ".inf":
+        return float("-inf") if text.startswith("-") else float("inf")
     return float(text)
 
 
-SafeLoaderNoDates.add_constructor(_INT, _yaml12_number)
-SafeLoaderNoDates.add_constructor(_FLOAT, _yaml12_number)
+SafeLoaderNoDates.yaml_implicit_resolvers = {
+    k: [(tag, rx) for tag, rx in v if tag not in ("tag:yaml.org,2002:timestamp", _INT_TAG, _FLOAT_TAG)]
+    for k, v in yaml.SafeLoader.yaml_implicit_resolvers.items()
+}
+SafeLoaderNoDates.add_implicit_resolver(_INT_TAG, YAML_INT, list("-+0123456789"))
+SafeLoaderNoDates.add_implicit_resolver(_FLOAT_TAG, YAML_FLOAT, list("-+0123456789."))
+SafeLoaderNoDates.add_constructor(_INT_TAG, _construct_int)
+SafeLoaderNoDates.add_constructor(_FLOAT_TAG, _construct_float)
 
 
 @dataclass

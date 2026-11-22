@@ -26,22 +26,23 @@ Implementations MUST load contracts with a safe loader (no custom tags, no objec
 Authors MUST NOT rely on YAML 1.1 implicit typing. In particular, quote values such as `yes`, `no`,
 `on`, `off`, `Y`, `N` and ISO dates when they are meant as strings. Implementations MUST treat
 contract dates as strings matching `YYYY-MM-DD` and MUST NOT accept YAML timestamp objects.
-Implementations MUST resolve plain (unquoted) numbers by the YAML 1.2 core schema, whatever YAML
-library they use, so that a contract is typed the same in every language:
-
-| Plain scalar | Value | Examples |
-|---|---|---|
-| `[-+]?[0-9]+` | decimal integer (leading zeros are not octal) | `12`, `-3`, `+1`, `010` = 10 |
-| `0o[0-7]+` | octal integer | `0o17` = 15 |
-| `0x[0-9a-fA-F]+` | hexadecimal integer | `0x1F` = 31 |
-| `[-+]?(\.[0-9]+\|[0-9]+(\.[0-9]*)?)([eE][-+]?[0-9]+)?` | number | `-.5`, `12.`, `1e5`, `2.5E-3` |
-| `[-+]?\.(inf\|Inf\|INF)`, `\.(nan\|NaN\|NAN)` | infinity, NaN | `.inf` |
-
-Any other plain scalar is a string. In particular the YAML 1.1 forms `1_000`, `190:20:30`, `0b101`
-and `+0x1F` are strings, so a contract that uses them where a number is required fails with `E000`.
-Quoted scalars are always strings.
-
 Mapping order is significant: inputs and outputs are processed in the order written.
+
+**Plain scalar typing.** R and Python MUST type every plain (unquoted) scalar the same way, so a
+contract is valid in both languages or in neither (#155). The rule is the YAML 1.2 core schema,
+restricted to the number forms that both languages' YAML parsers recognise:
+
+| Type | Plain scalars (regular expressions match the whole scalar) |
+|---|---|
+| null | `~`, `null`, `Null`, `NULL`, or nothing |
+| boolean | `true`, `True`, `TRUE`, `false`, `False`, `FALSE`; also `yes`, `no`, `on`, `off` in the same three spellings (kept from YAML 1.1 for compatibility; prefer `true`/`false`) |
+| integer | `[-+]?(0\|[1-9][0-9]*)` or `0x[0-9a-fA-F]+` |
+| float | `[-+]?(\.[0-9]+\|[0-9]+\.[0-9]*)([eE][-+][0-9]+)?`, `[-+]?\.(inf\|Inf\|INF)` or `\.(nan\|NaN\|NAN)` |
+| string | everything else |
+
+So `-.5`, `.5`, `1.` and `1.5e+3` are numbers, while `1_000`, `1,000`, `017` (leading zero), `1e3` and
+`1.5e3` (an exponent needs a `.` before it and a sign), `0o17`, `0b101`, `1:30` and `y`/`n` are strings,
+and a string where the schema wants a number is an `E000` error. Quote a value to make it a string.
 
 ---
 
@@ -1350,7 +1351,8 @@ own `select` (plot form). Collect `sashiny` like a `chart` from the chart fields
 **html**: The ODS HTML listing returned by the main submission.
 
 **log**: Split the main-submission log on line breaks (`CRLF`, `CR` or `LF`). If the log ends with a line
-break, there is no empty final line. Drop trailing whitespace from each line.
+break, there is no empty final line. Drop trailing whitespace from each line: ASCII blanks only, as in
+8.1 (a no-break space, U+3000 or U+0085 stays).
 `program` scope keeps the lines strictly between the line equal to `NOTE: SASHINY-BEGIN-PROGRAM` and the
 line equal to `NOTE: SASHINY-END-PROGRAM`, or every line after BEGIN if END is missing. Source echo lines
 never match, because SAS prefixes them with line numbers. `full` keeps every line. Each line's `level`
@@ -1401,10 +1403,12 @@ Every result carries run metadata: `run_id`, `contract_sha256` (of the YAML byte
 (of the program file bytes as stored on disk), rendered macro values, start/end timestamps (`started_at`, `ended_at`),
 engine name and version, SAS version (`&SYSVLONG`), status, and `collect_errors` (list, possibly empty).
 
-Every timestamp in run metadata (`started_at`, `ended_at`, `cached_at`) and in a recording
-(`recorded_at`) is UTC in the one form `YYYY-MM-DDTHH:MM:SS.sssZ`: milliseconds, then a literal `Z`
-(for example `2026-11-21T22:36:44.123Z`), so both languages write identical text. `engine_version`
-is the version of the SAShiny package that ran the engine (the same number in R and Python, §11).
+Both languages write the same bytes for these fields:
+- Timestamps (`started_at`, `ended_at`, `recorded_at` in 8.3 and `cached_at` in 6.11) have the form
+  `YYYY-MM-DDTHH:MM:SSZ`: UTC, whole seconds, a literal `Z`. Readers MUST also accept other ISO 8601
+  UTC forms (for example `+00:00` with fractional seconds, as written by Python up to 0.3.1).
+- `engine_version` is the SAShiny package version (equal in R and Python, section 11) for every
+  engine, including the internal test mock.
 
 ### 8.5 Chart spec (client-side rendering)
 

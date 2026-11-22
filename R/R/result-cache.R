@@ -223,8 +223,8 @@ sas_cache_clear <- function() {
   }
   hit <- entry$result
   hit$metadata$cache_hit <- TRUE
-  hit$metadata$cached_at <- .sashiny_now(
-    as.POSIXct(entry$stored_at, origin = "1970-01-01", tz = "UTC")
+  hit$metadata$cached_at <- format(
+    as.POSIXct(entry$stored_at, origin = "1970-01-01", tz = "UTC"), "%Y-%m-%dT%H:%M:%SZ"
   )
   list(key = key, hit = hit)
 }

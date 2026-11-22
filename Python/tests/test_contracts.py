@@ -96,3 +96,42 @@ def test_forbidden_construct_outside_class_is_s014() -> None:
     contract = sashiny.Contract(data, FIX / "contracts" / "valid" / "minimal")
     issues = sashiny.validate(contract, TODAY)
     assert [i.key() for i in issues] == [("S014", "/inputs/x/pattern")]
+
+
+# Spec §1.1 plain scalar typing (#155), mirrored in R/tests/testthat/test-contract.R.
+YAML_SCALARS: list[tuple[str, object]] = [
+    ("-.5", -0.5),
+    ("+.5", 0.5),
+    (".5", 0.5),
+    ("1.", 1.0),
+    ("1.5e+3", 1500.0),
+    ("-.5E-3", -0.0005),
+    ("-.inf", float("-inf")),
+    ("12", 12),
+    ("+12", 12),
+    ("0x1A", 26),
+    ("2147483648", 2147483648),
+    ("1_000", "1_000"),
+    ("1,000", "1,000"),
+    ("017", "017"),
+    ("08", "08"),
+    ("1e3", "1e3"),
+    ("1.5e3", "1.5e3"),
+    ("0o17", "0o17"),
+    ("0b101", "0b101"),
+    ("-0x1A", "-0x1A"),
+    ("1:30", "1:30"),
+    ("y", "y"),
+    ("yes", True),
+    ("off", False),
+    ("~", None),
+]
+
+
+@pytest.mark.parametrize(("text", "want"), YAML_SCALARS, ids=[t for t, _ in YAML_SCALARS])
+def test_plain_scalar_typing(tmp_path: Path, text: str, want: object) -> None:
+    path = tmp_path / "x.sashiny.yml"
+    path.write_text(f"v: {text}\n", encoding="utf-8")
+    got = sashiny.load(path).data["v"]
+    assert got == want
+    assert type(got) is type(want)

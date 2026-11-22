@@ -1,0 +1,23 @@
+sashiny: 1
+program: program.sas
+title: YAML forms that are strings, not numbers (spec 1.1)
+inputs:
+  underscore:
+    type: numeric
+    label: Underscore digits
+    max: 1_000
+  leading_zero:
+    type: numeric
+    label: Leading zero
+    min: 017
+  bare_exponent:
+    type: numeric
+    label: Exponent without a dot or a sign
+    default: 1e3
+  sexagesimal:
+    type: numeric
+    label: Base 60
+    step: 1:30
+outputs:
+  log:
+    type: log

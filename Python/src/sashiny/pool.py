@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Any
 
+from . import __version__
 from .contract import Contract
 from .engines import Engine
 from .errors import EngineError, ValuesError
@@ -59,7 +60,7 @@ class Pool(Engine):
     """
 
     name = "pool"
-    version = "0.1.0"
+    version = __version__
 
     def __init__(  # noqa: PLR0913 - pool configuration knobs
         self,
@@ -195,7 +196,7 @@ class Pool(Engine):
         if discard:
             from .choices_cache import clear  # noqa: PLC0415 - avoid an import cycle
 
-            clear(self)  # spec §6.4: a pooled SAS session was replaced (#152)
+            clear(self)  # spec §6.4: a failed pooled SAS session is replaced (as R does)
         with self._cond:
             session.in_use = False
             session.last_used = time.monotonic()

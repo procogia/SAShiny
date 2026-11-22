@@ -21,20 +21,6 @@ from ..result import Result
 __all__ = ["Engine", "check_engine", "testing"]
 
 
-def package_version() -> str:
-    """Return the SAShiny version, reported as every engine's ``engine_version`` (spec §8.4)."""
-    from .. import __version__  # noqa: PLC0415 - avoid an import cycle
-
-    return __version__
-
-
-class _PackageVersion:
-    """Descriptor: ``engine.version`` is the package version, as in R."""
-
-    def __get__(self, obj: object, owner: type | None = None) -> str:
-        return package_version()
-
-
 def testing() -> bool:
     """Whether the code runs inside the package's pytest suite."""
     return "pytest" in sys.modules and "PYTEST_CURRENT_TEST" in os.environ

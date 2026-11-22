@@ -29,10 +29,10 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from .. import __version__
 from ..contract import Contract
 from ..errors import EngineError, LicenseError
 from ..result import Result
-from .base import _PackageVersion
 from .saspy import (
     LICENSE_MESSAGE,
     SESSION_SETUP_CODE,
@@ -142,7 +142,7 @@ class ProcPythonEngine(SaspyEngine):
     """
 
     name = "procpython"
-    version = _PackageVersion()
+    version = __version__
 
     def __init__(self, sas: Any, *, license_ack: bool | None = None, own_session: bool = False):
         """Wrap the PROC PYTHON ``SAS`` object; nothing is submitted until the first run."""

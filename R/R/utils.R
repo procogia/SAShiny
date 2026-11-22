@@ -36,12 +36,10 @@
   invisible(TRUE)
 }
 
-#' UTC timestamp in the spec section 8.4 form `YYYY-MM-DDTHH:MM:SS.sssZ`.
-#' @param time A `POSIXct` time (default: now).
+#' UTC timestamp in ISO 8601.
 #' @noRd
-.sashiny_now <- function(time = Sys.time()) {
-  # %OS3 truncates to milliseconds, as Python's isoformat(timespec="milliseconds").
-  format(time, "%Y-%m-%dT%H:%M:%OS3Z", tz = "UTC")
+.sashiny_now <- function() {
+  format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
 }
 
 #' Read a whole file as raw bytes.

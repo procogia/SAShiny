@@ -55,6 +55,18 @@ test_that("sas_check() passes success and warning, and raises run errors", {
   expect_error(sas_check(invalid), "invalid input V003 /inputs/x", fixed = TRUE)
 })
 
+test_that("an issue without an input id gives a single-spaced reason (#153)", {
+  upload <- fake_result("error", metadata = list(issues = list(
+    list(code = "V014", input = "", message = "no column AGE")
+  )))
+  expect_identical(.sashiny_failure_reason(upload), "invalid input V014 no column AGE")
+  expect_error(sas_check(upload), "run r-123 failed: invalid input V014 no column AGE",
+    fixed = TRUE
+  )
+  bare <- fake_result("error", metadata = list(issues = list(list(code = "V014"))))
+  expect_identical(.sashiny_failure_reason(bare), "invalid input V014")
+})
+
 test_that("print() shows status, run id, duration, backend, reason and outputs", {
   withr::local_options(cli.num_colors = 1)
   res <- fake_result("error",

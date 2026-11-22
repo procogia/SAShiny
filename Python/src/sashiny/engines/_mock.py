@@ -17,12 +17,13 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+from .. import __version__
 from ..contract import Contract
 from ..recording import contract_sha256, key_for, load_recording, program_sha256
 from ..result import Result
 from ..upload import UploadError, UploadFile, _check_file, read_upload, resolve_upload
 from ..values import render_values
-from .base import Engine, _PackageVersion, testing
+from .base import Engine, testing
 
 __all__ = ["MockEngine"]
 
@@ -72,7 +73,7 @@ class MockEngine(Engine):
     """
 
     name = "mock"
-    version = _PackageVersion()
+    version = __version__
 
     def __init__(
         self,

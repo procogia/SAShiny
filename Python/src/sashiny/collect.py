@@ -81,7 +81,8 @@ def split_log(log: str) -> list[str]:
     """Split a SAS log into lines (§8.2 *log*).
 
     Line breaks are CRLF, CR or LF. A trailing line break does not produce an
-    empty final line. Trailing whitespace is removed from every line.
+    empty final line. Trailing ASCII whitespace (spec §8.1) is removed from every
+    line; Unicode spaces such as U+00A0 stay, as in R.
 
     Args:
         log: The raw log text.
@@ -95,7 +96,6 @@ def split_log(log: str) -> list[str]:
     lines = _LINE_BREAK.split(log)
     if lines[-1] == "" and _TRAILING_BREAK.search(log):
         lines.pop()
-    # Spec §8.1: blanks are ASCII whitespace only, as in R (#154).
     return [line.rstrip(_ASCII_WS) for line in lines]
 
 

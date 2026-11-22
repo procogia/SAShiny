@@ -1,9 +1,9 @@
 # R/Python parity (docs/parity.md). Each test pins a behaviour the Python
 # library shares; the Python counterparts are in Python/tests/test_parity.py.
-# The cross-language cases (values, log scope, YAML numbers) are shared
+# The cross-language cases (values, log scope) are shared
 # fixtures under spec/fixtures.
 
-stamp_re <- "^\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d\\.\\d{3}Z$"
+stamp_re <- "^\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\dZ$"
 
 parity_contract <- function(name) {
   sas_contract(file.path(.sashiny_fixtures(), "contracts", "valid", name, "contract.sashiny.yml"))
@@ -16,29 +16,6 @@ write_contract <- function(text) {
   writeLines(text, path)
   path
 }
-
-test_that("YAML numbers follow the YAML 1.2 core schema (spec section 1.1)", {
-  path <- write_contract(c(
-    "a: [-.5, +.5, 12., 1e5, 1.0e5, 2E-2, 010, 0o17, 0x1F, .inf, -.Inf]",
-    "b: [1_000, 0b101, 190:20:30, +0x1F, '1e5', \"0o17\"]",
-    "c: 1e5 # comment",
-    "d:",
-    "  - 2.5e3",
-    "  - '2.5e3'",
-    "e: |",
-    "  1e5",
-    "f: {x: 1E-2, 'y': 0o7}"
-  ))
-  data <- sas_contract(path)$data
-  expect_identical(unlist(data$a[1:6]), c(-0.5, 0.5, 12, 1e5, 1e5, 0.02))
-  expect_identical(unlist(data$a[7:9]), c(10L, 15L, 31L))
-  expect_identical(unlist(data$a[10:11]), c(Inf, -Inf))
-  expect_identical(unlist(data$b), c("1_000", "0b101", "190:20:30", "+0x1F", "1e5", "0o17"))
-  expect_identical(data$c, 1e5)
-  expect_identical(data$d, list(2500, "2.5e3"))
-  expect_identical(data$e, "1e5\n")
-  expect_identical(data$f, list(x = 0.01, y = 7L))
-})
 
 test_that("default module ids split both separators and strip every combining mark", {
   expect_identical(.sashiny_default_module_id("C:\\progs\\Cars.sas"), "cars")
@@ -76,14 +53,13 @@ test_that("table label and format are ASCII-trimmed, missing is empty", {
   expect_identical(got, list(c("Age", ""), c("", "$8.")))
 })
 
-test_that("run metadata uses millisecond UTC stamps (spec section 8.4)", {
+test_that("run metadata uses whole-second UTC stamps (spec section 8.4)", {
   result <- sas_run(parity_contract("minimal"), .sashiny_engine_mock(), list(),
     today = .sashiny_today
   )
   expect_match(result$metadata$started_at, stamp_re, perl = TRUE)
   expect_match(result$metadata$ended_at, stamp_re, perl = TRUE)
   expect_identical(result$metadata$engine_version, as.character(utils::packageVersion("SAShiny")))
-  expect_equal(.sashiny_duration("2026-11-21T22:36:44.123Z", "2026-11-21T22:36:45.623Z"), 1.5)
 })
 
 test_that("a licence refusal reports the package version, as in Python", {
