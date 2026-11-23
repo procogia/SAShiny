@@ -7,7 +7,7 @@ Record each track once against live SAS so the offline fallback can replay it.
 Recordings are shared between R and Python, so record in one app only.
 
 Faster: run the live test suite with `SASHINY_RECORD_TO` set. It records and
-checks all eight scenarios below in one go (`docs/live-demo-tests.md`). The
+checks all ten scenarios below in one go (`docs/live-demo-tests.md`). The
 scenarios themselves are defined in `examples/demo-scenarios.yml`.
 
 ## Before you start
@@ -64,6 +64,16 @@ Needs SAS/ETS (`PROC ARIMA`), which ODA, SAS 9.4 with SAS/ETS and Viya provide.
 - [ ] Every other input at its default (Final model: Automatic, holdout 12, RMSE, horizon 6, 95%)
 - [ ] Press **Build and compare models**; `status: success`, no `collect error` lines
 - [ ] Cards show: run summary, nine charts, candidate, estimates, Ljung-Box, forecast and series tables, log; four CSV downloads open
+
+## Track 5: Survival (`survival_analysis`)
+
+Needs SAS/STAT (`PROC LIFETEST`, `PROC PHREG`), which ODA, SAS 9.4 and Viya provide.
+
+- [ ] ADSL and ADTTE: **Use the sample file** ticked for both
+- [ ] Study: RX101-STD; population: intent-to-treat (default)
+- [ ] Every other input at its default (treatment-arm groups, log-rank, 95%, adjusted Cox model, resampling test off)
+- [ ] Press **Run survival analysis**; `status: success`, no `collect error` lines
+- [ ] Cards show: run summary, five charts, demographics, event, Kaplan-Meier, group test, at-risk, hazard ratio, model fit, PH test and estimates tables, log; four CSV downloads and the RTF open
 
 ## Optional: a second scenario per track
 

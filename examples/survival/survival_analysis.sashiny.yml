@@ -1,0 +1,336 @@
+sashiny: 1
+program: survival_analysis.sas
+title: Clinical trial survival analysis (Kaplan-Meier and Cox)
+description: >
+  Progression-free survival in a simulated randomized trial of RX-101 added to
+  standard cancer treatment. PROC LIFETEST estimates Kaplan-Meier curves and
+  compares groups; PROC PHREG fits a Cox proportional hazards model and checks
+  its assumption. Requires SAS/STAT.
+version: "1.0"
+
+inputs:
+  adsl:
+    type: dataset
+    label: ADSL (subject level)
+    help: >
+      One row per subject. The sample holds three simulated studies of 600
+      subjects each (see Study).
+    target: work.adsl
+    macro: adsl
+    accept: [csv, xlsx, sas7bdat, xpt]
+    columns:
+      - {name: STUDYID, type: character}
+      - {name: USUBJID, type: character}
+      - {name: TRT01A, type: character}
+      - {name: AGE, type: numeric}
+      - {name: SEX, type: character}
+      - {name: STAGE, type: character}
+      - {name: ECOG, type: numeric}
+      - {name: REGION, type: character}
+      - {name: ITTFL, type: character}
+      - {name: RANDDT, type: date}
+    sample: data/adsl.csv
+  adtte:
+    type: dataset
+    label: ADTTE (time to event)
+    help: One PFS record per subject (PARAMCD = PFS). CNSR is 0 for an event and 1 for censoring.
+    target: work.adtte
+    macro: adtte
+    accept: [csv, xlsx, sas7bdat, xpt]
+    columns:
+      - {name: STUDYID, type: character}
+      - {name: USUBJID, type: character}
+      - {name: PARAMCD, type: character}
+      - {name: AVAL, type: numeric}
+      - {name: CNSR, type: numeric}
+      - {name: EVNTDESC, type: character}
+      - {name: ADT, type: date}
+    sample: data/adtte.csv
+  study:
+    type: choice
+    label: Study (data scenario)
+    help: >
+      The sample files hold one study per simulated scenario. Choose All for
+      your own files.
+    choices:
+      - {value: STD, label: "RX101-STD: moderate benefit (true HR 0.70)"}
+      - {value: "NULL", label: "RX101-NULL: no treatment effect (true HR 1.00)"}
+      - {value: NPH, label: "RX101-NPH: delayed effect, non-proportional hazards"}
+      - {value: ALL, label: "All studies in the files"}
+    default: STD
+  population:
+    type: choice
+    label: Analysis population
+    choices:
+      - {value: ITT, label: "Intent-to-treat (ITTFL = Y)"}
+      - {value: ALL, label: "All randomized subjects"}
+    default: ITT
+    widget: radio
+  arms:
+    type: multichoice
+    label: Treatment arms
+    choices: [Control, RX-101]
+    default: [Control, RX-101]
+    widget: checkbox
+  stages:
+    type: multichoice
+    label: Cancer stage
+    choices: [I, II, III]
+    default: [I, II, III]
+    widget: checkbox
+  sexes:
+    type: multichoice
+    label: Sex
+    choices:
+      - {value: F, label: Female}
+      - {value: M, label: Male}
+    default: [F, M]
+    widget: checkbox
+  group_by:
+    type: choice
+    label: "Kaplan-Meier: compare groups by"
+    choices:
+      - {value: TRT01A, label: Treatment arm}
+      - {value: STAGE, label: Cancer stage}
+      - {value: SEX, label: Sex}
+      - {value: ECOG, label: ECOG performance status}
+      - {value: REGION, label: Region}
+    default: TRT01A
+  km_test:
+    type: choice
+    label: "Kaplan-Meier: group comparison test"
+    choices:
+      - {value: logrank, label: "Log-rank"}
+      - {value: wilcoxon, label: "Wilcoxon (more weight on early events)"}
+    default: logrank
+    widget: radio
+  conf_level:
+    type: choice
+    label: Confidence level (%)
+    help: Used for the survival bands, median survival and hazard ratio intervals.
+    choices: ["90", "95", "99"]
+    default: "95"
+    widget: radio
+  show_ci:
+    type: choice
+    label: "Kaplan-Meier: confidence bands"
+    choices: [{value: "yes", label: Show}, {value: "no", label: Hide}]
+    default: "yes"
+    widget: radio
+  show_censor:
+    type: choice
+    label: "Kaplan-Meier: censoring marks"
+    choices: [{value: "yes", label: Show}, {value: "no", label: Hide}]
+    default: "yes"
+    widget: radio
+  show_atrisk:
+    type: choice
+    label: "Kaplan-Meier: number-at-risk table"
+    choices: [{value: "yes", label: Show}, {value: "no", label: Hide}]
+    default: "yes"
+    widget: radio
+  max_follow:
+    type: numeric
+    label: Maximum follow-up (months)
+    help: Follow-up beyond this time is censored at it, in every analysis.
+    min: 6
+    max: 60
+    step: 1
+    integer: true
+    default: 36
+  cox_model:
+    type: choice
+    label: "Cox model"
+    help: >
+      Adjusted is the prespecified analysis (treatment, age, sex and stage).
+      Custom uses treatment plus the covariates below; treat it as exploratory.
+    choices:
+      - {value: unadjusted, label: "Unadjusted: treatment only"}
+      - {value: adjusted, label: "Adjusted: treatment, age, sex, stage (prespecified)"}
+      - {value: custom, label: "Custom: treatment and the covariates below"}
+    default: adjusted
+  covariates:
+    type: multichoice
+    label: "Cox: custom covariates"
+    help: Used only when the Cox model is Custom.
+    choices:
+      - {value: AGE, label: Age (per 10 years)}
+      - {value: SEX, label: Sex}
+      - {value: STAGE, label: Cancer stage}
+      - {value: ECOG, label: ECOG performance status (reference 0)}
+      - {value: REGION, label: Region (reference first in sort order)}
+    default: [AGE, SEX, STAGE, ECOG]
+    render: bare
+    min_selected: 0
+    widget: checkbox
+  ref_trt:
+    type: choice
+    label: "Cox: treatment reference"
+    choices: [Control, RX-101]
+    default: Control
+    widget: radio
+  ref_sex:
+    type: choice
+    label: "Cox: sex reference"
+    choices: [{value: F, label: Female}, {value: M, label: Male}]
+    default: F
+    widget: radio
+  ref_stage:
+    type: choice
+    label: "Cox: stage reference"
+    choices: [I, II, III]
+    default: I
+    widget: radio
+  ties:
+    type: choice
+    label: "Cox: handling of tied event times"
+    choices:
+      - {value: efron, label: Efron}
+      - {value: breslow, label: Breslow}
+      - {value: exact, label: Exact (slower)}
+    default: efron
+  assess_ph:
+    type: choice
+    label: "Diagnostics: resampling test of proportional hazards"
+    help: PROC PHREG ASSESS PH with 1,000 resamples. Adds several seconds.
+    choices: [{value: "no", label: "Off"}, {value: "yes", label: "On"}]
+    default: "no"
+    widget: radio
+
+outputs:
+  run_summary:
+    type: table
+    label: Run summary
+    from: work.run_status
+  demog:
+    type: table
+    label: "Data: patient characteristics by treatment arm"
+    from: work.demog
+  event_summary:
+    type: table
+    label: "Data: events, censoring and follow-up"
+    help: Median follow-up is the reverse Kaplan-Meier estimate.
+    from: work.event_summary
+    formatted: true
+  km_plot:
+    type: plot
+    label: "Kaplan-Meier: survival curves"
+    select: 1
+    chart:
+      from: work.km_step
+      columns: [group, time, survival]
+      spec:
+        kind: line
+        x: time
+        y: survival
+        color: group
+        xlab: Months since randomization
+        ylab: Progression-free survival probability
+  km_summary:
+    type: table
+    label: "Kaplan-Meier: median and landmark survival"
+    from: work.km_summary
+    formatted: true
+  group_tests:
+    type: table
+    label: "Kaplan-Meier: group comparison"
+    from: work.group_tests
+    formatted: true
+  km_risk:
+    type: table
+    label: "Kaplan-Meier: number at risk"
+    from: work.km_risk
+  cox_estimates:
+    type: table
+    label: "Cox: hazard ratios"
+    from: work.cox_estimates
+    formatted: true
+  forest_plot:
+    type: plot
+    label: "Cox: forest plot"
+    select: 2
+    # The demo apps draw the SAShiny view with a render callback (survival_charts.py /
+    # survival_charts.R): CI bars, log axis, HR = 1 line. This spec is the fallback.
+    chart:
+      from: work.cox_estimates
+      columns: [term, hazard_ratio, hr_lower, hr_upper, hr_ci]
+      spec:
+        kind: scatter
+        x: hazard_ratio
+        y: term
+        xlab: Hazard ratio
+        ylab: Term
+  cox_fit:
+    type: table
+    label: "Cox: model fit and global tests"
+    from: work.cox_fit
+  ph_tests:
+    type: table
+    label: "Diagnostics: proportional hazards tests"
+    help: >
+      Schoenfeld rows test the correlation of each term's scaled Schoenfeld
+      residuals with the rank of event time (Fisher z). The supremum test runs
+      only when the resampling test is on.
+    from: work.ph_tests
+    formatted: true
+  lml_plot:
+    type: plot
+    label: "Diagnostics: log(-log(survival)) by treatment arm"
+    select: 3
+  schoenfeld_plot:
+    type: plot
+    label: "Diagnostics: treatment effect over time"
+    select: 4
+  deviance_plot:
+    type: plot
+    label: "Diagnostics: deviance residuals"
+    select: 5
+  km_curve:
+    type: table
+    label: "Results: Kaplan-Meier estimates"
+    from: work.km_curve
+    formatted: true
+    max_rows: 2000
+  log:
+    type: log
+    label: SAS log
+  km_csv:
+    type: download
+    label: Kaplan-Meier estimates (CSV)
+    format: csv
+    from: work.km_curve
+    filename: km_estimates
+  cox_csv:
+    type: download
+    label: Cox hazard ratios (CSV)
+    format: csv
+    from: work.cox_estimates
+    filename: cox_hazard_ratios
+  ph_csv:
+    type: download
+    label: Proportional hazards tests (CSV)
+    format: csv
+    from: work.ph_tests
+    filename: ph_tests
+  analysis_csv:
+    type: download
+    label: Analysis dataset, ADSL + ADTTE (CSV)
+    format: csv
+    from: work.survival
+    filename: survival_analysis_data
+  report_rtf:
+    type: download
+    label: Tables and figures (RTF)
+    format: rtf
+    filename: survival_report
+
+run:
+  entry: macro
+  macro: survival_analysis
+  timeout_seconds: 300
+
+ui:
+  order: [adsl, adtte, study, population, arms, stages, sexes, group_by, km_test,
+          conf_level, show_ci, show_censor, show_atrisk, max_follow, cox_model,
+          covariates, ref_trt, ref_sex, ref_stage, ties, assess_ph]
+  run_label: Run survival analysis

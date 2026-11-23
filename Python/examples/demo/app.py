@@ -1,6 +1,6 @@
 r"""SAShiny demo app (Python).
 
-Four tabs (General / Pharma / AML / Forecasting) run the example contracts on a
+Five tabs (General / Pharma / AML / Forecasting / Survival) run the example contracts on a
 live SAS system chosen with ``SASHINY_PROFILE``: ``oda`` (SAS OnDemand for
 Academics, the default), ``viya`` or ``sas94``. There is no offline mode:
 SAShiny runs programs only on a SAS system you are licensed to use. Acknowledge
@@ -23,8 +23,10 @@ Run from the repository root:
 
 from __future__ import annotations
 
+import importlib.util
 import os
 from pathlib import Path
+from typing import Any
 
 from shiny import App, Inputs, Outputs, Session, ui
 
@@ -49,7 +51,25 @@ TRACKS = {
     "pharma": ("Pharma", EXAMPLES / "pharma" / "ae_summary.sashiny.yml"),
     "aml": ("AML", EXAMPLES / "aml" / "cash_aggregation_tuning.sashiny.yml"),
     "forecasting": ("Forecasting", EXAMPLES / "forecasting" / "arima_forecast.sashiny.yml"),
+    "survival": ("Survival", EXAMPLES / "survival" / "survival_analysis.sashiny.yml"),
 }
+
+
+def _survival_charts() -> Any:
+    """Load the survival example's chart callbacks (examples/survival/survival_charts.py)."""
+    path = EXAMPLES / "survival" / "survival_charts.py"
+    spec = importlib.util.spec_from_file_location("survival_charts", path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"cannot load {path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+# Chart render callbacks per track (spec 8.5): the forest plot needs CI bars and
+# a log axis, which the declarative chart spec does not draw.
+CHART_RENDER = {"survival": {"forest_plot": _survival_charts().forest_chart}}
+
 PROFILES = {
     "oda": "SAS ODA (OnDemand for Academics)",
     "viya": "SAS Viya",
@@ -110,7 +130,7 @@ app_ui = ui.page_navbar(
 def server(input: Inputs, output: Outputs, session: Session) -> None:
     """Serve every track on the shared live pool."""
     for tid, (_label, path) in TRACKS.items():
-        modules.program_server(tid, sashiny.load(path), ENGINE)
+        modules.program_server(tid, sashiny.load(path), ENGINE, chart_render=CHART_RENDER.get(tid))
 
 
 app = App(app_ui, server)

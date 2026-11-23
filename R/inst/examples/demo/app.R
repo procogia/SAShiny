@@ -1,6 +1,6 @@
 # SAShiny demo app (R).
 #
-# Four tabs (General / Pharma / AML / Forecasting) run the example contracts on
+# Five tabs (General / Pharma / AML / Forecasting / Survival) run the example contracts on
 # a live SAS system chosen with SASHINY_PROFILE: oda (SAS OnDemand for
 # Academics, the default), viya or sas94. There is no offline mode: SAShiny runs programs only on a SAS
 # system you are licensed to use. Acknowledge this before starting the app with
@@ -57,9 +57,18 @@ tracks <- list(
   forecasting = list(
     "Forecasting",
     file.path(examples_dir, "forecasting", "arima_forecast.sashiny.yml")
+  ),
+  survival = list(
+    "Survival",
+    file.path(examples_dir, "survival", "survival_analysis.sashiny.yml")
   )
 )
 contracts <- lapply(tracks, function(t) sas_contract(t[[2]]))
+
+# Chart render callbacks per track (spec 8.5): the forest plot needs CI bars and
+# a log axis, which the declarative chart spec does not draw.
+source(file.path(examples_dir, "survival", "survival_charts.R"), local = TRUE)
+chart_render <- list(survival = list(forest_plot = forest_chart))
 
 profiles <- c(
   "SAS ODA (OnDemand for Academics)" = "oda",
@@ -128,7 +137,7 @@ ui <- do.call(bslib::page_navbar, c(list(
 server <- function(input, output, session) {
   engine <- shared_live_engine(profile)
   for (tid in names(tracks)) {
-    sas_program_server(tid, contracts[[tid]], engine)
+    sas_program_server(tid, contracts[[tid]], engine, render = chart_render[[tid]])
   }
   # Live pools are shared across sessions (issue #62), so they are not closed
   # here; they live for the app's lifetime.

@@ -6,6 +6,17 @@ All notable changes to the Python library are documented here. The format follow
 
 ## [Unreleased]
 
+### Added
+- A fifth demo track, **Survival** (`examples/survival`): progression-free survival
+  in a simulated two-arm cancer trial (ADSL + ADTTE), with Kaplan-Meier curves,
+  median and landmark survival and log-rank or Wilcoxon tests (`PROC LIFETEST`), Cox
+  regression with selectable covariates and reference levels (`PROC PHREG`), and
+  proportional hazards diagnostics (Schoenfeld residuals, `ASSESS PH`). The
+  reproducible generator (`generate_survival_data.py`) writes three studies: a
+  standard trial, no treatment effect and a delayed (non-proportional) effect.
+  `sas_survival_runner.py` runs the contract from the command line. The demo app,
+  demo scenarios and live tests include the new track.
+
 ## [0.3.1] - 2026-11-20
 
 ### Deprecated

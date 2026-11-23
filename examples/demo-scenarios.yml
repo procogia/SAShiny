@@ -87,6 +87,36 @@ scenarios:
       tables: {run_summary: {min_rows: 1}, comparison: {min_rows: 1}, forecast: {min_rows: 1}, estimates: {min_rows: 1}}
       plots: {history_plot: 1, seasonal_plot: 1, acf_plot: 1, comparison_plot: 1, holdout_plot: 1, residual_plot: 1, residual_acf_plot: 1, residual_hist_plot: 1, forecast_plot: 1}
 
+  - id: survival
+    title: Survival - Kaplan-Meier and Cox regression, RX101-STD
+    contract: survival/survival_analysis.sashiny.yml
+    primary: true
+    values:
+      study: STD
+      population: ITT
+      arms: [Control, RX-101]
+      stages: [I, II, III]
+      sexes: [F, M]
+      group_by: TRT01A
+      km_test: logrank
+      conf_level: "95"
+      show_ci: "yes"
+      show_censor: "yes"
+      show_atrisk: "yes"
+      max_follow: 36
+      cox_model: adjusted
+      covariates: [AGE, SEX, STAGE, ECOG]
+      ref_trt: Control
+      ref_sex: F
+      ref_stage: I
+      ties: efron
+      assess_ph: "no"
+    uploads: {adsl: sample, adtte: sample}
+    expect:
+      status: success
+      tables: {run_summary: {min_rows: 1}, demog: {min_rows: 1}, event_summary: {min_rows: 1}, km_summary: {min_rows: 1}, group_tests: {min_rows: 1}, km_risk: {min_rows: 1}, cox_estimates: {min_rows: 1}, cox_fit: {min_rows: 1}, ph_tests: {min_rows: 1}, km_curve: {min_rows: 1}}
+      plots: {km_plot: 1, forest_plot: 1, lml_plot: 1, schoenfeld_plot: 1, deviance_plot: 1}
+
   # Optional on-stage variations: one changed input per track.
   - id: general-msrp-40000
     title: General - minimum MSRP 40000
@@ -158,3 +188,33 @@ scenarios:
       status: success
       tables: {comparison: {min_rows: 1}, forecast: {min_rows: 1}}
       plots: {forecast_plot: 1}
+
+  - id: survival-nph-assess
+    title: Survival - delayed-effect study (RX101-NPH) with the resampling PH test
+    contract: survival/survival_analysis.sashiny.yml
+    primary: false
+    values:
+      study: NPH
+      population: ITT
+      arms: [Control, RX-101]
+      stages: [I, II, III]
+      sexes: [F, M]
+      group_by: TRT01A
+      km_test: logrank
+      conf_level: "95"
+      show_ci: "yes"
+      show_censor: "yes"
+      show_atrisk: "yes"
+      max_follow: 36
+      cox_model: adjusted
+      covariates: [AGE, SEX, STAGE, ECOG]
+      ref_trt: Control
+      ref_sex: F
+      ref_stage: I
+      ties: efron
+      assess_ph: "yes"
+    uploads: {adsl: sample, adtte: sample}
+    expect:
+      status: success
+      tables: {cox_estimates: {min_rows: 1}, ph_tests: {min_rows: 10}}
+      plots: {km_plot: 1, schoenfeld_plot: 1}

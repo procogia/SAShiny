@@ -1,12 +1,12 @@
 # Live demo test suite
 
 The demo checklist (`docs/recording-checklist.md`) as automated tests that run
-the four demo SAS programs, unchanged, on a real SAS session. The R and Python
+the five demo SAS programs, unchanged, on a real SAS session. The R and Python
 suites read the same scenarios from `examples/demo-scenarios.yml`.
 
 ## What it checks
 
-For each scenario (the four tracks with their defaults, plus one changed input
+For each scenario (the five tracks with their defaults, plus one changed input
 per track):
 
 - the session starts and reports a SAS version
@@ -27,7 +27,7 @@ Across runs:
 - an xlsx copy of the AML sample, uploaded as a user file, gives the same tables
 - a fresh session gives the same results
 
-Offline (every CI run): the scenario values are valid, the four primary
+Offline (every CI run): the scenario values are valid, the five primary
 scenarios equal the UI defaults (so pressing Run untouched matches the
 recordings), the checker catches every kind of problem, and any committed
 recordings replay and pass the same checks.

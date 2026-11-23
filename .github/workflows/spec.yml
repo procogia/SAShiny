@@ -29,4 +29,5 @@ jobs:
           python examples/pharma/data/make_data.py
           python examples/aml/data/make_data.py
           python examples/forecasting/data/generate_rx_data.py
+          python examples/survival/data/generate_survival_data.py
           git diff --exit-code -- examples
