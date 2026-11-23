@@ -505,6 +505,10 @@ sas_engine_run.sashiny_engine_saspy <- function(engine, contract, values, today 
 #' A failed result after an engine/session failure.
 #' @noRd
 .sashiny_engine_error <- function(run_id, base, condition) {
+  # A saspy engine reports the package version, as in Python (spec section 8.4).
+  if (identical(base$engine, "saspy") && is.null(base$engine_version)) {
+    base$engine_version <- as.character(utils::packageVersion("SAShiny"))
+  }
   meta <- do.call(.sashiny_metadata, c(list(run_id = run_id, status = "error"), base))
   meta$engine_error <- conditionMessage(condition)
   .sashiny_result(run_id, "error", metadata = meta)

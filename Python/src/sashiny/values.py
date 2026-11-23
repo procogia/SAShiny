@@ -105,10 +105,18 @@ def json_values(text: str | bytes) -> dict[str, Any]:
     return values
 
 
+def _finite(number: float) -> bool:
+    """Whether a JSON number is finite; an integer too large for a double is not (as in R)."""
+    try:
+        return math.isfinite(number)
+    except OverflowError:
+        return False
+
+
 def render_values(  # noqa: PLR0912, PLR0913, PLR0917
     data: dict[str, Any],
     values: dict[str, Any],
-    today: date,
+    today: date | None = None,
     only: list[str] | None = None,
     choices_override: dict[str, list[str]] | None = None,
     uploads: dict[str, bool] | None = None,
@@ -118,7 +126,7 @@ def render_values(  # noqa: PLR0912, PLR0913, PLR0917
     Args:
         data: The parsed contract data.
         values: Input values keyed by input id, in JSON form (spec §2.1).
-        today: The date used to resolve ``"today"``.
+        today: The date used to resolve ``"today"`` (default: today, as in R).
         only: When given, restrict processing to these input ids.
         choices_override: Choices read from SAS for ``choices_from`` inputs.
         uploads: Maps dataset input ids to ``True`` when a file was supplied.
@@ -130,6 +138,7 @@ def render_values(  # noqa: PLR0912, PLR0913, PLR0917
 
     """
     inputs: dict[str, Any] = data.get("inputs") or {}
+    today = today or date.today()
     uploads = uploads or {}
     macros: dict[str, str] = {}
     issues: list[Issue] = []
@@ -154,6 +163,10 @@ def render_values(  # noqa: PLR0912, PLR0913, PLR0917
         if isinstance(raw, str) and kind == "text":
             raw = _ws_strip(raw)
         optional = spec.get("optional", False)
+        if kind in {"multichoice", "daterange"} and raw is not None and not isinstance(raw, list):
+            # Spec §4: a value that is not an array is V002, even "" (as in R).
+            issues.append(Issue("V002", iid))
+            continue
         if kind == "multichoice" and raw == []:
             absent = optional
             if not optional and spec.get("min_selected", 1) >= 1:
@@ -193,7 +206,7 @@ def _render_one(  # noqa: PLR0911, PLR0912
     if kind == "numeric":
         if isinstance(raw, bool) or not isinstance(raw, (int, float)):
             return Issue("V002", iid), []
-        if not math.isfinite(raw):
+        if not _finite(raw):
             return Issue("V003", iid), []
         if spec.get("integer") and not float(raw).is_integer():
             return Issue("V012", iid), []

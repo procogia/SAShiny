@@ -4,9 +4,10 @@ PyPI and CI checks have no SAS, so the test suite needs a way to exercise the
 Shiny module, the pool and result handling without one. This engine replays
 hand-written recordings (spec ``CONTRACT.md`` §8.3) for that purpose only. It is
 not exported, it refuses to run outside pytest, and the public entry points
-accept only live engines outside tests (:func:`check_engine`), so users cannot
-feed logs or results that did not come from a licensed SAS system into an app
-(spec §6.6).
+accept only live, replay and registered engines outside tests
+(:func:`check_engine`). Unlike the public replay engine
+(:func:`sashiny.replay`), it does not check provenance, so users cannot feed it
+logs or results that did not come from a licensed SAS system (spec §6.6).
 """
 
 from __future__ import annotations
@@ -17,14 +18,14 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+from .. import __version__
 from ..contract import Contract
-from ..recording import contract_sha256, key_for, load_recording, program_sha256
+from ..recording import key_for, load_recording
 from ..result import Result
-from ..upload import UploadError, UploadFile, _check_file, read_upload, resolve_upload
-from ..values import render_values
+from ._offline import prepare_offline_run, resolve_files
 from .base import Engine, testing
 
-__all__ = ["MockEngine"]
+__all__ = ["MockEngine", "resolve_files"]
 
 
 def _require_testing() -> None:
@@ -41,23 +42,6 @@ def _recording_key(
     return key_for(contract, macros, files or {})
 
 
-def resolve_files(contract: Contract, uploads: dict[str, Any] | None) -> dict[str, Path]:
-    """Resolve ``uploads`` entries to file paths (``True`` = the contract's sample).
-
-    Each supplied file is checked per §7 step 1 (extension, existence, size); a
-    bad file raises :class:`UploadError`, which the mock engine reports as ``V014``.
-    """
-    files: dict[str, Path] = {}
-    for iid, spec in (contract.data.get("inputs") or {}).items():
-        if spec["type"] != "dataset":
-            continue
-        upload = resolve_upload((uploads or {}).get(iid), spec, contract.base_dir)
-        if upload is not None:
-            _check_file(upload, spec)
-            files[iid] = upload.path
-    return files
-
-
 class MockEngine(Engine):
     """The internal mock engine (tests only); replays recorded results.
 
@@ -72,7 +56,7 @@ class MockEngine(Engine):
     """
 
     name = "mock"
-    version = "0.1.0"
+    version = __version__
 
     def __init__(
         self,
@@ -107,36 +91,10 @@ class MockEngine(Engine):
         _require_testing()
         today = today or date.today()
         run_id = run_id or str(uuid.uuid4())
-        flags = {k: bool(v) for k, v in (uploads or {}).items()}
-        found = getattr(contract, "cached_choices", None) or self.choices(contract)
-        override = {k: [c["value"] for c in v] for k, v in found.items()}
-        macros, issues = render_values(
-            contract.data, values, today, choices_override=override or None, uploads=flags
-        )
-        base: dict[str, Any] = {
-            "contract_sha256": contract_sha256(contract),
-            "program_sha256": program_sha256(contract),
-            "macros": macros,
-            "engine": self.name,
-            "engine_version": self.version,
-        }
-        if issues:
-            result = Result.new(run_id, "error", **base)
-            result.metadata["issues"] = [{"code": i.code, "input": i.path} for i in issues]
-            return result
-        try:
-            files = resolve_files(contract, uploads)
-            # Run the full §7 conversion for every supplied dataset input, exactly
-            # like the live engine, so a missing declared column, an unparseable
-            # cell or an unreadable file is reported as V014 offline (spec §6.1
-            # step 2 / §7).
-            for iid, path in files.items():
-                read_upload(UploadFile(path=path, name=path.name), contract.data["inputs"][iid])
-        except UploadError as exc:
-            result = Result.new(run_id, "error", **base)
-            result.metadata["issues"] = [{"code": "V014", "message": str(exc)}]
-            return result
-
+        prep = prepare_offline_run(self, contract, values, today, uploads, run_id, self.name)
+        if prep.result is not None:
+            return prep.result
+        base, macros, files = prep.base, prep.macros, prep.files
         recording = load_recording(self.recordings_dir, _recording_key(contract, macros, files))
         if recording is None:
             result = Result.new(run_id, "success", **base)

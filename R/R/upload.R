@@ -27,9 +27,10 @@
 #'
 #' `TRUE` selects the contract's `sample`. A path, a Shiny `fileInput` value
 #' (a data frame with `datapath` and `name`) or an upload file selects that
-#' file.
+#' file. Any other data frame is written as canonical CSV `<id>.csv`
+#' (spec section 7.1).
 #' @noRd
-.sashiny_resolve_upload <- function(value, spec, base_dir) {
+.sashiny_resolve_upload <- function(value, spec, base_dir, id = "data") {
   if (is.null(value) || isFALSE(value) || (is.character(value) && !nzchar(value[[1]]))) {
     return(NULL)
   }
@@ -43,8 +44,15 @@
   if (inherits(value, "sashiny_upload_file")) {
     return(value)
   }
+  # A data frame value (spec sections 6.10 and 7.1): written as canonical CSV.
+  if (inherits(value, "sashiny_upload_frame")) {
+    return(.sashiny_frame_upload(value$frame, value$id))
+  }
   if (is.data.frame(value) && all(c("datapath", "name") %in% names(value))) {
     return(.sashiny_upload_file(value$datapath[[1]], value$name[[1]]))
+  }
+  if (is.data.frame(value)) {
+    return(.sashiny_frame_upload(value, id))
   }
   .sashiny_upload_file(as.character(value[[1]]))
 }
@@ -57,7 +65,7 @@
   for (iid in names(inputs)) {
     spec <- inputs[[iid]]
     if (!identical(spec$type, "dataset")) next
-    upload <- .sashiny_resolve_upload(uploads[[iid]], spec, contract$base_dir)
+    upload <- .sashiny_resolve_upload(uploads[[iid]], spec, contract$base_dir, iid)
     if (!is.null(upload)) {
       # Check extension, existence and size (section 7 step 1); a bad file is
       # reported as V014 rather than a raw error.
@@ -106,10 +114,18 @@
 .sashiny_read_file <- function(upload) {
   ext <- .sashiny_extension(upload$name)
   if (identical(ext, "csv")) {
-    df <- utils::read.csv(upload$path,
-      colClasses = "character", na.strings = character(0),
-      check.names = FALSE, encoding = "UTF-8", fileEncoding = "UTF-8"
-    )
+    read_csv <- function(skip_blank) {
+      utils::read.csv(upload$path,
+        colClasses = "character", na.strings = character(0),
+        check.names = FALSE, encoding = "UTF-8", fileEncoding = "UTF-8",
+        blank.lines.skip = skip_blank
+      )
+    }
+    df <- read_csv(TRUE)
+    # With a one-column header every line after it is a row, so an empty line
+    # is a missing value (spec section 7 step 1, RFC 4180); the final line
+    # terminator adds no row. Wider files keep skipping blank lines.
+    if (ncol(df) == 1L) df <- read_csv(FALSE)
     return(list(df = df, all_text = TRUE))
   }
   if (identical(ext, "xlsx")) {
@@ -118,10 +134,13 @@
       # leading-zero strings (spec section 7 step 3: only empty/whitespace is missing).
       # Without it openxlsx coerces literal "NA" to a missing value before the
       # declared-column conversion can distinguish it from a blank cell.
-    df <- openxlsx::read.xlsx(upload$path, sheet = 1L, detectDates = TRUE, check.names = FALSE,
-        sep.names = " ", na.strings = character(0)
+    # Blank rows are kept and date-formatted cells become date-times, as
+    # pandas/openpyxl read them (spec section 7 step 1): openxlsx skips blank
+    # rows and detects only some date formats, so serials are converted here.
+    df <- openxlsx::read.xlsx(upload$path, sheet = 1L, detectDates = FALSE, check.names = FALSE,
+        sep.names = " ", na.strings = character(0), skipEmptyRows = FALSE
     )
-    return(list(df = df, all_text = FALSE))
+    return(list(df = .sashiny_xlsx_fix(df, upload$path), all_text = FALSE))
   }
   if (ext %in% c("xpt", "sas7bdat")) {
     .sashiny_need("haven", "to read SAS data uploads")
@@ -130,6 +149,68 @@
     return(list(df = df, all_text = FALSE))
   }
   .sashiny_upload_error("unsupported file type .", ext)
+}
+
+#' Whether an Excel number format is a date or time format.
+#'
+#' The rule openpyxl (and so pandas) uses: a built-in date format id, or a
+#' format code that, without quoted text, escaped characters and `[...]`
+#' sections, contains one of `d m y h s`.
+#' @noRd
+.sashiny_xlsx_is_date_format <- function(num_fmt) {
+  if (is.null(num_fmt)) {
+    return(FALSE)
+  }
+  id <- suppressWarnings(as.integer(num_fmt$numFmtId %||% NA))
+  if (!is.na(id) && id %in% c(14:22, 45:47)) {
+    return(TRUE)
+  }
+  code <- num_fmt$formatCode %||% ""
+  if (!nzchar(code) || identical(tolower(code), "general")) {
+    return(FALSE)
+  }
+  code <- gsub("\"[^\"]*\"|\\\\.|\\[[^]]*\\]", "", code, perl = TRUE)
+  grepl("[dmyhsDMYHS]", code)
+}
+
+#' Align an openxlsx read with pandas/openpyxl (spec section 7 step 1).
+#'
+#' Columns whose non-empty data cells all carry a date format become UTC
+#' date-times from their Excel serials (1900 or 1904 date system). Text cells
+#' that openxlsx misreads from inline strings with `xml:space="preserve"`
+#' lose that markup prefix.
+#' @param df The data frame from `openxlsx::read.xlsx(detectDates = FALSE)`.
+#' @param path The xlsx file.
+#' @noRd
+.sashiny_xlsx_fix <- function(df, path) {
+  for (j in seq_along(df)) {
+    if (is.character(df[[j]])) {
+      df[[j]] <- sub("^xml:space=\"preserve\">", "", df[[j]])
+    }
+  }
+  if (nrow(df) == 0L) {
+    return(df)
+  }
+  wb <- openxlsx::loadWorkbook(path)
+  sheet <- wb$sheet_names[[1L]]
+  dated <- matrix(FALSE, nrow = nrow(df) + 1L, ncol = ncol(df))
+  for (so in wb$styleObjects) {
+    if (!identical(so$sheet, sheet) || !.sashiny_xlsx_is_date_format(so$style$numFmt)) next
+    keep <- so$rows <= nrow(dated) & so$cols <= ncol(dated)
+    dated[cbind(so$rows[keep], so$cols[keep])] <- TRUE
+  }
+  origin <- if (identical(openxlsx::getDateOrigin(path), "1904-01-01")) 24107 else 25569
+  for (j in seq_along(df)) {
+    x <- df[[j]]
+    present <- !is.na(x)
+    if (!is.numeric(x) || !any(present) || !all(dated[which(present) + 1L, j])) next
+    # As openpyxl's from_excel(): whole days plus the day fraction rounded to
+    # the millisecond (half to even in both languages).
+    day <- floor(x)
+    ms <- round((x - day) * 86400000)
+    df[[j]] <- as.POSIXct((day - origin) * 86400 + ms / 1000, origin = "1970-01-01", tz = "UTC")
+  }
+  df
 }
 
 #' Check extension, existence and size (section 7 step 1).
@@ -142,7 +223,7 @@
       ".", ext, " is not accepted (accepted: ", paste(accept, collapse = ", "), ")"
     )
   }
-  if (!file.exists(upload$path)) {
+  if (!utils::file_test("-f", upload$path)) {
     .sashiny_upload_error("file not found: ", upload$name)
   }
   limit <- spec$max_size_mb %||% 50
@@ -166,7 +247,7 @@
   if (is.numeric(x)) {
     return(as.numeric(x))
   }
-  text <- trimws(as.character(x))
+  text <- trimws(as.character(x), whitespace = "[ \t\r\n\f\v]")
   blank <- is.na(x) | !nzchar(text)
   converted <- .sashiny_as_number(ifelse(blank, NA, text))
   if (any(is.na(converted) & !blank)) {
@@ -184,7 +265,7 @@
   if (inherits(x, "POSIXt")) {
     return(as.Date(x, tz = "UTC"))
   }
-  text <- trimws(as.character(x))
+  text <- trimws(as.character(x), whitespace = "[ \t\r\n\f\v]")
   # Only native missing and empty/whitespace are "missing" (spec section 7 step 3);
   # any other non-ISO text (including the literal "NA", "nan", "NaT", "None")
   # is unparseable and reported as V014.
@@ -230,14 +311,17 @@
       df[[name]] <- .sashiny_upload_date(df[[name]], name)
       datetimes[[name]] <- "date"
     } else {
-      x <- as.character(df[[name]])
-      x[is.na(x)] <- ""
-      df[[name]] <- x
+      # Text stays as it is; other native cells take their spec section 7.1
+      # rule 5 text (1/0, %.17g, ISO dates), the same text Python writes.
+      x <- df[[name]]
+      if (inherits(x, "haven_labelled")) x <- unclass(x)
+      if (!inherits(x, c("Date", "POSIXct", "factor"))) attr(x, "class") <- NULL
+      df[[name]] <- .sashiny_frame_texts(x, name)
     }
   }
   if (read$all_text) {
     for (name in setdiff(names(df), declared)) {
-      text <- trimws(df[[name]])
+      text <- trimws(df[[name]], whitespace = "[ \t\r\n\f\v]")
       nonblank <- nzchar(text)
       converted <- .sashiny_as_number(ifelse(nonblank, text, NA))
       if (any(nonblank) && !any(is.na(converted) & nonblank)) {

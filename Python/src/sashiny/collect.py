@@ -81,7 +81,8 @@ def split_log(log: str) -> list[str]:
     """Split a SAS log into lines (§8.2 *log*).
 
     Line breaks are CRLF, CR or LF. A trailing line break does not produce an
-    empty final line. Trailing whitespace is removed from every line.
+    empty final line. Trailing ASCII whitespace (spec §8.1) is removed from every
+    line; Unicode spaces such as U+00A0 stay, as in R.
 
     Args:
         log: The raw log text.
@@ -95,7 +96,7 @@ def split_log(log: str) -> list[str]:
     lines = _LINE_BREAK.split(log)
     if lines[-1] == "" and _TRAILING_BREAK.search(log):
         lines.pop()
-    return [line.rstrip() for line in lines]
+    return [line.rstrip(_ASCII_WS) for line in lines]
 
 
 def log_level(line: str) -> str:
@@ -264,6 +265,13 @@ def _clean_cell(value: Any, numeric: bool) -> Any:
     return str(value).rstrip(_ASCII_WS)
 
 
+def _text_or_empty(value: Any) -> str:
+    """``""`` for a missing label or format, otherwise the ASCII-trimmed text (as in R)."""
+    if value is None or (isinstance(value, float) and math.isnan(value)):
+        return ""
+    return str(value).strip(_ASCII_WS)
+
+
 def build_table(
     meta: Sequence[dict[str, Any]],
     rows: Iterable[Sequence[Any]],
@@ -297,8 +305,8 @@ def build_table(
             {
                 "name": str(m["name"]),
                 "type": m["type"],
-                "label": str(m.get("label") or ""),
-                "format": str(m.get("format") or ""),
+                "label": _text_or_empty(m.get("label")),
+                "format": _text_or_empty(m.get("format")),
             }
             for m in meta
         ],

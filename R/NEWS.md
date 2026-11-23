@@ -9,6 +9,121 @@
   hazards diagnostics. The sample data hold three scenarios: a standard trial,
   no treatment effect and a delayed, non-proportional effect.
 
+# SAShiny 0.4.1
+
+* The maintainer's email address is now meharpratap.singh@procogia.com (same
+  maintainer, Mehar Pratap Singh). No code changes.
+
+# SAShiny 0.4.0
+
+R/Python parity pass (spec release 1.5, `docs/parity.md`).
+
+## Breaking changes
+
+* A run on a closed pool reports `pool closed` (was `pool exhausted: ...`),
+  as in Python.
+* `sas_oda()` with an unknown region raises a `sashiny_error_engine`, not an
+  rlang error.
+
+## New features
+
+* Replay and registered engines (spec section 6.6, spec release 1.7).
+  `sas_program_server()`, `sas_app()`, `sas_run()` and `sas_pool()` now also
+  accept:
+  * `sas_replay(recordings_dir)`, which replays recordings (spec section 8.3)
+    of runs made on a live, licensed 'SAS' system. A recording is replayed
+    only when it carries its `sas_version` (`&SYSVLONG`), `recorded_at` and the
+    SHA-256 of the contract and program it was made from, both matching the
+    files on disk. Otherwise the run is an error result with
+    `metadata$recording = "refused"` and the reason in
+    `metadata$engine_error`; inputs never recorded give
+    `metadata$recording = "missing"`. A replayed result has
+    `metadata$recording = "replayed"` and a `metadata$notice` such as
+    "Replayed from 9.04.01M0P061913, recorded 2015-07-30T12:00:00Z.", which
+    the module's status text shows.
+  * engines of an S3 class registered with
+    `sas_register_engine(class, license_ack = TRUE, description = )`. The
+    registrant acknowledges that the engine runs every program on a live,
+    licensed 'SAS' system; the licence option and environment variable do not
+    register an engine. `sas_registered_engines()` and
+    `sas_unregister_engine()` list and remove registrations.
+* `sas_engine_result()` builds a result with the run metadata of spec section
+  8.4 for a registered engine, and `sas_record()` writes a live or registered
+  engine's result as a recording. `sas_record()` refuses results without a
+  SAS version, replays, cache hits and results from another contract or
+  program, and writes empty `macros` and `outputs` as JSON objects. The
+  recording key is unchanged, so existing recordings keep their names.
+* `sas_cache_set_store()`, `sas_cache_store()`, `sas_cache_lru()` and
+  `sas_cache_clear()` replace or inspect the result cache store (spec section
+  6.11), as Python's `sashiny.result_cache` does.
+* `values` in `sas_program_server()` can now supply a dataset input: pass a
+  data frame (a tibble counts) and it replaces the upload control. It is
+  written as CSV in a canonical form (spec section 7.1) and checked like an
+  uploaded file, so a missing declared column is `V014`. `sas_run(uploads = )`
+  accepts data frames too. The same data frame gives the same CSV bytes in R
+  and Python, so result-cache and recording keys agree. This lets a parent
+  app, such as a teal app, pass its filtered data to SAS.
+* `sas_lint()` reports `L006` (spec section 10): with `run.entry: macro`, an
+  input macro name that the entry macro has no parameter for. 'SAS' rejects
+  such a call (`The keyword parameter ... was not defined with the macro`). A
+  `/ parmbuff` macro is not checked. Same code, message and fixtures as Python
+  (#163).
+
+## Bug fixes
+
+* xlsx uploads read like Python's pandas/openpyxl (spec section 7 step 1):
+  blank rows are kept instead of dropped; text with leading or trailing
+  spaces no longer comes back as `xml:space="preserve"> x `; and columns with
+  a date or time number format are date-times with their time of day (were
+  `Date`, losing the time, or raw serial numbers for some formats).
+* Declared `character` upload columns turn native cells (numbers, logicals,
+  dates) into the spec section 7.1 text, as Python does: `1`/`0`, `%.17g`
+  numbers and ISO dates, instead of `as.character()` (spec section 7).
+* The General (`cars_explorer.sas`) and AML (`cash_aggregation_tuning.sas`)
+  example programs set their standalone defaults inside a macro instead of
+  with open-code `%if`, so they run on every 'SAS' 9.4 release. On 9.4M0 to
+  M4 the open-code `%if` was an error and every output came back empty.
+* `S013`: a directory is not a program or sample file.
+* Default module ids strip every combining mark (Unicode category M), as
+  Python does.
+* Table `label`/`format` metadata, log lines and upload cells strip the same
+  ASCII blanks (space, tab, CR, LF, VT, FF) as Python (spec section 8.1).
+* Chart backends refuse mappings they cannot draw (spec section 8.5): base
+  graphics report `color` on bar/histogram/box and `fill` on
+  scatter/line/histogram/box as a collection error instead of ignoring them;
+  plotly refuses `color` and `fill` together and now shows the `subtitle`.
+  A base histogram honours `ylab`.
+* A licence-refused or failed saspy run reports the package version as
+  `engine_version`, as in Python.
+* A one-column CSV upload, or a one-column data frame for a dataset input,
+  keeps its rows whose value is missing or `""`: with a single header field
+  every line after the header is a row, so an empty line is a missing value
+  (spec section 7). They were dropped as blank lines, so SAS got fewer rows
+  (#164).
+* `sas_run(contract, engine)` without `values` uses the contract's defaults,
+  as its docs say: every input `values` does not supply takes its `default`,
+  with `"today"` resolved against `today`, so a scripted run submits what a
+  first click of Run does (spec section 6.12). It passed no values, so every
+  required input was `V001`. A supplied `NULL` (`list(id = NULL)`) still makes
+  an input absent. `values` now defaults to `NULL` (#162).
+
+## Changes
+
+* A value supplied through `values` for a dataset input is no longer ignored:
+  a data frame replaces the upload, `NULL` removes it, and anything else is
+  `V014`.
+
+## Fixes
+
+* `sas_check()` and `print()` no longer put two spaces in the reason of an
+  input issue without an input id (upload errors, `V014`): the reason is
+  `invalid input V014 no column AGE`, as in Python (#153).
+* Contract YAML numbers follow one rule in R and Python (spec section 1.1):
+  the YAML 1.2 core number forms that both languages' YAML parsers recognise.
+  `1,000` (was `NA`), `017` (was octal 15) and `-0x1A` (was -26) are now
+  strings, so a contract using them where a number is expected fails with
+  `E000` in both languages (#155).
+
 # SAShiny 0.3.1
 
 ## Versioning

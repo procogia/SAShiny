@@ -5,6 +5,9 @@ trademark of Posit Software, PBC. This project is not affiliated with or
 endorsed by either company.
 """
 
+# Set before the imports below: engines report it as their engine_version (spec §8.4).
+__version__ = "0.4.1"
+
 from typing import Any
 
 from .charts import chart_backends, render_chart
@@ -13,13 +16,19 @@ from .engines import (
     Backend,
     Engine,
     ProcPythonEngine,
+    ReplayEngine,
     SaspyEngine,
     connect,
     connect_in_session,
+    engine_result,
     load_profiles,
     oda,
+    register_engine,
+    registered_engines,
+    replay,
     sas94_iom,
     sas94_ssh,
+    unregister_engine,
     viya,
 )
 from .errors import (
@@ -36,6 +45,7 @@ from .lint import lint
 from .pool import Pool
 from .profiles import Profile, connect_from_env, parse_profile
 from .publish import publish
+from .recording import record
 from .result import LogLine, Result, TableResult
 from .run import close, run
 from .upload import UploadError, UploadFile
@@ -56,6 +66,7 @@ __all__ = [
     "Pool",
     "ProcPythonEngine",
     "Profile",
+    "ReplayEngine",
     "Result",
     "RunError",
     "SashinyError",
@@ -73,6 +84,7 @@ __all__ = [
     "connect_in_session",
     "default_module_id",
     "deploy",
+    "engine_result",
     "info",
     "json_values",
     "lint",
@@ -81,18 +93,21 @@ __all__ = [
     "oda",
     "parse_profile",
     "publish",
+    "record",
+    "register_engine",
+    "registered_engines",
     "render_chart",
     "render_values",
+    "replay",
     "reset_code",
     "run",
     "sas94_iom",
     "sas94_ssh",
+    "unregister_engine",
     "validate",
     "viya",
     "wrapper_code",
 ]
-
-__version__ = "0.3.1"
 
 
 def __getattr__(name: str) -> Any:

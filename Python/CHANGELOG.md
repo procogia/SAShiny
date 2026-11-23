@@ -16,6 +16,120 @@ All notable changes to the Python library are documented here. The format follow
   standard trial, no treatment effect and a delayed (non-proportional) effect.
   `sas_survival_runner.py` runs the contract from the command line. The demo app,
   demo scenarios and live tests include the new track.
+  The forest plot uses a chart render callback (`survival_charts.py`) for CI bars and a
+  log axis.
+
+## [0.4.1] - 2026-11-22
+
+### Changed
+
+- The maintainer's email address is now meharpratap.singh@procogia.com (same maintainer,
+  Mehar Pratap Singh). No code changes.
+
+## [0.4.0] - 2026-11-22
+
+### Added
+
+- Replay and registered engines (spec §6.6, spec release 1.7). `program_server`, `app`, `run`
+  and `Pool` now also accept:
+  - `sashiny.replay(recordings_dir)` (`ReplayEngine`), which replays recordings (§8.3) of runs
+    made on a live, licensed SAS system. A recording is replayed only when it carries its
+    `sas_version` (`&SYSVLONG`), `recorded_at` and the SHA-256 of the contract and program it
+    was made from, both matching the files on disk. Otherwise the run is an error result with
+    `metadata["recording"] == "refused"` and the reason in `metadata["engine_error"]`; inputs
+    never recorded give `"missing"`. A replayed result has `metadata["recording"] ==
+    "replayed"` and a `metadata["notice"]` such as "Replayed from 9.04.01M0P061913, recorded
+    2015-07-30T12:00:00Z.", which the module's status text shows.
+  - instances of an `Engine` subclass registered with
+    `sashiny.register_engine(cls, license_ack=True, description=...)`. The registrant
+    acknowledges that the engine runs every program on a live, licensed SAS system;
+    `SASHINY_LICENSE_ACK` does not register an engine. `registered_engines()` and
+    `unregister_engine()` list and remove registrations.
+- `sashiny.engine_result()` builds a result with the §8.4 metadata for a registered engine, and
+  `sashiny.record()` writes a live or registered engine's result as a recording. It refuses
+  results without a SAS version, replays, cache hits and results from another contract or
+  program. The recording key is unchanged, so existing recordings keep their names.
+- `values` in `program_server()` can now supply a dataset input: pass a pandas `DataFrame` and it
+  replaces the upload control. It is written as CSV in a canonical form (spec §7.1) and checked
+  like an uploaded file, so a missing declared column is `V014`. `run(uploads=)` accepts
+  DataFrames too. The same data frame gives the same CSV bytes in R and Python, so result-cache
+  and recording keys agree. This lets a parent app pass its filtered data to SAS.
+- Lint `L006` (spec §10): with `run.entry: macro`, an input macro name that the entry macro has
+  no parameter for. SAS rejects such a call (`The keyword parameter ... was not defined with the
+  macro`). A `/ parmbuff` macro is not checked. Same code, message and fixtures as R (#163).
+
+### Changed
+
+- A value supplied through `values` for a dataset input is no longer ignored: a DataFrame replaces
+  the upload, `None` removes it, and anything else is `V014`.
+
+- Contract YAML numbers follow the shared rule of spec §1.1 (the YAML 1.2 core number forms
+  both languages' YAML parsers recognise), so a contract is valid in R and Python or in neither:
+  `-.5`, `+.5` and `-.5E-3` are now numbers; `1_000`, `017`, `0b101` and `1:30` are now strings
+  (`E000` where a number is expected) instead of 1000, 15, 5 and 90 (#155).
+- Run timestamps (`started_at`, `ended_at`, a recording's `recorded_at`) are written as
+  `YYYY-MM-DDTHH:MM:SSZ` (UTC, whole seconds), the form R writes and `cached_at` already used
+  (spec §8.4). Results with `+00:00` timestamps are still read, also on Python 3.10. Every engine
+  (mock, saspy, PROC PYTHON, pool) reports the package version as `engine_version` instead of
+  `"0.1.0"`, as R does (#156).
+
+### Fixed
+
+- The General (`cars_explorer.sas`) and AML (`cash_aggregation_tuning.sas`) example programs set
+  their standalone defaults inside a macro instead of with open-code `%if`, so they run on every
+  SAS 9.4 release. On 9.4M0 to M4 the open-code `%if` was an error and every output came back empty.
+- `Pool` clears its `choices_from` cache when it discards a failed session (spec §6.4), as
+  R does; choices from the discarded SAS session were offered and validated against (#152).
+- `split_log` (the `log` output, `Result.log_frame()`, failure reasons) strips only ASCII
+  trailing whitespace (spec §8.1, §8.2), as R does; a trailing U+00A0, U+2003, U+3000 or U+0085
+  now stays (#154).
+- A one-column CSV upload, or a one-column DataFrame for a dataset input, keeps its rows whose
+  value is missing or `""`: with a single header field every line after the header is a row, so
+  an empty line is a missing value (spec §7). They were dropped as blank lines, so SAS
+  got fewer rows (#164).
+- `run(contract, engine)` without `values` uses the contract's defaults, as its docs say: every
+  input `values` does not supply takes its `default`, with `"today"` resolved against `today`, so
+  a scripted run submits what a first click of Run does (spec §6.12). It passed no values, so
+  every required input was `V001`. A supplied `None` still makes an input absent (#162).
+
+R/Python parity pass (spec release 1.5, `docs/parity.md`).
+
+### Changed (breaking)
+
+- `publish(name=)` is the content name, as in R's `sas_publish()` (it defaults to the
+  directory name). The rsconnect server nickname moved to the new `server=` argument.
+  `rsconnect-python` derives the content name from the title, so with both `name` and
+  `title` the content name follows the title, with a `UserWarning`.
+- `metadata["engine_error"]` holds the message only, without the exception class name.
+- `parse_profile()` raises `DeployError` (still a `ValueError`); `PoolExhausted` is an
+  `EngineError`.
+
+### Added
+
+- `program_server(render=)`: the R argument name for chart render callbacks
+  (`chart_render=` still works).
+- `render_values()` defaults `today` to today and `render_chart()` defaults `spec` to
+  `None`, as in R.
+
+### Fixed
+
+- Declared `character` upload columns turn native cells into the spec §7.1 text, as R
+  does: `1`/`0` for booleans (was `True`/`False`), `%.17g` numbers and ISO dates
+  (spec §7, step 3).
+- `SaspyEngine.close()` clears the `choices_from` cache too (spec §6.4).
+- Upload blank detection and table `label`/`format` strip ASCII blanks only, as in R (spec §8.1).
+- `""` for a `multichoice` or `daterange` input is `V002` (spec §4), and an integer too
+  large for a double is `V003` instead of an `OverflowError`.
+- A second run on a busy `SaspyEngine` waits up to 30 s, then returns
+  `engine busy: another run is in progress` (it used to cancel the first run).
+- `connect(backend, region=...)` rejects connection arguments next to a backend, as in R.
+- `connect_from_env()` treats an empty `SASHINY_ODA_REGION` or `SASHINY_SAS94_PORT` as unset.
+- An empty `cached_choices` is used instead of being re-queried.
+- Lint uses ASCII word boundaries, as R's PCRE does.
+- `default_module_id()` splits on `/` and `\` on every platform and strips every combining
+  mark (Unicode category M).
+- matplotlib honours `xlab`/`ylab` and the faceted `subtitle`, and refuses `color`/`fill`
+  mappings it cannot draw; plotly refuses `color` and `fill` together (spec §8.5).
 
 ## [0.3.1] - 2026-11-20
 

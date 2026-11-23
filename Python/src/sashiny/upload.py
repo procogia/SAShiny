@@ -12,23 +12,31 @@ from __future__ import annotations
 
 import datetime
 import hashlib
+import math
 import re
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 __all__ = [
+    "FrameUpload",
     "UploadError",
     "UploadFile",
     "file_sha256",
+    "frame_csv",
+    "frame_upload",
     "read_upload",
     "resolve_upload",
     "sanitize_names",
+    "upload_supplied",
 ]
 
 _INVALID = re.compile(r"[^A-Za-z0-9_]")
 MAX_NAME_BYTES = 32
 BYTES_PER_MB = 1024 * 1024
+# Blank cells are empty or ASCII whitespace only (spec §7, §8.1), as in R.
+_ASCII_WS = " \t\n\r\f\v"
 
 
 from .errors import UploadError  # noqa: E402 - re-exported for compatibility
@@ -53,12 +61,168 @@ class UploadFile:
         return Path(self.name).suffix.lower().lstrip(".")
 
 
-def resolve_upload(value: Any, spec: dict[str, Any], base_dir: Path) -> UploadFile | None:
+@dataclass(frozen=True)
+class FrameUpload:
+    """A data frame supplied for a dataset input (spec §6.10), not yet written.
+
+    Wrapping keeps it apart from a path or an :class:`UploadFile`.
+
+    Attributes:
+        frame: The pandas ``DataFrame``.
+        input_id: The dataset input id; the CSV file is named ``<input_id>.csv``.
+
+    """
+
+    frame: Any
+    input_id: str
+
+
+def _is_frame(value: Any) -> bool:
+    """Whether ``value`` is a pandas ``DataFrame`` (without importing pandas)."""
+    return type(value).__name__ == "DataFrame" and hasattr(value, "columns")
+
+
+def upload_supplied(value: Any) -> bool:
+    """Whether an ``uploads`` entry supplies a dataset (a DataFrame has no truth value)."""
+    if isinstance(value, FrameUpload) or _is_frame(value):
+        return True
+    return bool(value)
+
+
+def frame_upload(frame: Any, input_id: str) -> UploadFile:
+    """Write ``frame`` as canonical CSV ``<input_id>.csv`` in a new temporary folder (spec §7.1)."""
+    data = frame_csv(frame)
+    folder = Path(tempfile.mkdtemp(prefix="sashiny-frame-"))
+    path = folder / f"{input_id}.csv"
+    path.write_bytes(data)
+    return UploadFile(path=path, name=path.name)
+
+
+def frame_csv(frame: Any) -> bytes:
+    """Return the canonical CSV bytes of a pandas ``DataFrame`` (spec §7.1).
+
+    UTF-8 without a byte order mark, LF after every line, header row, fields
+    quoted only when they contain ``,``, ``"``, CR or LF. The same data frame
+    gives the same bytes in R.
+
+    Raises:
+        UploadError: ``frame`` is not a data frame, has no columns, or has a
+            value that cannot be written (reported as V014).
+
+    """
+    if not _is_frame(frame):
+        raise UploadError("a dataset value must be a data frame")
+    if len(frame.columns) == 0:
+        raise UploadError("the data frame has no columns")
+    columns = [_frame_column(frame.iloc[:, i], str(name)) for i, name in enumerate(frame.columns)]
+    lines = [",".join(_csv_field(str(name)) for name in frame.columns)]
+    lines.extend(",".join(row) for row in zip(*columns, strict=True))
+    return ("\n".join(lines) + "\n").encode("utf-8")
+
+
+def _frame_column(series: Any, name: str) -> list[str]:
+    """One column as quoted CSV fields (spec §7.1 rule 5)."""
+    return [_csv_field(text) for text in _column_texts(series, name)]
+
+
+def _column_texts(series: Any, name: str) -> list[str]:
+    """One column as unquoted §7.1 rule 5 texts; also used for declared character columns."""
+    import pandas as pd  # noqa: PLC0415 - optional dependency
+
+    dtype = series.dtype
+    if isinstance(dtype, pd.CategoricalDtype):
+        values = [None if pd.isna(v) else v for v in series.astype(object)]
+        return [_value_text(v, name) for v in values]
+    if pd.api.types.is_bool_dtype(dtype):
+        return ["" if pd.isna(v) else ("1" if v else "0") for v in series.astype(object)]
+    if pd.api.types.is_integer_dtype(dtype):
+        return ["" if pd.isna(v) else str(int(v)) for v in series.astype(object)]
+    if pd.api.types.is_float_dtype(dtype):
+        return [_number_text(float(v), name) for v in series]
+    if pd.api.types.is_datetime64_any_dtype(dtype):
+        return [_datetime_text(v) for v in series]
+    if pd.api.types.is_object_dtype(dtype) or pd.api.types.is_string_dtype(dtype):
+        return [_value_text(v, name) for v in series]
+    raise UploadError(f"column '{name}' has a type that cannot be written as CSV ({dtype})")
+
+
+def _value_text(value: Any, name: str) -> str:  # noqa: PLR0911 - one return per value type
+    """One value of an object or category column, by its own type."""
+    import pandas as pd  # noqa: PLC0415 - optional dependency
+
+    if value is None or (not isinstance(value, (str, list, dict, tuple)) and pd.isna(value)):
+        return ""
+    if type(value).__module__ == "numpy":
+        if type(value).__name__ == "datetime64":
+            return _datetime_text(value)
+        if type(value).__name__ != "timedelta64":
+            value = value.item()  # numpy numbers and booleans (np.int64, np.bool_)
+    if isinstance(value, str):
+        return value
+    if isinstance(value, bool):
+        return "1" if value else "0"
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, float):
+        return _number_text(value, name)
+    if isinstance(value, (pd.Timestamp, datetime.datetime)):
+        return _datetime_text(value)
+    if isinstance(value, datetime.date):
+        return value.isoformat()
+    raise UploadError(
+        f"column '{name}' has a type that cannot be written as CSV ({type(value).__name__})"
+    )
+
+
+def _number_text(value: float, name: str) -> str:
+    """``%.17g``, correctly rounded (Python's formatting is), so it reads back exactly."""
+    if math.isnan(value):
+        return ""
+    if math.isinf(value):
+        raise UploadError(f"column '{name}' has an infinite value, which CSV cannot hold")
+    return "%.17g" % value  # noqa: UP031 - C printf semantics, as the spec states
+
+
+def _datetime_text(value: Any) -> str:
+    """``YYYY-MM-DDTHH:MM:SS[.ffffff]Z`` in UTC, rounded to the microsecond."""
+    import pandas as pd  # noqa: PLC0415 - optional dependency
+
+    if value is None or pd.isna(value):
+        return ""
+    ts = pd.Timestamp(value)
+    ts = ts.tz_localize("UTC") if ts.tzinfo is None else ts.tz_convert("UTC")
+    nanos = ts.value  # nanoseconds since the epoch, an exact integer
+    micros = (nanos + 500) // 1000  # to the microsecond, halves up
+    whole, frac = divmod(micros, 1_000_000)
+    base = datetime.datetime(1970, 1, 1) + datetime.timedelta(seconds=whole)
+    text = base.strftime("%Y-%m-%dT%H:%M:%S")
+    if frac:
+        text += f".{frac:06d}".rstrip("0")
+    return text + "Z"
+
+
+def _csv_field(text: str) -> str:
+    """Quote a field that contains ``,``, ``"``, CR or LF."""
+    if any(c in text for c in ',"\r\n'):
+        return '"' + text.replace('"', '""') + '"'
+    return text
+
+
+def resolve_upload(
+    value: Any, spec: dict[str, Any], base_dir: Path, input_id: str = "data"
+) -> UploadFile | None:
     """Turn an ``uploads`` entry into an :class:`UploadFile`.
 
     ``True`` selects the contract's ``sample`` file. A path or
-    :class:`UploadFile` selects that file. Falsy values mean "not supplied".
+    :class:`UploadFile` selects that file. A pandas ``DataFrame`` (or a
+    :class:`FrameUpload`) is written as canonical CSV ``<input_id>.csv``
+    (spec §7.1). Falsy values mean "not supplied".
     """
+    if isinstance(value, FrameUpload):
+        return frame_upload(value.frame, value.input_id)
+    if _is_frame(value):
+        # Checked before the truth test below: a DataFrame has no truth value.
+        return frame_upload(value, input_id)
     if not value:
         return None
     if value is True:
@@ -111,9 +275,22 @@ def _read(upload: UploadFile) -> tuple[Any, bool]:
         # (pandas otherwise mangles "x,x" to "x,x.1" before §7 step 2 can
         # resolve them to "x","x_2"). The first row is the header; sanitise it
         # before assigning so the frame never holds duplicate column names.
-        raw = pd.read_csv(
-            upload.path, header=None, dtype=str, keep_default_na=False, encoding="utf-8"
-        )
+        def read_csv(skip_blank_lines: bool) -> Any:
+            return pd.read_csv(
+                upload.path,
+                header=None,
+                dtype=str,
+                keep_default_na=False,
+                encoding="utf-8",
+                skip_blank_lines=skip_blank_lines,
+            )
+
+        raw = read_csv(True)
+        # With a one-column header every line after it is a row, so an empty
+        # line is a missing value (§7 step 1, RFC 4180); the final line
+        # terminator adds no row. Wider files keep skipping blank lines.
+        if raw.shape[1] == 1:
+            raw = read_csv(False)
         header = [str(c) for c in raw.iloc[0].tolist()]
         df = raw.iloc[1:].reset_index(drop=True)
         df.columns = sanitize_names(header)
@@ -154,11 +331,11 @@ def _check_file(upload: UploadFile, spec: dict[str, Any]) -> None:
 def _to_numeric(series: Any, name: str, all_text: bool) -> Any:
     import pandas as pd  # noqa: PLC0415 - optional dependency
 
-    blank = series.astype(str).str.strip() == "" if all_text else series.isna()
+    blank = series.astype(str).str.strip(_ASCII_WS) == "" if all_text else series.isna()
     if not all_text:
         # Non-CSV readers may leave whitespace-only cells as strings; treat them
         # as empty (spec §7 step 3 "empty = missing").
-        blank = blank | (series.astype(str).str.strip() == "")
+        blank = blank | (series.astype(str).str.strip(_ASCII_WS) == "")
     converted = pd.to_numeric(series.where(~blank), errors="coerce")
     if (converted.isna() & ~blank & series.notna()).any():
         raise UploadError(f"column {name} has values that are not numbers")
@@ -176,7 +353,7 @@ def _to_date(series: Any, name: str) -> Any:
     # Detect native date-like cells so they are not stringified to
     # "2024-01-01 00:00:00" (which would fail the YYYY-MM-DD check).
     native = series.map(_is_native_date)
-    text = series.astype(str).str.strip()
+    text = series.astype(str).str.strip(_ASCII_WS)
     # Only native missing and empty/whitespace are "missing" (spec §7 step 3);
     # any other non-ISO text (including the literal "NA", "nan", "NaT", "None")
     # is unparseable and reported as V014.
@@ -202,19 +379,16 @@ def _is_native_date(v: Any) -> bool:
     return isinstance(v, (datetime.date, datetime.datetime))
 
 
-def _to_character(series: Any) -> Any:
+def _to_character(series: Any, name: str) -> Any:
     """Convert a declared character column to strings (spec §7 step 3).
 
-    Integer-valued floats render without a trailing ``.0`` (``1.0`` -> ``"1"``),
-    matching R's ``as.character``. Native missing values become ``""``.
+    Text cells stay as they are. Other native cells (numbers, booleans, dates,
+    date-times from xlsx, xpt or sas7bdat) take their spec §7.1 rule 5 text
+    without CSV quoting, the same text R writes. Missing cells become ``""``.
     """
+    import pandas as pd  # noqa: PLC0415 - optional dependency
 
-    def _fmt(v: Any) -> str:
-        if isinstance(v, float) and v.is_integer():
-            return str(int(v))
-        return str(v)
-
-    return series.where(series.notna(), "").map(_fmt)
+    return pd.Series(_column_texts(series, name), index=series.index, dtype=object)
 
 
 def _infer_csv_numbers(df: Any, declared: set[str]) -> None:
@@ -224,7 +398,7 @@ def _infer_csv_numbers(df: Any, declared: set[str]) -> None:
     for name in df.columns:
         if name in declared:
             continue
-        text = df[name].str.strip()
+        text = df[name].str.strip(_ASCII_WS)
         nonblank = text != ""
         converted = pd.to_numeric(text.where(nonblank), errors="coerce")
         if nonblank.any() and not (converted.isna() & nonblank).any():
@@ -271,7 +445,7 @@ def read_upload(upload: UploadFile, spec: dict[str, Any]) -> tuple[Any, dict[str
             df[name] = _to_date(series, name)
             datetimes[name] = "date"
         else:
-            df[name] = _to_character(series)
+            df[name] = _to_character(series, name)
     if all_text:
         _infer_csv_numbers(df, declared)
     return df, datetimes

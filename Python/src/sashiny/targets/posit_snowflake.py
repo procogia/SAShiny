@@ -212,7 +212,7 @@ def _apply(ctx: _Context, result: DeployResult, runner: Runner) -> list[list[str
         publish(
             result.out_dir / "bundle",
             title=opts.get("title"),
-            name=str(server) if server else None,
+            server=str(server) if server else None,
             sas_credentials="env" if ctx.profile.secrets else "server",
             license_ack=True,
             env_vars=names,

@@ -11,11 +11,15 @@
 #'   file (loaded automatically).
 #' @param engine An engine from [sas_connect()], [sas_engine_saspy()] or
 #'   [sas_pool()].
-#' @param values A named list of input values. Defaults to the contract's
-#'   defaults (an empty list).
+#' @param values A named list of input values (the JSON form of spec section
+#'   2.1). An input not in `values` takes the contract's `default` (`"today"`
+#'   resolved against `today`), as when the app starts (spec section 6.12); a
+#'   supplied `NULL`, as in `list(id = NULL)`, makes the input absent. Defaults
+#'   to `NULL`: every input at its default.
 #' @param today A `Date` used to resolve `"today"`.
 #' @param uploads A named list mapping dataset input ids to a file path, a
-#'   Shiny `fileInput` value, or `TRUE` for the input's `sample`.
+#'   Shiny `fileInput` value, `TRUE` for the input's `sample`, or a data frame,
+#'   which is written as CSV (spec section 7.1).
 #' @param run_id The run identifier.
 #' @return A `sashiny_result` object (see [sas_engine_run()]).
 #' @section Argument order:
@@ -31,7 +35,7 @@
 #' sas_close(engine)
 #' }
 #' @export
-sas_run <- function(contract, engine, values = list(), today = Sys.Date(),
+sas_run <- function(contract, engine, values = NULL, today = Sys.Date(),
                     uploads = NULL, run_id = NULL) {
   # Old order: sas_run(contract, values, engine). Detect it by class.
   if (!inherits(engine, "sashiny_engine") && inherits(values, "sashiny_engine")) {
@@ -46,13 +50,43 @@ sas_run <- function(contract, engine, values = list(), today = Sys.Date(),
   if (!inherits(contract, "sashiny_contract")) {
     contract <- sas_contract(contract)
   }
-  values <- values %||% list()
+  values <- .sashiny_with_defaults(contract, values, today)
   # Opt-in result cache (spec section 6.11); a no-op unless `run.cache: true`.
   .sashiny_cached_run(engine, contract, values,
     function() sas_engine_run(engine, contract, values, today = today, uploads = uploads,
       run_id = run_id),
     today = today, uploads = uploads
   )
+}
+
+#' Fill the inputs `values` does not supply with the contract's defaults
+#'
+#' Spec section 6.12. Dataset inputs and inputs without a `default` are left
+#' out, and `"today"` in a `date`/`daterange` default becomes `today` in ISO
+#' form, so the result is in the JSON form of spec section 2.1. An id that
+#' `values` supplies, even as `NULL`, keeps the supplied value.
+#' @noRd
+.sashiny_with_defaults <- function(contract, values, today) {
+  values <- values %||% list()
+  inputs <- contract$data$inputs %||% list()
+  iso <- format(as.Date(today), "%Y-%m-%d")
+  out <- list()
+  for (iid in names(inputs)) {
+    spec <- inputs[[iid]]
+    if (identical(spec$type, "dataset") || is.null(spec$default) || iid %in% names(values)) {
+      next
+    }
+    default <- spec$default
+    if (spec$type %in% c("date", "daterange")) {
+      if (is.list(default)) {
+        default <- lapply(default, function(x) if (identical(x, "today")) iso else x)
+      } else {
+        default <- ifelse(default == "today", iso, default)
+      }
+    }
+    out[iid] <- list(default)
+  }
+  c(out, values)
 }
 
 #' Close an engine or a pool

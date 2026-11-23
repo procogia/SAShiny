@@ -142,14 +142,15 @@
 #' Merge external values over UI values (spec section 6.10)
 #'
 #' Supplied ids replace the UI value; a supplied `NULL` makes the input
-#' absent; dataset ids are ignored. Atomic vectors for `multichoice` and
+#' absent. For a dataset id, a data frame replaces the upload and `NULL`
+#' removes it. Atomic vectors for `multichoice` and
 #' `daterange` inputs become lists, and `Date` values become ISO strings, so
 #' callers can pass ordinary R vectors.
 #'
 #' @param contract A `sashiny_contract` object.
 #' @param converted The result of `.sashiny_shiny_values()`.
 #' @param external A named list of values, or `NULL`.
-#' @return `converted` with merged `values`.
+#' @return `converted` with merged `values` and `uploads`.
 #' @noRd
 .sashiny_merge_values <- function(contract, converted, external) {
   if (is.null(external)) {
@@ -161,8 +162,18 @@
   inputs <- contract$data$inputs %||% list()
   for (iid in names(external)) {
     type <- inputs[[iid]]$type
-    if (identical(type, "dataset")) next
     value <- external[[iid]]
+    if (identical(type, "dataset")) {
+      # A data frame replaces the upload (spec 6.10). It is written as CSV when
+      # the run resolves its uploads, where anything that is not a data frame,
+      # or cannot be written, is reported as V014.
+      if (is.null(value)) {
+        converted$uploads[[iid]] <- NULL
+      } else {
+        converted$uploads[[iid]] <- .sashiny_upload_frame(value, iid)
+      }
+      next
+    }
     if (is.null(value)) {
       converted$values[[iid]] <- NULL
       next
@@ -646,8 +657,9 @@ sas_program_ui <- function(id, contract, ui_override = NULL, today = Sys.Date())
 #' @param values An optional reactive returning a named list of input values
 #'   in the contract's JSON form (spec section 6.10). Supplied ids replace the
 #'   UI value (validated exactly like UI values); other ids come from the UI.
-#'   With `ui.auto_run: true`, a change of `values()` starts a run after
-#'   `debounce_ms`.
+#'   For a dataset input, supply a data frame: it replaces the upload and is
+#'   written as CSV (spec section 7.1). With `ui.auto_run: true`, a change of
+#'   `values()` starts a run after `debounce_ms`.
 #' @param hide_inputs Whether to hide the controls of the ids supplied by
 #'   `values()` (default `FALSE`).
 #' @param debounce_ms Debounce interval in milliseconds for auto-runs driven by

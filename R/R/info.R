@@ -3,7 +3,7 @@
 # The spec release this package implements (spec/CONTRACT.md, section 11).
 # CI (spec/tools/check_versions.py) fails when it differs from the spec or
 # from the Python library.
-.sashiny_spec_release <- "1.4"
+.sashiny_spec_release <- "1.7"
 
 #' Package and spec versions
 #'

@@ -72,7 +72,9 @@ sas_check <- function(result) {
   issues <- meta$issues %||% list()
   if (length(issues)) {
     i <- issues[[1]]
-    return(trimws(paste("invalid input", i$code, i$input %||% "", i$message %||% "")))
+    # Skip empty parts (an upload issue has no input id), as Python does (#153).
+    parts <- c("invalid input", i$code %||% "", i$input %||% "", i$message %||% "")
+    return(paste(parts[nzchar(parts)], collapse = " "))
   }
   "no ERROR line in the log"
 }

@@ -19,9 +19,10 @@ from datetime import date, datetime, timezone
 from typing import TYPE_CHECKING, Any, Protocol
 
 from . import choices_cache
-from .engines._mock import resolve_files
+from .engines._offline import resolve_files
 from .recording import contract_sha256, program_sha256, upload_key_parts
-from .upload import UploadError
+from .result import utc_timestamp
+from .upload import UploadError, upload_supplied
 from .values import render_values
 
 if TYPE_CHECKING:
@@ -172,7 +173,7 @@ def _key(
             # The rendered values depend on choices not loaded yet.
             return None
     override = {k: [c["value"] for c in v] for k, v in (found or {}).items()}
-    flags = {k: bool(v) for k, v in (uploads or {}).items()}
+    flags = {k: upload_supplied(v) for k, v in (uploads or {}).items()}
     macros, issues = render_values(
         contract.data, values, today, choices_override=override or None, uploads=flags
     )
@@ -212,11 +213,7 @@ def lookup(
         return key, None
     out = copy.deepcopy(result)
     out.metadata["cache_hit"] = True
-    out.metadata["cached_at"] = (
-        datetime.fromtimestamp(stored_at, timezone.utc)
-        .isoformat(timespec="seconds")
-        .replace("+00:00", "Z")
-    )
+    out.metadata["cached_at"] = utc_timestamp(datetime.fromtimestamp(stored_at, timezone.utc))
     return key, out
 
 

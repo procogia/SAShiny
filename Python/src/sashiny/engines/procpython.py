@@ -29,6 +29,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from .. import __version__
 from ..contract import Contract
 from ..errors import EngineError, LicenseError
 from ..result import Result
@@ -141,7 +142,7 @@ class ProcPythonEngine(SaspyEngine):
     """
 
     name = "procpython"
-    version = "0.1.0"
+    version = __version__
 
     def __init__(self, sas: Any, *, license_ack: bool | None = None, own_session: bool = False):
         """Wrap the PROC PYTHON ``SAS`` object; nothing is submitted until the first run."""
@@ -159,6 +160,7 @@ class ProcPythonEngine(SaspyEngine):
         self._choices = {}
         self._generation = 0
         self._run_generation = threading.local()
+        self._busy = threading.Lock()
         self.own_session = own_session
         self._callback = sas
         self._dead = False

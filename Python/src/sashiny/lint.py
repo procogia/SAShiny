@@ -1,6 +1,6 @@
 """Advisory lint for SAShiny (spec §10).
 
-Reports program-vs-contract consistency findings (``L001``-``L005``). These are
+Reports program-vs-contract consistency findings (``L001``-``L006``). These are
 advisory, not errors. The implementation scans the SAS program text with
 conservative, case-insensitive regular expressions; it deliberately avoids a
 full SAS parser and prefers to miss a finding over raising a false positive.
@@ -16,27 +16,27 @@ from .contract import Issue, all_macro_names
 __all__ = ["lint"]
 
 # A `%let NAME = ...;` assignment (NAME captured, case-insensitive).
-_LET = re.compile(r"%let\s+([A-Za-z_][A-Za-z0-9_]*)\s*=", re.IGNORECASE)
+_LET = re.compile(r"%let\s+([A-Za-z_][A-Za-z0-9_]*)\s*=", re.IGNORECASE | re.ASCII)
 
 # A `call symput('NAME', ...)` or `call symputx('NAME', ...)` assignment.
 _SYMPUT = re.compile(
     r"call\s+symputx?\s*\(\s*['\"]([A-Za-z_][A-Za-z0-9_]*)['\"]",
-    re.IGNORECASE,
+    re.IGNORECASE | re.ASCII,
 )
 
 # A `%if not %symexist(NAME) %then %do;` guard opening (NAME captured).
 _GUARD_OPEN = re.compile(
     r"%if\s+not\s+%symexist\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)\s*%then\s*%do\s*;",
-    re.IGNORECASE,
+    re.IGNORECASE | re.ASCII,
 )
 
 # A `%end;` closing a guard block.
-_GUARD_CLOSE = re.compile(r"%end\s*;", re.IGNORECASE)
+_GUARD_CLOSE = re.compile(r"%end\s*;", re.IGNORECASE | re.ASCII)
 
 
 def _macro_reference(name: str) -> re.Pattern[str]:
     """Return a regex matching ``&NAME`` (case-insensitive), not ``&NAME_EXTRA``."""
-    return re.compile(rf"&{re.escape(name)}\b", re.IGNORECASE)
+    return re.compile(rf"&{re.escape(name)}\b", re.IGNORECASE | re.ASCII)
 
 
 def _assigned_names(program_text: str) -> set[str]:
@@ -87,12 +87,14 @@ def _entry_macro_scope(data: dict[str, Any], program_text: str) -> tuple[int, in
     macro = run.get("macro")
     if run.get("entry") != "macro" or not macro:
         return None
-    m = re.search(rf"%macro\s+{re.escape(macro)}\s*\(([^)]*)\)", program_text, re.IGNORECASE)
+    m = re.search(
+        rf"%macro\s+{re.escape(macro)}\s*\(([^)]*)\)", program_text, re.IGNORECASE | re.ASCII
+    )
     if m is None:
         return None
     params = {p.split("=", 1)[0].strip().upper() for p in m.group(1).split(",")}
     params.discard("")
-    mend = re.search(r"%mend\b", program_text[m.end() :], re.IGNORECASE)
+    mend = re.search(r"%mend\b", program_text[m.end() :], re.IGNORECASE | re.ASCII)
     end = m.end() + mend.start() if mend else len(program_text)
     return m.start(), end, params
 
@@ -189,7 +191,7 @@ def _lint_l003(data: dict[str, Any], text: str) -> list[Issue]:
             continue  # permanent library, not flagged
         if member.upper() in targets:
             continue
-        if re.search(rf"\b{re.escape(member)}\b", text, re.IGNORECASE):
+        if re.search(rf"\b{re.escape(member)}\b", text, re.IGNORECASE | re.ASCII):
             continue
         out.append(
             Issue(
@@ -225,9 +227,60 @@ def _lint_l005(data: dict[str, Any], text: str) -> list[Issue]:
     if run.get("entry") != "macro":
         return []
     macro = run.get("macro")
-    if macro and not re.search(rf"%macro\s+{re.escape(macro)}\b", text, re.IGNORECASE):
+    if macro and not re.search(rf"%macro\s+{re.escape(macro)}\b", text, re.IGNORECASE | re.ASCII):
         return [Issue("L005", "/run/macro", f"%macro {macro} not found in the program")]
     return []
+
+
+# A `/* ... */` comment, removed before reading the entry macro's parameters.
+_COMMENT = re.compile(r"/\*.*?\*/", re.DOTALL)
+
+
+def _entry_macro_definition(macro: str, text: str) -> tuple[str, str] | None:
+    """Return ``(parameter_list, options)`` of ``%macro <MACRO>``, or ``None`` if absent.
+
+    The definition is ``%macro <MACRO>``, an optional parenthesised parameter
+    list and optional ``/ options``, up to the closing ``;``.
+    """
+    m = re.search(
+        rf"%macro\s+{re.escape(macro)}\b\s*(?:\(([^)]*)\))?\s*(?:/([^;]*))?;",
+        text,
+        re.IGNORECASE | re.ASCII,
+    )
+    if m is None:
+        return None
+    return m.group(1) or "", m.group(2) or ""
+
+
+def _lint_l006(data: dict[str, Any], text: str, injected: list[str]) -> list[Issue]:
+    """Return L006 findings: an injected macro the entry macro has no parameter for.
+
+    Under ``run.entry: macro`` every input macro name is passed as a keyword
+    argument (spec §6.3), and SAS rejects a keyword the macro does not define.
+    A definition with ``/ parmbuff`` (or ``pbuff``) accepts any argument and is
+    not checked; neither is a parameter list with nested parentheses (a default
+    such as ``x=%str(a,b)``), which these regular expressions cannot split.
+    """
+    run = data.get("run") or {}
+    macro = run.get("macro")
+    if run.get("entry") != "macro" or not macro:
+        return []
+    found = _entry_macro_definition(macro, _COMMENT.sub(" ", text))
+    if found is None:
+        return []  # L005
+    plist, options = found
+    if re.search(r"\bp(arm)?buff\b", options, re.IGNORECASE | re.ASCII) or "(" in plist:
+        return []
+    params = {p.split("=", 1)[0].strip().upper() for p in plist.split(",")}
+    return [
+        Issue(
+            "L006",
+            f"/inputs/{_input_id_for_macro(data, name)}",
+            f"%macro {macro} has no parameter {name}",
+        )
+        for name in injected
+        if name not in params
+    ]
 
 
 def lint(data: dict[str, Any], program_text: str) -> list[Issue]:
@@ -252,6 +305,7 @@ def lint(data: dict[str, Any], program_text: str) -> list[Issue]:
     issues.extend(_lint_l003(data, text))
     issues.extend(_lint_l004(data))
     issues.extend(_lint_l005(data, text))
+    issues.extend(_lint_l006(data, text, injected))
     # A daterange or multichoice input sets several macro names that all map to
     # the same input id, so the same (code, path) can be reported more than once.
     # Deduplicate by (code, path) while preserving first-seen order.

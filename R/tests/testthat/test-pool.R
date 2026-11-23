@@ -50,6 +50,38 @@ test_that("pool discards and closes a factory session after a SAS failure", {
   expect_length(pool$sessions, 0L)
 })
 
+test_that("pool discard clears the pool choices cache (spec section 6.4, #152)", {
+  make_engine <- function() {
+    test_saspy_engine(list(), session_factory = function() {
+      list(
+        submit = function(code, results = "TEXT") stop("lost connection"),
+        endsas = function() NULL
+      )
+    })
+  }
+  pool <- sas_pool(make_engine, max_size = 1L)
+  contract <- sas_contract(file.path(.sashiny_fixtures(), "contracts", "valid",
+                                     "minimal", "contract.sashiny.yml"))
+  old <- list(pick = list(list(value = "old", label = "old")))
+  .sashiny_store_choices(pool, contract, old)
+  expect_identical(.sashiny_cached_choices(pool, contract), old)
+  result <- sas_engine_run(pool, contract, list(), today = .sashiny_today)
+  expect_identical(result$status, "error")
+  expect_null(.sashiny_cached_choices(pool, contract))
+})
+
+test_that("pool keeps the choices cache on an input validation error", {
+  pool <- sas_pool(.sashiny_engine_mock(), max_size = 1L)
+  contract <- sas_contract(file.path(.sashiny_fixtures(), "contracts", "valid",
+                                     "numeric", "contract.sashiny.yml"))
+  old <- list(pick = list(list(value = "old", label = "old")))
+  .sashiny_store_choices(pool, contract, old)
+  result <- sas_run(contract, pool, list(min_msrp = "bad"), today = .sashiny_today)
+  expect_identical(result$status, "error")
+  expect_identical(.sashiny_cached_choices(pool, contract), old)
+  sas_close(pool)
+})
+
 test_that("a factory pool gives each session its own engine", {
   pool <- sas_pool(function() .sashiny_engine_mock(), max_size = 2L, acquire_timeout = 0.05)
   a <- .sashiny_acquire(pool)
@@ -114,7 +146,7 @@ test_that("pool run after close returns an error result (issue #80)", {
   sas_close(pool)
   result <- sas_run(contract, pool, list(), today = .sashiny_today)
   expect_identical(result$status, "error")
-  expect_match(result$metadata$engine_error, "pool exhausted")
+  expect_identical(result$metadata$engine_error, "pool closed") # as in Python
 })
 
 test_that("pool factory failure returns an error result (issue #75)", {

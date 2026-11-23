@@ -61,7 +61,7 @@ def _label(value: ChartValue, name: str) -> str:
 
 def render_chart(
     value: ChartValue,
-    spec: ChartSpec | None,
+    spec: ChartSpec | None = None,
     backend: str = "plotnine",
     render: RenderCallback | None = None,
 ) -> Any:
@@ -89,11 +89,41 @@ def render_chart(
     if backend not in ("plotnine", "matplotlib", "plotly"):
         raise ValuesError(f"unknown chart backend {backend!r}")
     resolved = _resolve_spec(value, spec)
+    _check_mappings(backend, resolved)
     if backend == "plotnine":
         return _render_plotnine(value, resolved)
     if backend == "matplotlib":
         return _render_matplotlib(value, resolved)
     return _render_plotly(value, resolved)
+
+
+# The `color`/`fill` mappings matplotlib draws, by chart kind: scatter and line
+# charts group by `color`, bar charts by `fill`; histograms and box plots draw no
+# colour mapping. plotnine draws every mapping; plotly draws `color` or `fill`,
+# not both. A box plot coloured by its own x column is allowed (one box per
+# group). The same table is in R (base graphics).
+_GROUPINGS: dict[str, frozenset[str]] = {
+    "scatter": frozenset({"color"}),
+    "line": frozenset({"color"}),
+    "bar": frozenset({"fill"}),
+    "histogram": frozenset(),
+    "box": frozenset(),
+}
+
+
+def _check_mappings(backend: str, spec: ChartSpec) -> None:
+    """Refuse a mapping the backend cannot honour (spec §8.5 MUST), as in R."""
+    declared = [f for f in ("color", "fill") if spec.get(f) is not None]
+    if spec["kind"] == "box" and spec.get("color") == spec["x"]:
+        declared.remove("color")  # colour by the x groups: both mappings are honoured
+    if backend == "matplotlib":
+        for field in declared:
+            if field not in _GROUPINGS[spec["kind"]]:
+                raise ValuesError(
+                    f"chart backend matplotlib cannot map {field} for kind {spec['kind']}"
+                )
+    if backend == "plotly" and len(declared) == 2:  # noqa: PLR2004 - color and fill
+        raise ValuesError("chart backend plotly cannot map both color and fill")
 
 
 def _resolve_spec(value: ChartValue, spec: ChartSpec) -> ChartSpec:
@@ -209,19 +239,30 @@ def _render_matplotlib(value: ChartValue, spec: ChartSpec) -> Any:
         for ax, (label, idx) in zip(axes, groups, strict=True):
             subset = _subset_rows(value, idx)
             _draw_matplotlib(ax, kind, x, y, color, fill, subset)
+            _label_axes(ax, spec)
             ax.set_title(str(label))
         if "title" in spec:
             fig.suptitle(spec["title"])
+        if "subtitle" in spec:
+            fig.text(0.5, 0.01, spec["subtitle"], ha="center")
         return fig
 
     fig = Figure()
     ax = fig.subplots()
     _draw_matplotlib(ax, kind, x, y, color, fill, value)
+    _label_axes(ax, spec)
     if "title" in spec:
         ax.set_title(spec["title"])
     if "subtitle" in spec:
         fig.text(0.5, 0.01, spec["subtitle"], ha="center")
     return fig
+
+
+def _label_axes(ax: Any, spec: ChartSpec) -> None:
+    """Axis labels: ``xlab``/``ylab``, defaulting to the column names (spec §8.5)."""
+    ax.set_xlabel(str(spec.get("xlab", spec["x"])))
+    if spec.get("y") is not None or "ylab" in spec:
+        ax.set_ylabel(str(spec.get("ylab", spec.get("y", ""))))
 
 
 def _draw_matplotlib(  # noqa: PLR0912, PLR0913, PLR0917 - one branch per chart kind
@@ -236,8 +277,6 @@ def _draw_matplotlib(  # noqa: PLR0912, PLR0913, PLR0917 - one branch per chart 
     """Draw one chart kind on ``ax``, honouring ``color``/``fill`` groupings."""
     xs = _plot_series(value, x)
     ys = _plot_series(value, y) if y is not None else None
-    xlab = str(x)
-    ylab = str(y) if y is not None else ""
 
     def groups(column: str) -> list[tuple[str, list[int]]]:
         return [(label, idx) for label, idx in _group_by(value, column)]
@@ -268,16 +307,9 @@ def _draw_matplotlib(  # noqa: PLR0912, PLR0913, PLR0917 - one branch per chart 
             ax.bar([str(v) for v in xs], ys)
     elif kind == "histogram":
         ax.hist([v for v in xs if not _missing(v)])
-    elif ys is None:
-        ax.boxplot([v for v in xs if not _missing(v)])
-    elif color is not None:
-        # One box per colour group. Tick labels are set separately because the
-        # boxplot ``labels=`` keyword was renamed in matplotlib 3.9 and later removed.
-        boxes = groups(color)
-        ax.boxplot([[ys[i] for i in idx if not _missing(ys[i])] for _, idx in boxes])
-        ax.set_xticks(range(1, len(boxes) + 1))
-        ax.set_xticklabels([str(label) for label, _ in boxes])
     else:
+        # `color` on a box plot is refused before drawing (spec §8.5); y is required.
+        assert ys is not None  # noqa: S101 - box requires y (spec §8.5)
         groups_ = sorted({str(v) for v in xs})
         ax.boxplot(
             [
@@ -286,9 +318,6 @@ def _draw_matplotlib(  # noqa: PLR0912, PLR0913, PLR0917 - one branch per chart 
             ]
         )
         ax.set_xticks(range(1, len(groups_) + 1), groups_)
-    ax.set_xlabel(xlab)
-    if y is not None:
-        ax.set_ylabel(ylab)
 
 
 def _group_by(value: ChartValue, column: str) -> list[tuple[str, list[int]]]:

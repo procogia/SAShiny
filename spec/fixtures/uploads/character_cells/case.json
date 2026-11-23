@@ -1,0 +1,43 @@
+{
+  "description": "Spec section 7 step 3: declared character columns read natively from xlsx take the section 7.1 rule 5 text of each cell, without CSV quoting. Hand-written expected values; the file stores 0.3, so ratio is %.17g of 0.3.",
+  "file": "cells.xlsx",
+  "columns": [
+    "flag",
+    "ratio",
+    "whole",
+    "count",
+    "text"
+  ],
+  "expected": {
+    "flag": [
+      "1",
+      "0",
+      "",
+      "1"
+    ],
+    "ratio": [
+      "0.29999999999999999",
+      "-2.4999999999999999e-07",
+      "",
+      "123456.789"
+    ],
+    "whole": [
+      "1",
+      "64",
+      "",
+      "0"
+    ],
+    "count": [
+      "7",
+      "-3",
+      "",
+      "0"
+    ],
+    "text": [
+      "a,b",
+      "x",
+      "blank cells",
+      "z"
+    ]
+  }
+}

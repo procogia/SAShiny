@@ -114,11 +114,48 @@ sas_render_chart <- function(value, spec = NULL, backend = "ggplot2", render = N
     .sashiny_abort("values", sprintf("unknown chart backend '%s'", backend))
   }
   spec <- .sashiny_chart_resolve(value, spec)
+  .sashiny_chart_check_mappings(backend, spec)
   switch(backend,
     ggplot2 = .sashiny_chart_ggplot2(value, spec),
     base = .sashiny_chart_base(value, spec),
     plotly = .sashiny_chart_plotly(value, spec)
   )
+}
+
+#' The `color`/`fill` mappings each simple backend draws, by chart kind.
+#'
+#' Base R graphics (and Python's matplotlib) group scatter and line charts by
+#' `color` and bar charts by `fill`; they draw no colour mapping for
+#' histograms or box plots. ggplot2 (plotnine) draws every mapping; plotly
+#' draws `color` or `fill`, not both. A box plot coloured by its own x column
+#' is allowed (one box per group). The same table is in Python.
+#' @noRd
+.sashiny_chart_groupings <- list(
+  scatter = "color", line = "color", bar = "fill", histogram = character(0), box = character(0)
+)
+
+#' Stop when a backend cannot honour a declared mapping (spec section 8.5).
+#'
+#' A backend MUST honour every declared mapping its kind supports, or report a
+#' collection error rather than draw a chart that silently ignores it.
+#' @noRd
+.sashiny_chart_check_mappings <- function(backend, spec) {
+  declared <- c("color", "fill")[!vapply(c("color", "fill"), function(f) is.null(spec[[f]]), logical(1))]
+  if (identical(spec$kind, "box") && identical(spec$color, spec$x)) {
+    declared <- setdiff(declared, "color") # colour by the x groups: both are honoured
+  }
+  if (identical(backend, "base")) {
+    unsupported <- setdiff(declared, .sashiny_chart_groupings[[spec$kind]])
+    if (length(unsupported) > 0L) {
+      .sashiny_abort("values", sprintf(
+        "chart backend base cannot map %s for kind %s", unsupported[[1L]], spec$kind
+      ))
+    }
+  }
+  if (identical(backend, "plotly") && length(declared) == 2L) {
+    .sashiny_abort("values", "chart backend plotly cannot map both color and fill")
+  }
+  invisible(TRUE)
 }
 
 #' Which optional chart backends are installed
@@ -231,14 +268,9 @@ sas_chart_backends <- function() {
         } else {
           graphics::barplot(as.numeric(ys), names.arg = xs, xlab = xlab, ylab = ylab)
         },
-      histogram = graphics::hist(as.numeric(xs), main = "", xlab = xlab),
-      box = if (is.null(ys)) {
-        graphics::boxplot(as.numeric(xs), xlab = xlab)
-        } else if (!is.null(color)) {
-          graphics::boxplot(as.numeric(ys) ~ as.character(frame[[color]]), xlab = xlab, ylab = ylab)
-      } else {
-        graphics::boxplot(as.numeric(ys) ~ xs, xlab = xlab, ylab = ylab)
-      }
+      histogram = graphics::hist(as.numeric(xs), main = "", xlab = xlab, ylab = spec$ylab %||% "Frequency"),
+      # `color` on a box plot is refused before drawing (spec section 8.5).
+      box = graphics::boxplot(as.numeric(ys) ~ xs, xlab = xlab, ylab = ylab)
     )
   }
   if (!is.null(spec$facet)) {
@@ -291,8 +323,13 @@ sas_chart_backends <- function() {
     fig <- do.call(plotly::plot_ly, args)
     plotly::layout(fig, xaxis = list(title = xlab), yaxis = list(title = ylab))
   }
+  # The subtitle goes under the title, as in Python's plotly backend.
+  title <- spec$title %||% ""
+  if (!is.null(spec$title) && !is.null(spec$subtitle)) {
+    title <- paste0(spec$title, "<br><sup>", spec$subtitle, "</sup>")
+  }
   if (is.null(spec$facet)) {
-    return(plotly::layout(build(data), title = spec$title %||% ""))
+    return(plotly::layout(build(data), title = title))
   }
   # One subplot per facet level (spec section 8.5): plot_ly has no facet
   # argument, so split the frame and combine the panels with a shared y axis.
@@ -310,5 +347,5 @@ sas_chart_backends <- function() {
       xanchor = "center", yanchor = "bottom", showarrow = FALSE
     )
   })
-  plotly::layout(fig, title = spec$title %||% "", annotations = labels)
+  plotly::layout(fig, title = title, annotations = labels)
 }

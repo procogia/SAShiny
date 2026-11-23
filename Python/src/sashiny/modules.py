@@ -34,7 +34,7 @@ from .engines import Engine
 from .engines.base import check_engine
 from .errors import ValuesError
 from .result import Result
-from .upload import UploadError, UploadFile
+from .upload import FrameUpload, UploadError, UploadFile
 
 logger = logging.getLogger(__name__)
 
@@ -201,7 +201,7 @@ def merge_values(
     """Merge external values over UI values (spec §6.10).
 
     Supplied ids replace the UI value; a supplied ``None`` makes the input
-    absent; dataset ids are ignored. :class:`datetime.date` values (and tuples
+    absent. Dataset ids are left to :func:`merge_uploads`. :class:`datetime.date` values (and tuples
     of them for a ``daterange``) become ISO strings.
 
     Args:
@@ -231,6 +231,40 @@ def merge_values(
             merged[iid] = [v.isoformat() if isinstance(v, date) else v for v in raw]
         else:
             merged[iid] = raw
+    return merged
+
+
+def merge_uploads(
+    contract: Contract, uploads: dict[str, Any], external: dict[str, Any] | None
+) -> dict[str, Any]:
+    """Merge external dataset values over the UI uploads (spec §6.10).
+
+    A value supplied for a dataset id replaces its upload: it is wrapped in a
+    :class:`~sashiny.upload.FrameUpload` and written as canonical CSV when the
+    run resolves its uploads (spec §7.1), where anything that is not a
+    DataFrame, or cannot be written, is reported as V014. ``None`` removes the
+    upload.
+
+    Args:
+        contract: The loaded contract.
+        uploads: The UI uploads from :func:`shiny_values`.
+        external: The dict returned by ``values()``, or ``None``.
+
+    Returns:
+        A new dict of merged uploads.
+
+    """
+    merged = dict(uploads)
+    if not isinstance(external, dict):
+        return merged
+    inputs: dict[str, Any] = contract.data.get("inputs") or {}
+    for iid, raw in external.items():
+        if (inputs.get(iid) or {}).get("type") != "dataset":
+            continue
+        if raw is None:
+            merged.pop(iid, None)
+        else:
+            merged[iid] = FrameUpload(frame=raw, input_id=iid)
     return merged
 
 
@@ -639,6 +673,7 @@ def program_server(  # noqa: PLR0913, PLR0915, PLR0917 - Shiny module: one react
     values: Callable[[], dict[str, Any] | None] | None = None,
     hide_inputs: bool = False,
     debounce_ms: float = 500,
+    render: (dict[str, Callable[[dict[str, Any], dict[str, Any] | None], Any]] | None) = None,
 ) -> dict[str, Any]:
     """Serve a SAS program module (run the contract and render outputs).
 
@@ -647,7 +682,8 @@ def program_server(  # noqa: PLR0913, PLR0915, PLR0917 - Shiny module: one react
         output: Shiny outputs.
         session: Shiny session.
         contract: The loaded contract.
-        engine: A :func:`sashiny.connect` engine or a :class:`sashiny.Pool`.
+        engine: A :func:`sashiny.connect` engine, a :class:`sashiny.Pool`, a
+            :func:`sashiny.replay` engine or a registered engine (spec §6.6).
         server_override: An optional callable `(input, output, session,
             contract, engine)` that replaces the auto-generated server.
         chart_render: An optional mapping of chart render callbacks keyed by
@@ -661,17 +697,25 @@ def program_server(  # noqa: PLR0913, PLR0915, PLR0917 - Shiny module: one react
         values: An optional reactive returning a dict of input values in the
             §2.1 JSON form (spec §6.10). Supplied ids replace the UI value and
             are validated exactly like UI values; other ids come from the UI.
-            With `ui.auto_run: true`, a change starts a run after `debounce_ms`.
+            For a dataset input, supply a pandas DataFrame: it replaces the
+            upload and is written as CSV (spec §7.1). With `ui.auto_run: true`,
+            a change starts a run after `debounce_ms`.
         hide_inputs: Whether to hide the controls of the ids supplied by
             `values()` (default `False`).
         debounce_ms: Debounce interval in milliseconds for auto-runs driven by
             `values()` (default 500).
+        render: The same mapping as `chart_render`, under the name R's
+            `sas_program_server(render = )` uses. Give one or the other.
 
     Returns:
         `{"result", "status", "log"}` reactive calcs for custom extensions.
 
     """
     check_engine(engine)
+    if render is not None:
+        if chart_render is not None:
+            raise ValuesError("give render or chart_render, not both")
+        chart_render = render
     if values is not None and not callable(values):
         raise ValuesError("values must be a reactive (or callable) returning a dict")
     if debounce_ms < 0:
@@ -923,7 +967,7 @@ def _snapshot_inputs(
         values, uploads = shiny_values(contract, read)
     except UploadError as exc:
         return _upload_error_result(exc)
-    return merge_values(contract, values, external), uploads
+    return merge_values(contract, values, external), merge_uploads(contract, uploads, external)
 
 
 async def _run_snapshot(

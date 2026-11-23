@@ -634,10 +634,13 @@ test_that("external values are merged in JSON form", {
   contract$data$inputs$d <- list(type = "daterange")
   contract$data$inputs$f <- list(type = "dataset", target = "work.f")
   merged <- .sashiny_merge_values(contract, list(values = list(ratio = 0.1), uploads = list()),
-    list(d = as.Date(c("2024-01-01", "2024-02-01")), f = "ignored")
+    list(d = as.Date(c("2024-01-01", "2024-02-01")), f = "not a data frame")
   )
   expect_identical(merged$values$d, list("2024-01-01", "2024-02-01"))
+  # A dataset value goes to the uploads (spec 6.10); a non-data-frame is
+  # refused with V014 when the run resolves it.
   expect_null(merged$values$f)
+  expect_s3_class(merged$uploads$f, "sashiny_upload_frame")
   expect_identical(merged$values$ratio, 0.1)
   expect_error(sas_program_server("m", contract, .sashiny_engine_mock(), values = 1), "reactive")
 })

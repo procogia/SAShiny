@@ -1,6 +1,7 @@
 {
   "findings": [
     {"code": "L001", "path": "/inputs/top_n"},
-    {"code": "L001", "path": "/inputs/label"}
+    {"code": "L001", "path": "/inputs/label"},
+    {"code": "L006", "path": "/inputs/label"}
   ]
 }

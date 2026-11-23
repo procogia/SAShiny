@@ -184,6 +184,26 @@
               }
             ]
           }
+    },
+    {
+      "name": "daterange_empty_string_is_not_an_array",
+      "values": {
+        "cutoff": "2026-11-11",
+        "period": [
+          "2026-01-01",
+          "2026-06-30"
+        ],
+        "window": ""
+      },
+      "expected": {
+        "status": "invalid",
+        "errors": [
+          {
+            "code": "V002",
+            "input": "window"
+          }
+        ]
+      }
     }
   ]
 }

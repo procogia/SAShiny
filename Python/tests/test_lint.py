@@ -252,3 +252,52 @@ def test_lint_fixtures() -> None:
         want = json.loads((d / "expected.json").read_text(encoding="utf-8"))["findings"]
         got = [{"code": i.code, "path": i.path} for i in sashiny.lint(data, program)]
         assert got == want, d.name
+
+
+def _macro_data() -> dict:
+    return _data(
+        inputs={
+            "min_msrp": {"type": "numeric", "label": "Min MSRP"},
+            "label": {"type": "text", "label": "Label"},
+        },
+        run={"entry": "macro", "macro": "report"},
+    )
+
+
+def test_l006_flags_input_without_macro_parameter() -> None:
+    # Issue #163: SAS rejects a keyword the entry macro does not define.
+    program = "%macro report(Min_Msrp=);\n%put &min_msrp &label;\n%mend report;"
+    l006 = [i for i in sashiny.lint(_macro_data(), program) if i.code == "L006"]
+    assert [(i.path, i.message) for i in l006] == [
+        ("/inputs/label", "%macro report has no parameter LABEL")
+    ]
+
+
+def test_l006_flags_every_input_when_macro_has_no_parameter_list() -> None:
+    program = "%macro report;\n%put &min_msrp &label;\n%mend report;"
+    paths = [i.path for i in sashiny.lint(_macro_data(), program) if i.code == "L006"]
+    assert paths == ["/inputs/min_msrp", "/inputs/label"]
+
+
+def test_l006_accepts_positional_and_commented_parameters() -> None:
+    program = "%macro report(min_msrp, /* text */ LABEL=x);\n%put &min_msrp &label;\n%mend;"
+    assert "L006" not in _codes(sashiny.lint(_macro_data(), program))
+
+
+def test_l006_skips_parmbuff_and_nested_parentheses() -> None:
+    for program in (
+        "%macro report / parmbuff;\n%put &min_msrp &label;\n%mend;",
+        "%macro report(min_msrp=) / PBUFF;\n%put &min_msrp &label;\n%mend;",
+        "%macro report(min_msrp=%str(a,b));\n%put &min_msrp &label;\n%mend;",
+    ):
+        assert "L006" not in _codes(sashiny.lint(_macro_data(), program)), program
+
+
+def test_l006_needs_entry_macro_and_a_definition() -> None:
+    program = "%macro report;\n%put &min_msrp &label;\n%mend;"
+    data = _macro_data()
+    data.pop("run")
+    assert "L006" not in _codes(sashiny.lint(data, program))
+    codes = _codes(sashiny.lint(_macro_data(), "%put &min_msrp &label;"))
+    assert "L005" in codes
+    assert "L006" not in codes

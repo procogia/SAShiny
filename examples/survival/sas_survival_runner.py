@@ -108,13 +108,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     contract = sashiny.load(CONTRACT)
-    # Start from the contract defaults, as the untouched UI does
-    values = {
-        iid: spec["default"]
-        for iid, spec in contract.data["inputs"].items()
-        if spec["type"] != "dataset" and "default" in spec
-    }
-    values.update(parse_sets(args.set, contract.data["inputs"]))
+    # Inputs not set here take the contract defaults (run() fills them, spec 6.12)
+    values = parse_sets(args.set, contract.data["inputs"])
     uploads = {"adsl": args.adsl or True, "adtte": args.adtte or True}
     engine = sashiny.connect_from_env()
     try:

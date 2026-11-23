@@ -10,6 +10,7 @@ import sashiny
 from _repo import repo_root
 from sashiny import deploy as d
 from sashiny.engines.base import check_engine
+from sashiny.result import failure_reason
 from sashiny.upload import UploadError
 
 FIX = repo_root() / "spec" / "fixtures"
@@ -73,6 +74,16 @@ def test_check_passes_and_raises() -> None:
     invalid = _result("error", issues=[{"code": "V003", "input": "/inputs/x"}])
     with pytest.raises(sashiny.RunError, match="invalid input V003 /inputs/x"):
         invalid.check()
+
+
+def test_issue_without_input_id_gives_single_spaced_reason() -> None:
+    """Mirrors R (#153): empty parts are skipped, never doubled spaces."""
+    upload = _result("error", issues=[{"code": "V014", "input": "", "message": "no column AGE"}])
+    assert failure_reason(upload) == "invalid input V014 no column AGE"
+    with pytest.raises(sashiny.RunError) as info:
+        upload.check()
+    assert str(info.value) == "run r-123 failed: invalid input V014 no column AGE"
+    assert failure_reason(_result("error", issues=[{"code": "V014"}])) == "invalid input V014"
 
 
 def test_repr_matches_r_print() -> None:

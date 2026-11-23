@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import date
+import re
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -13,10 +14,13 @@ import sashiny
 from _repo import repo_root
 from engines_helper import MockEngine
 from sashiny.engines import _mock
+from sashiny.recording import save_recording
+from sashiny.result import utc_timestamp
 
 SPEC = repo_root() / "spec"
 FIX = SPEC / "fixtures"
 TODAY = date(2026, 11, 11)
+STAMP = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 
 
 def _minimal_contract() -> sashiny.Contract:
@@ -67,6 +71,35 @@ def test_mock_engine_save_recording(tmp_path: Path) -> None:
     engine.save_recording(contract, macros, {"status": "success", "log": ""})
     key = _mock._recording_key(contract, macros)
     assert (tmp_path / f"{key}.json").is_file()
+
+
+def test_mock_metadata_matches_r(tmp_path: Path) -> None:
+    """#156: the package version as engine_version and R's timestamp form (spec §8.4)."""
+    result = MockEngine().run(_minimal_contract(), {}, today=TODAY)
+    assert result.metadata["engine_version"] == sashiny.__version__
+    for k in ("started_at", "ended_at"):
+        assert STAMP.match(result.metadata[k]), result.metadata[k]
+    rec = json.loads(save_recording(tmp_path, "k", result).read_text(encoding="utf-8"))
+    assert STAMP.match(rec["recorded_at"]), rec["recorded_at"]
+
+
+def test_timestamps_are_utc_whole_seconds_and_old_forms_still_read() -> None:
+    t0 = datetime(2024, 2, 29, 23, 59, 59, 750000, tzinfo=timezone.utc)
+    r = sashiny.Result.new("r", "success", started_at=t0, ended_at=t0 + timedelta(seconds=2))
+    assert r.metadata["started_at"] == "2024-02-29T23:59:59Z"
+    assert r.metadata["ended_at"] == "2024-03-01T00:00:01Z"
+    plus_one = timezone(timedelta(hours=1))
+    assert utc_timestamp(datetime(2024, 3, 1, 1, 0, 0, tzinfo=plus_one)) == "2024-03-01T00:00:00Z"
+    # Results written by Python up to 0.3.1 use "+00:00" with microseconds; both forms are read.
+    old = sashiny.Result(
+        run_id="r",
+        status="success",
+        metadata={
+            "started_at": "1999-12-31T23:59:59.250000+00:00",
+            "ended_at": "2000-01-01T00:00:01Z",
+        },
+    )
+    assert "duration: 1.75 s" in repr(old)
 
 
 def test_mock_and_recordings_are_not_public(monkeypatch: pytest.MonkeyPatch) -> None:

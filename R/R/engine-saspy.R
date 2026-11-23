@@ -176,7 +176,15 @@ NULL
 #' @rdname sas_backends
 #' @export
 sas_oda <- function(region = c("us1", "us2", "eu1", "ap1", "ap2"), java = NULL) {
-  region <- rlang::arg_match(region)
+  regions <- eval(formals(sas_oda)$region)
+  if (identical(region, regions)) region <- regions[[1L]]
+  # A sashiny_error_engine, as Python's EngineValueError (not an rlang error).
+  if (!is.character(region) || length(region) != 1L || !region %in% regions) {
+    .sashiny_abort("engine", sprintf(
+      "unknown ODA region %s; expected one of %s",
+      paste(format(region), collapse = ", "), paste(regions, collapse = ", ")
+    ))
+  }
   .sashiny_new_backend("oda", list(
     java = java %||% .sashiny_find_java(),
     iomhost = .sashiny_oda_hosts[[region]],

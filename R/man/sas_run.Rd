@@ -7,7 +7,7 @@
 sas_run(
   contract,
   engine,
-  values = list(),
+  values = NULL,
   today = Sys.Date(),
   uploads = NULL,
   run_id = NULL
@@ -20,13 +20,17 @@ file (loaded automatically).}
 \item{engine}{An engine from \code{\link[=sas_connect]{sas_connect()}}, \code{\link[=sas_engine_saspy]{sas_engine_saspy()}} or
 \code{\link[=sas_pool]{sas_pool()}}.}
 
-\item{values}{A named list of input values. Defaults to the contract's
-defaults (an empty list).}
+\item{values}{A named list of input values (the JSON form of spec section
+2.1). An input not in \code{values} takes the contract's \code{default} (\code{"today"}
+resolved against \code{today}), as when the app starts (spec section 6.12); a
+supplied \code{NULL}, as in \code{list(id = NULL)}, makes the input absent. Defaults
+to \code{NULL}: every input at its default.}
 
 \item{today}{A \code{Date} used to resolve \code{"today"}.}
 
 \item{uploads}{A named list mapping dataset input ids to a file path, a
-Shiny \code{fileInput} value, or \code{TRUE} for the input's \code{sample}.}
+Shiny \code{fileInput} value, \code{TRUE} for the input's \code{sample}, or a data frame,
+which is written as CSV (spec section 7.1).}
 
 \item{run_id}{The run identifier.}
 }

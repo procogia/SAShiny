@@ -19,6 +19,22 @@ uv pip install sashiny
 # sashiny[streamlit]
 ```
 
+## Engines
+
+Programs run on a live, licensed SAS 9.4, SAS Viya or ODA system through `sashiny.connect()`
+(acknowledge your licence with `license_ack=True` or `SASHINY_LICENSE_ACK=true`). Two more
+engines are accepted (spec §6.6):
+
+- `sashiny.replay(directory)` replays recordings of runs made on licensed SAS, for offline demos.
+  A recording is replayed only with its SAS version, recording time and the SHA-256 of the
+  contract and program it was made from (matching the files on disk); otherwise it is refused
+  with the reason. Replayed results say so in the status text. Write recordings with
+  `sashiny.record()`.
+- Your own `sashiny.Engine` subclass, registered with
+  `sashiny.register_engine(MyEngine, license_ack=True, description="...")`. It MUST run every
+  program on a live SAS system you are licensed to use, and returns results built with
+  `sashiny.engine_result()`.
+
 ## Deploy
 
 `sashiny.deploy.deploy()` generates deployment files for containers, Azure Container Apps,

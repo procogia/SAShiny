@@ -11,6 +11,7 @@ with each other and with [CONTRACT.md](../CONTRACT.md). It never generates them.
 | `values/<name>.json` | Value validation and rendering for a valid contract | `ok`: macro names, values **and order** match. `invalid`: exact `{code, input}` set |
 | `lint/<name>/` | Advisory lint findings (§10) for a contract and its program | `expected.json` `findings` (`{code, path}`) match exactly, in order |
 | `wrapper/<name>/` | Byte-exact generated SAS | `expected_reset.sas` (absent when `reset_work: false`) and `expected_main.sas` match byte-for-byte, with `run_id = fixture` |
+| `frames/cases.json` | Canonical CSV of data frames supplied for dataset inputs (§7.1) | Each case's data frame is written as exactly its `csv` text, in R and Python; read back as a `csv` upload (§7), that text has one row per value (blank lines of a one-column file are rows) |
 
 Conventions:
 - `today` is fixed at `2026-11-11` in fixtures, so `"today"` in contracts is deterministic.
@@ -38,6 +39,20 @@ When adding a fixture, write the expected output by hand from CONTRACT.md first,
 
 `key_text` in `recording_key.json` is hand-written from §8.3. `key` is its SHA-256.
 
+### Replay fixtures (`replay/`)
+
+| Path | Pins down (CONTRACT.md §6.6 (a), §8.3) | Pass condition |
+|---|---|---|
+| `replay.sashiny.yml`, `replay.sas` | The contract and program the recordings were made from | Their SHA-256 are the recordings' `contract_sha256` / `program_sha256` |
+| `recordings/<key>.json` | One recording per case; the file name is the §8.3 key of the case's rendered values | |
+| `cases.json` | For each case, the replay engine's outcome: replayed (status, `sas_version`, `recorded_at`, `notice`, log, outputs), refused (with the reason), missing, or invalid values | A replay run of `values` with `today` gives `status` and `metadata.recording`, `metadata.engine_error`, `metadata.notice`, `metadata.issues` (`{code, input}`), log and outputs as listed; fields not listed are not checked |
+
+The recordings are hand-written fixture data, not output of a real SAS run. Their file names are
+computed from §8.3 (`check_spec.py` recomputes them), and the contract and program use LF line endings
+(`.gitattributes`) so their SHA-256 is the same on every platform. Like `deploy/`, this folder is not
+copied to `R/inst/spec` (its file paths are longer than the 100 bytes a CRAN tarball allows); the R
+tests skip these cases outside the source repository.
+
 ### Deployment fixtures (`deploy/`)
 
 | Path | Pins down (CONTRACT.md §6.8) | Pass condition |
@@ -47,6 +62,13 @@ When adding a fixture, write the expected output by hand from CONTRACT.md first,
 | `<case>/case.json`, `<case>/app/`, `<case>/expected/` | One `generate()` run: copy `app/` to a temporary folder, add `add_files`, generate with `version` | Result fields match `expected`; every file under `expected/` matches the generated file byte for byte |
 
 The `streamlit_*` cases are Python only (spec §6.8.5); the R package skips them.
+
+### Upload fixtures (`uploads/`)
+
+| Path | Pins down (CONTRACT.md §7) | Pass condition |
+|---|---|---|
+| `character_cells/case.json`, `cells.xlsx` | Declared `character` columns take the §7.1 rule 5 text of each native cell (step 3) | Every listed column of the read file equals `expected`, cell for cell |
+| `xlsx_reading/case.json`, `rows.xlsx` | xlsx reading (step 1): blank rows kept, text spaces kept, date-formatted columns as date-times | Same as above |
 
 ### Streamlit fixtures (`streamlit/`)
 

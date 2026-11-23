@@ -78,6 +78,29 @@
           "text": "plain"
         }
       ]
+    },
+    {
+      "name": "ascii_blanks_only",
+      "log": "NOTE: a\u00a0\nb \t\u000b\f\nc\u3000\u2003\nd\u0085",
+      "scope": "full",
+      "expected": [
+        {
+          "level": "note",
+          "text": "NOTE: a\u00a0"
+        },
+        {
+          "level": "text",
+          "text": "b"
+        },
+        {
+          "level": "text",
+          "text": "c\u3000\u2003"
+        },
+        {
+          "level": "text",
+          "text": "d\u0085"
+        }
+      ]
     }
   ]
 }

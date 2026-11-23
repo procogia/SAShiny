@@ -1,6 +1,17 @@
 # SAShiny Contract Specification — Version 1
 
-Status: **Draft 1 (phase 1)**. Spec release: **1.4**. This document is normative for both the R package and the Python library.
+Status: **Draft 1 (phase 1)**. Spec release: **1.7**. This document is normative for both the R package and the Python library.
+
+R and Python MUST behave identically wherever both implement a feature. Four features are
+deliberately **Python only**, because the platform they target has no R runtime; R rejects them
+with a clear error instead of offering a partial copy (#116):
+
+| Feature | Section | Why Python only | R instead |
+|---|---|---|---|
+| In-session engine (PROC PYTHON) | 6.5, 6.6 | PROC PYTHON runs Python inside the SAS job | a saspy backend; an R in-session engine via PROC R is tracked in #146 |
+| `streamlit_snowflake` target | 6.8.5 | Streamlit in Snowflake runs Python only | `posit_snowflake` or `container` |
+| `databricks_apps` target | 6.8.6 | Databricks Apps run Python or Node.js only | `container` |
+| Streamlit front end | 6.9 | Streamlit is a Python framework | the Shiny module (`sas_program_ui()` / `sas_program_server()`) |
 The key words MUST, MUST NOT, SHOULD and MAY are used as described in RFC 2119.
 
 The machine-readable structure is [`sashiny.schema.json`](sashiny.schema.json) (JSON Schema 2020-12).
@@ -28,6 +39,22 @@ Authors MUST NOT rely on YAML 1.1 implicit typing. In particular, quote values s
 contract dates as strings matching `YYYY-MM-DD` and MUST NOT accept YAML timestamp objects.
 Mapping order is significant: inputs and outputs are processed in the order written.
 
+**Plain scalar typing.** R and Python MUST type every plain (unquoted) scalar the same way, so a
+contract is valid in both languages or in neither (#155). The rule is the YAML 1.2 core schema,
+restricted to the number forms that both languages' YAML parsers recognise:
+
+| Type | Plain scalars (regular expressions match the whole scalar) |
+|---|---|
+| null | `~`, `null`, `Null`, `NULL`, or nothing |
+| boolean | `true`, `True`, `TRUE`, `false`, `False`, `FALSE`; also `yes`, `no`, `on`, `off` in the same three spellings (kept from YAML 1.1 for compatibility; prefer `true`/`false`) |
+| integer | `[-+]?(0\|[1-9][0-9]*)` or `0x[0-9a-fA-F]+` |
+| float | `[-+]?(\.[0-9]+\|[0-9]+\.[0-9]*)([eE][-+][0-9]+)?`, `[-+]?\.(inf\|Inf\|INF)` or `\.(nan\|NaN\|NAN)` |
+| string | everything else |
+
+So `-.5`, `.5`, `1.` and `1.5e+3` are numbers, while `1_000`, `1,000`, `017` (leading zero), `1e3` and
+`1.5e3` (an exponent needs a `.` before it and a sign), `0o17`, `0b101`, `1:30` and `y`/`n` are strings,
+and a string where the schema wants a number is an `E000` error. Quote a value to make it a string.
+
 ---
 
 ## 2. Structure (summary)
@@ -46,8 +73,9 @@ ui:      {...}             # optional
 ```
 
 Identifiers (`id`, input and output keys) match `^[a-z][a-z0-9_]{0,31}$` and are used directly as
-Shiny ids. The default module `id` is derived from the program file name. Take the base name without
-the `.sas` extension, lower-case it, remove combining marks (so `İ` lower-cases to `i`, not `i` plus a
+Shiny ids. The default module `id` is derived from the program file name. Take the base name (after
+the last `/` or `\`) without the `.sas` extension, lower-case it, remove combining marks (Unicode
+general category `M`, that is `Mn`, `Mc` and `Me`, so `İ` lower-cases to `i`, not `i` plus a
 combining dot), replace each character outside `[a-z0-9_]` with `_`, prefix `p_`
 if it does not start with a letter, and truncate to 32 characters. Two programs that resolve to the
 same module `id` (whether explicit or derived) MUST be rejected when the app is built.
@@ -411,12 +439,19 @@ once per worker), so they are tested without SAS.
 When every pooled session is busy, a pool MUST wait for a free session up to a configurable
 `acquire_timeout` (default 30 seconds) rather than failing immediately. If no session becomes free
 within the timeout, the run returns an error `Result` with `metadata.engine_error` set to
-`pool exhausted: all N sessions busy` (it MUST NOT raise).
+`pool exhausted: all N sessions busy` (it MUST NOT raise). A run on a closed pool returns an error
+`Result` with `metadata.engine_error` equal to `pool closed`.
+
+One engine runs one contract at a time on its one SAS session. A run that starts while another run
+on the same engine is in progress waits up to 30 seconds for it to finish; if it does not, the run
+returns an error `Result` with `metadata.engine_error` equal to `engine busy: another run is in
+progress`. `metadata.engine_error` holds the failure message only, never a language-specific
+exception class name.
 
 ### 6.6 Supported backends and licence acknowledgement
 
-A run that users can reach through the public API MUST be executed by a live, licensed SAS system.
-Exactly three backends are supported through saspy, plus one in-session backend (Python only):
+A run that users can reach through the public API MUST be executed by a live, licensed SAS system, or be
+a replay of a recording of such a run (see *Two more backends* below). Exactly three backends are supported through saspy, plus one in-session backend (Python only):
 
 | Backend | saspy access method | Configuration that identifies it |
 |---|---|---|
@@ -451,9 +486,78 @@ Rules:
   Without an acknowledgement the run returns an error `Result` whose `metadata.engine_error` starts with
   `SAS licence not acknowledged`. Building an engine without an acknowledgement is allowed, so
   configuration can be inspected offline.
-- SAS logs come only from SAS. The public API MUST NOT offer a way to supply a log, a result or a
-  recording that did not come from a live SAS run, and live engines MUST NOT write recordings.
+- SAS logs come only from SAS. Apart from the two backends below, the public API MUST NOT offer a way
+  to supply a log, a result or a recording that did not come from a live SAS run, and live engines
+  MUST NOT write recordings on their own (an app writes one only by calling the recording writer below).
 - The offline mock engine (8.3) is an internal test fixture. It is not part of the public API.
+
+**Two more backends.** Besides the rows above, the public entry points (the module server
+`sas_program_server()` / `program_server()`, the app helpers, `sas_run()` / `run()` and pools) accept
+exactly two more kinds of engine. Every other engine class is rejected when the entry point is
+called, with an error naming the supported engines.
+
+*(a) Replay of recordings made on a live, licensed SAS system.* `sas_replay(recordings_dir)` (R) /
+`sashiny.replay(recordings_dir)` (Python) returns an engine that serves recordings (8.3) instead of
+submitting to SAS. It replays a recording only when the recording carries provenance from a licensed
+SAS run, checked on every run in this order; the first failed check is the reason:
+
+| Check | Reason when it fails |
+|---|---|
+| `sashiny_recording` is `1` | `it is not a version 1 SAShiny recording` |
+| `sas_version` (`&SYSVLONG` of the run) is a non-empty string | `it has no SAS version` |
+| `recorded_at` is a non-empty string | `it has no recording time` |
+| `contract_sha256` is a non-empty string equal to the SHA-256 of the contract on disk (8.4) | `it was made from a different contract` |
+| `program_sha256` is a non-empty string equal to the SHA-256 of the program on disk (8.4) | `it was made from a different version of the program` |
+
+The run proceeds as follows. Values are validated and rendered exactly as for a live run (§4, §5,
+V001–V014; dataset files as in §7), and a run whose values do not validate returns the usual error
+result without reading a recording. The recording key (8.3) selects `<recordings_dir>/<key>.json`.
+- No such file: status `error`, `metadata.recording = "missing"`, `metadata.engine_error` =
+  `no recording of this run: these inputs were not recorded on SAS`. Outputs and log are empty.
+- A file that fails a provenance check (or is not valid JSON, reason `it is not valid JSON`): the
+  recording is **refused**, not replayed: status `error`, `metadata.recording = "refused"`,
+  `metadata.engine_error` = `recording not replayed: <reason>`. Outputs and log are empty.
+- Otherwise the recording is **replayed**: status, log and outputs are the recording's; the
+  metadata is that of 8.4 with `engine = "replay"`, `sas_version` and `recorded_at` from the
+  recording, `recording = "replayed"`, and `notice` = `Replayed from <sas_version>, recorded
+  <recorded_at>.` (for example `Replayed from 9.04.01M0P061913, recorded 2015-07-30T12:00:00Z.`).
+  The module's status text shows the notice (it already shows every `metadata.notice`), so a user
+  always sees that the result is a replay and which SAS run made it.
+
+The replay engine runs no `choices_from` query (§6.4): it returns no choices. It needs no licence
+acknowledgement, because it submits nothing to SAS; the licence that matters is the one of the run
+that made the recording.
+
+*(b) Registered engines.* An engine class that an app registers with an explicit licence
+acknowledgement is accepted like a saspy engine:
+
+- R: `sas_register_engine(class, license_ack = TRUE, description = "...")`, where `class` is an S3
+  class with a `sas_engine_run()` method. Python: `sashiny.register_engine(cls, license_ack=True,
+  description="...")`, where `cls` is a subclass of `sashiny.Engine`. An engine is accepted when it
+  inherits from a registered class.
+- `license_ack` MUST be the literal `TRUE` / `True` argument; the option and environment variable
+  acknowledgements above do not register an engine. `description` MUST be a non-empty string naming
+  the SAS system the engine runs on. Registration fails with an error otherwise, and for SAShiny's own
+  engine classes (names starting with `sashiny_` in R, classes defined in the `sashiny` package in
+  Python).
+- `sas_registered_engines()` / `sashiny.registered_engines()` list the registrations (class name to
+  description); `sas_unregister_engine(class)` / `sashiny.unregister_engine(cls)` remove one.
+  Registrations live for the R or Python process.
+- **A registered engine MUST execute every run on a live, licensed SAS system**, and its log and
+  outputs MUST be the ones that SAS run produced. SAShiny cannot verify this: by registering, the
+  app's author acknowledges it, as `license_ack` does for saspy engines.
+- To return a result, a registered engine uses `sas_engine_result()` / `sashiny.engine_result()`,
+  which builds a result with the metadata of 8.4 (hashes from the contract and program on disk,
+  timestamps, `engine_version`). The engine supplies the status (§6.5), log, outputs (8.1),
+  rendered macros, engine name and `sas_version` (`&SYSVLONG`).
+
+**Writing recordings.** `sas_record(directory, contract, result, uploads = NULL)` /
+`sashiny.record(directory, contract, result, uploads=None)` writes `result` as a recording (8.3)
+and returns its path. It refuses (raises an error) when the result has no `sas_version`, when it is
+itself a replay (`metadata.recording` is set) or a cache hit (`metadata.cache_hit`), when the contract
+has no file on disk, or when the result's `contract_sha256` or `program_sha256` differs from the files
+on disk. The recording's `macros` are the result's `metadata.macros`, and the key uses those macros and
+the supplied dataset files (8.3). An empty `macros` or `outputs` is written as a JSON object `{}`.
 
 ### 6.7 Publishing to Posit Connect
 
@@ -1150,10 +1254,18 @@ lets other Shiny code, such as a filter panel in a parent module, drive a contra
 
 **Precedence.** For every id that `values()` supplies, the supplied value replaces the UI value; ids it
 does not supply are read from the UI as usual. A supplied `null` / `NULL` replaces the UI value with an
-absent value (so a required input gives `V001`). Dataset inputs are always read from the UI; a value
-supplied for a dataset id is ignored. The merged values are validated
+absent value (so a required input gives `V001`). The merged values are validated
 (§4, V001–V014) exactly like UI values, so an invalid or unknown external value gives the same codes
 (for example `V003`, `V004`, `V011`) and no SAS code is submitted.
+
+**Dataset inputs.** A value supplied for a dataset id is a data frame: an R `data.frame` (a tibble
+counts) or a pandas `DataFrame`. It replaces the upload control and the `sample` checkbox: it is
+written as a CSV file named `<id>.csv` in the canonical form of §7.1, and that file goes through the
+same conversion and checks as an uploaded file (§7; `accept` must include `csv`, `max_size_mb` applies
+to the CSV bytes, declared `columns` must be present), so a problem gives `V014` and no SAS code is
+submitted. A supplied `null` / `NULL` makes the dataset input absent. Any other value for a dataset
+id is `V014`. Because the CSV bytes are canonical, the same data frame gives the same upload SHA-256
+in R and Python, so result-cache and recording keys (§6.11, §8.3) agree across languages.
 
 **Triggers.** A run starts on a Run click, as before. In addition, when `ui.auto_run` is `true`, every
 change of `values()` starts a run once `values()` has been stable for the debounce interval
@@ -1196,7 +1308,7 @@ Implementations provide a hook to replace the in-memory store (for example with 
 they do not ship an external store.
 
 **Hits.** A reused result keeps its original `run_id`, `log`, outputs and metadata, and adds
-`metadata.cache_hit = true` and `metadata.cached_at` (UTC ISO 8601 time when it was stored). A run
+`metadata.cache_hit = true` and `metadata.cached_at` (the UTC time when it was stored, in the §8.4 form). A run
 that does not hit the cache has no `cache_hit` field. Each hit returns a copy, so changing a returned
 result does not change the cache.
 
@@ -1206,12 +1318,34 @@ numbers, or data outside its inputs (database tables, files, `SASHELP` views tha
 `run.cache` off; otherwise users see stale results. The program file is hashed, but files it
 `%include`s are not.
 
+### 6.12 Scripted runs and defaults
+
+`sas_run(contract, engine, values)` (R) and `run(contract, engine, values)` (Python) start a run
+without the Shiny module, with the same precedence as §6.10 and the contract's defaults in place of
+the UI. For every id that `values` supplies, the supplied value is used; every other non-dataset
+input that has a `default` takes that default, with `"today"` (in a `date` default or either item of
+a `daterange` default) resolved to the run's `today` date in `YYYY-MM-DD` form, exactly as the module
+shows it when the app starts. A supplied `null` / `NULL` (R `list(id = NULL)`, Python `{"id": None}`)
+makes the input absent, so a required input gives `V001`. Inputs without a `default`, and dataset
+inputs (which are supplied through `uploads`), are absent unless supplied. Omitting `values`, or
+passing `NULL` / `None` or an empty list / dict, therefore runs every input at its default, which is
+what a first click of Run in the generated app submits. The merged values are then validated (§4) and
+keyed (§6.11) like any other values.
+
 ---
 
 ## 7. Dataset upload conversion
 
+A data frame supplied through `values` (§6.10) or `sas_run(uploads = )` / `run(uploads=)` is
+first written as CSV in the canonical form of §7.1 and then converted like any other file.
+
 1. Read the file by extension: `csv` (UTF-8, comma, header row, RFC 4180), `xlsx` (first sheet, header
-   row), `xpt` (SAS transport v5/v8), `sas7bdat`.
+   row), `xpt` (SAS transport v5/v8), `sas7bdat`. In `xlsx`, every row between the header and the last
+   non-empty row is read, blank rows included (their cells are missing). Text cells keep their leading
+   and trailing spaces. A column whose non-empty cells all carry a date or time number format (a
+   built-in date format, or a format code that, without quoted text, escaped characters and `[...]`
+   sections, contains `d`, `m`, `y`, `h` or `s`) is a native date-time column: the Excel serial (1900
+   or 1904 date system) gives whole days plus the day fraction rounded to the millisecond, in UTC.
 2. Column names: replace characters outside `[A-Za-z0-9_]` with `_`; prefix `_` if the first character is
    a digit; truncate to 32 bytes; resolve case-insensitive duplicates by suffixing `_2`, `_3`, ... (truncating
    further to fit). Declared `columns` are matched case-insensitively **after** this step.
@@ -1219,7 +1353,12 @@ numbers, or data outside its inputs (database tables, files, `SASHELP` views tha
    `date` (ISO `YYYY-MM-DD`, or a native date type; stored as SAS date with format `DATE9.`). For `numeric`
    and `date` columns, a value is "empty" (missing) when it is the empty string or whitespace only; any
    other non-conforming value (including the literal text `NA`, `nan`, `NaT` or `None`) is unparseable and
-   reported as `V014`.
+   reported as `V014`. A `character` column keeps text cells as they are. Any other cell (a number,
+   logical, date or date-time read natively from `xlsx`, `xpt` or `sas7bdat`) becomes the text that §7.1
+   rule 5 gives for its type, without CSV quoting: `1`/`0` for true/false, integers as digits, other
+   numbers as `%.17g` (so `1.0` is `1` and `0.1 + 0.2` is `0.30000000000000004`), dates as
+   `YYYY-MM-DD` and date-times as `YYYY-MM-DDTHH:MM:SS[.ffffff]Z` in UTC. A missing cell is empty, and an
+   infinite number is `V014`.
 4. Undeclared columns: native numeric/date types are kept. In `csv`, a column whose non-empty values all
    parse as numbers becomes numeric, otherwise character.
 5. The result is written to `target`. Column order is preserved.
@@ -1237,6 +1376,41 @@ under the largest is still stored by the transport and then rejected by the per-
 check (V014). This is the best the Shiny upload protocol allows; the per-input limit is always
 enforced before any SAS work.
 
+Blank lines in `csv` (step 1): when the header line has exactly one field, every line after it is a
+row, so an empty line is a row whose value is missing, as RFC 4180 reads it. This is how §7.1 writes
+a missing value or `""` in a one-column data frame. The line terminator that ends the last row does
+not start another row (`A\nx\n\ny\n` has three rows). With more than one column, blank lines are
+skipped (the canonical writer never produces one: its empty rows are `,` or longer).
+
+### 7.1 Canonical CSV for data frames
+
+R and Python write the same bytes for the same data frame:
+
+1. UTF-8 without a byte order mark. Every line, including the last, ends with LF.
+2. The first line holds the column names, as given (§7 step 2 cleans them later). One line per row
+   follows, in row order. Row names (R) and the index (pandas) are not written.
+3. Fields are separated by `,`. A field is enclosed in `"` only when it contains `,`, `"`, CR or LF;
+   a `"` inside is doubled.
+4. A missing value (R `NA`, Python `None`, `NaN`, `NaT`, `pd.NA`) is an empty field. So is an empty
+   string. In a one-column data frame such a row is an empty line, which §7 reads back as a row.
+5. Values by column type:
+
+| Column | Field |
+|---|---|
+| character, string | the text |
+| factor (R), category (pandas) | the label, written by the rule for its values' type |
+| logical (R), bool (pandas) | `1` for true, `0` for false |
+| integer | the decimal digits, with `-` if negative |
+| double, float | C `printf` `%.17g`, correctly rounded (so `0.1` is `0.10000000000000001` and `64` is `64`), which always reads back to the same number; infinite values are `V014` |
+| date: R `Date`; Python `datetime.date` values | `YYYY-MM-DD` |
+| date-time: R `POSIXct`; pandas `datetime64`, Python `datetime.datetime` values | `YYYY-MM-DDTHH:MM:SS` in UTC, then `.` and up to six fractional digits without trailing zeros when the time, rounded to the microsecond, has a fraction, then `Z`. A date-time without a time zone (naive) counts as UTC |
+
+   A pandas `object` column is written value by value with the rule for each value's type. Any
+   other type (R list columns, complex numbers, durations, nested objects) is `V014`, naming the
+   column. A data frame with no columns is `V014`; one with no rows is just the header line.
+
+`spec/fixtures/frames/cases.json` pins this down byte for byte.
+
 ---
 
 ## 8. Result collection
@@ -1248,8 +1422,8 @@ outputs. The failed output's value is `{"error": "<message>"}`, and the message 
 
 ### 8.1 Output values
 
-Each output has a **language-neutral JSON value**. Engines return it, and the internal test mock replays it
-from recordings (8.3), so R and Python see identical data.
+Each output has a **language-neutral JSON value**. Engines return it, and the replay engine (6.6) and the
+internal test mock replay it from recordings (8.3), so R and Python see identical data.
 
 | Output | Value |
 |---|---|
@@ -1327,7 +1501,8 @@ own `select` (plot form). Collect `sashiny` like a `chart` from the chart fields
 **html**: The ODS HTML listing returned by the main submission.
 
 **log**: Split the main-submission log on line breaks (`CRLF`, `CR` or `LF`). If the log ends with a line
-break, there is no empty final line. Drop trailing whitespace from each line.
+break, there is no empty final line. Drop trailing whitespace from each line: ASCII blanks only, as in
+8.1 (a no-break space, U+3000 or U+0085 stays).
 `program` scope keeps the lines strictly between the line equal to `NOTE: SASHINY-BEGIN-PROGRAM` and the
 line equal to `NOTE: SASHINY-END-PROGRAM`, or every line after BEGIN if END is missing. Source echo lines
 never match, because SAS prefixes them with line numbers. `full` keeps every line. Each line's `level`
@@ -1347,16 +1522,18 @@ Numeric formatting in client-produced files may differ slightly between implemen
 
 ### 8.3 Recordings
 
-A recording replays a run without SAS. Recordings are **internal test fixtures only** (6.6). They let the
-automated checks (CRAN, PyPI, CI) exercise the module and collection code without SAS. They are
-not reachable through the public API. Users cannot create them from a live engine or feed them into an app.
+A recording replays a run without SAS. Recordings have two uses. Apps replay recordings that carry
+provenance from a live, licensed SAS run through the replay engine (6.6 (a)); `sas_record()` /
+`sashiny.record()` write them from a live or registered engine's result. The internal test mock also
+replays hand-written recordings without provenance checks, so the automated checks (CRAN, PyPI, CI)
+exercise the module and collection code without SAS; it is not reachable through the public API.
 A recording is a UTF-8 JSON file `<key>.json`:
 
 ```json
 {"sashiny_recording": 1, "status": "...", "log": "<full main-submission log>",
  "outputs": {"<output_id>": <value from 8.1>}, "sas_version": "...",
  "contract_sha256": "...", "program_sha256": "...", "macros": {"NAME": "VALUE"},
- "recorded_at": "<UTC ISO 8601>"}
+ "recorded_at": "<UTC, §8.4 form>"}
 ```
 
 `<key>` is the lower-case hex SHA-256 of this UTF-8 text, built line by line with LF endings:
@@ -1369,14 +1546,27 @@ upload <input_id> <sha256>    one line per supplied dataset input, contract orde
 ```
 
 The key depends only on the contract bytes, the rendered values and the uploaded files. A recording
-written by either language's test suite therefore replays in both. The internal mock engine with no matching recording returns
-status `success` with empty outputs and sets `metadata.recording` to `"missing"`.
+written by either language therefore replays in both. The key is unchanged since spec release 1.0, so
+earlier recordings keep their names. The provenance fields `sas_version`, `recorded_at`,
+`contract_sha256` and `program_sha256` are required for the replay engine (6.6 (a)); a recording
+without them is refused there. The internal mock engine with no matching recording returns
+status `success` with empty outputs and sets `metadata.recording` to `"missing"`; it does not check
+provenance. `spec/fixtures/replay/` fixes the replay engine's outcomes (replayed, refused with each
+reason, missing).
 
 ### 8.4 Run metadata
 
 Every result carries run metadata: `run_id`, `contract_sha256` (of the YAML bytes), `program_sha256`
-(of the program file bytes as stored on disk), rendered macro values, start/end timestamps (UTC, ISO 8601),
+(of the program file bytes as stored on disk), rendered macro values, start/end timestamps (`started_at`, `ended_at`),
 engine name and version, SAS version (`&SYSVLONG`), status, and `collect_errors` (list, possibly empty).
+
+Both languages write the same bytes for these fields:
+- Timestamps (`started_at`, `ended_at`, `recorded_at` in 8.3 and `cached_at` in 6.11) have the form
+  `YYYY-MM-DDTHH:MM:SSZ`: UTC, whole seconds, a literal `Z`. Readers MUST also accept other ISO 8601
+  UTC forms (for example `+00:00` with fractional seconds, as written by Python up to 0.3.1).
+- `engine_version` is the SAShiny package version (equal in R and Python, section 11) for every
+  engine, including the replay engine and the internal test mock. A result built with
+  `sas_engine_result()` / `sashiny.engine_result()` for a registered engine also carries it.
 
 ### 8.5 Chart spec (client-side rendering)
 
@@ -1403,7 +1593,13 @@ Column names are matched case-insensitively against the collected columns. An un
 collection error. The exact visual output is backend-specific; the data and the mapping are the
 portable contract. A backend MUST honour every declared mapping (`x`, `y`, `color`, `fill`, `facet`)
 that its kind supports; if a backend cannot honour a mapping it MUST report a collection error rather
-than silently render a chart that ignores it.
+than silently render a chart that ignores it. The secondary backends (`base`, `matplotlib`) group
+`scatter` and `line` charts by `color` and `bar` charts by `fill`, and draw no other `color` or
+`fill` mapping, except a `box` chart whose `color` is its own `x` column. Any other `color`/`fill`
+mapping is the error `chart backend <backend> cannot map <field> for kind <kind>`. `plotly` draws
+`color` or `fill`, not both: both together are the error
+`chart backend plotly cannot map both color and fill`. `xlab`, `ylab`, `title` and `subtitle` are
+honoured by every backend (`subtitle` only together with `title` in `plotly`).
 
 **`render` (callback)** — a per-language extension, not part of the cross-language fixtures and not a
 YAML field. In R it is a function `function(value, spec, ...)` returning a plot object; in Python it
@@ -1470,7 +1666,10 @@ The accessors are fixed by `spec/fixtures/collect/frames.json`.
   program's value wins. Lint reports this (`L001`) by scanning for `%let <NAME>` and
   `call symput[x]('<NAME>'`, except assignments inside a
   `%if not %symexist(<NAME>) %then %do; ... %end;` guard. Programs written for standalone use SHOULD guard defaults with
-  `%if not %symexist(NAME) %then %do; %let NAME = ...; %end;` (SAS 9.4M5+ open-code `%if`).
+  `%if not %symexist(NAME) %then %do; %let NAME = ...; %end;` (SAS 9.4M5+ open-code `%if`). On
+  releases before 9.4M5, put the same test inside a macro that runs `%global NAME;` before the
+  `%let`, as `examples/general/cars_explorer.sas` does; the wrapper creates injected macro variables
+  as global (`call symputx(..., 'G')`), so the default is skipped.
 - A program that ends the session (`endsas;`) or leaves unbalanced quotes produces status `error`
   (missing END sentinel). So does a program that leaves `options nonotes;` in effect, because SAS then
   drops the `NOTE:` sentinels.
@@ -1492,6 +1691,7 @@ The accessors are fixed by `spec/fixtures/collect/frames.json`.
 | `L003` | `table`/`chart`/`download` `from` dataset, or the `chart.from` of a paired `plot`, never created in the program and not a dataset input target or a permanent library. |
 | `L004` | More than one `rtf`/`pdf` download: each receives the same output; usually unintended. |
 | `L005` | `entry: macro` but `%macro <MACRO>` not found in the program. |
+| `L006` | `entry: macro` and an input macro name (§6.3 passes every one as a keyword argument, order of 5.7) that is not a parameter of the entry macro (a name in the parenthesised list of `%macro <MACRO>(...)`, matched case-insensitively; `/* */` comments ignored). SAS rejects the call (`ERROR: The keyword parameter <NAME> was not defined with the macro.`). Reported once per input at `/inputs/<id>`. A definition without a parameter list has no parameters. Not reported when the definition has the `PARMBUFF` (`PBUFF`) option, which accepts any argument, or when the parameter list contains `(` (a default such as `x=%str(a,b)`). Macro parameters that no input sets are not reported: they keep their defaults. |
 
 ## 11. Versioning
 
