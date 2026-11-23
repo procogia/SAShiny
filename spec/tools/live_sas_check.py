@@ -32,7 +32,7 @@ Checks:
   wrapper    every spec/fixtures/wrapper case runs in SAS and injected macro values match exactly
   injection  hostile text values stay data (session survives, values intact)
   ods_ids    `ods rtf(id=...)` / `ods pdf(id=...)` files are written to WORK
-  examples   the three example programs run with their default inputs
+  examples   every example program runs with its default inputs
 """
 
 from __future__ import annotations
@@ -171,9 +171,21 @@ def classify_log(log: str) -> dict[str, int]:
     return counts
 
 
+def log_problems(log: str, context: int = 4) -> list[str]:
+    """Each ERROR and WARNING line with the log lines just before it, for the report."""
+    lines = log.splitlines()
+    out: list[str] = []
+    for i, line in enumerate(lines):
+        if line.startswith(("ERROR", "WARNING")):
+            out.extend(lines[max(0, i - context) : i + 1])
+            out.append("...")
+    return out
+
+
 def run_status(log: str, run_id: str = "fixture") -> tuple[str, int | None]:
     """Spec section 6.5."""
-    m = re.search(rf"SASHINY-END run={re.escape(run_id)} syscc=(\d+)", log)
+    # Anchor at line start: the source echo of the %put statement also contains the marker.
+    m = re.search(rf"^NOTE: SASHINY-END run={re.escape(run_id)} syscc=(\d+)$", log, re.MULTILINE)
     if not m:
         return "error", None
     syscc = int(m.group(1))
@@ -225,6 +237,13 @@ def upload_sample(sas: Any, base: Path, spec: dict[str, Any]) -> None:
 
     df = pd.read_csv(base / spec["sample"], dtype=str, keep_default_na=False)
     date_cols: dict[str, str] = {}
+    declared = {c["name"].upper() for c in spec.get("columns", [])}
+    for name in df.columns:  # spec 7 step 4: undeclared all-number columns become numeric
+        text = df[name].str.strip()
+        nonblank = text != ""
+        numbers = pd.to_numeric(text.where(nonblank), errors="coerce")
+        if name.upper() not in declared and nonblank.any() and not (numbers.isna() & nonblank).any():
+            df[name] = numbers
     for col in spec.get("columns", []):
         name = next(c for c in df.columns if c.upper() == col["name"].upper())
         if col["type"] == "numeric":
@@ -259,6 +278,7 @@ def run_contract(sas: Any, contract: ref.Contract, values: dict[str, Any], uploa
         "graphs": res["LST"].count("<img") + res["LST"].count("<svg"),
         "macros_match": got == macros,
         "macro_mismatches": {k: {"expected": v, "sas": got.get(k)} for k, v in macros.items() if got.get(k) != v},
+        "log_problems": log_problems(res["LOG"]),
         "log_tail": res["LOG"].splitlines()[-25:] if status == "error" else [],
     }
 
@@ -288,6 +308,9 @@ def check_connect(ctx: dict[str, Any], r: CheckResult) -> None:
 
     sas = saspy.SASsession(cfgfile=str(ctx["cfgfile"]), cfgname="sashiny_check", results="HTML")
     ctx["sas"] = sas
+    # Session setup (spec 6.1), as the engines do: ODA starts with NONOTES, which hides the
+    # %put NOTE: sentinels, so every run would look unfinished (status error, syscc None).
+    sas.submit("options notes;", results="TEXT")
     res = sas.submit("%put SXCHK VERSION=&sysvlong; %put SXCHK ENCODING=&sysencoding;", results="TEXT")
     r.details = {
         "sas_version": _grab(res["LOG"], "VERSION"),
@@ -371,7 +394,14 @@ def check_injection(ctx: dict[str, Any], r: CheckResult) -> None:
 
 def check_ods_ids(ctx: dict[str, Any], r: CheckResult) -> None:
     sas = ctx["sas"]
-    r.details["run"] = _run_wrapper_fixture(ctx, FIX / "wrapper" / "macro_entry_ods")
+    # SAS writes no PDF file for a destination that received no output (RTF it writes anyway),
+    # so run a copy of the fixture whose program also prints one row.
+    with tempfile.TemporaryDirectory() as tmp:
+        d = Path(tmp) / "macro_entry_ods"
+        shutil.copytree(FIX / "wrapper" / "macro_entry_ods", d)
+        program = d / "program.sas"
+        program.write_text(program.read_text(encoding="utf-8") + "proc print data=sashelp.class(obs=1); run;\n", encoding="utf-8")
+        r.details["run"] = _run_wrapper_fixture(ctx, d)
     names = ["sashiny_rtf_a.rtf", "sashiny_pdf_a.pdf", "sashiny_rtf_b.rtf"]
     code = ["data _null_;", "  length f $1024;"]
     for i, n in enumerate(names):
@@ -398,7 +428,7 @@ def check_examples(ctx: dict[str, Any], r: CheckResult) -> None:
 
 
 def _grab(log: str, key: str) -> str | None:
-    m = re.search(rf"SXCHK {key}=(\S*)", log)
+    m = re.search(rf"^SXCHK {key}=(\S*)", log, re.MULTILINE)  # not the source echo
     return m.group(1) if m else None
 
 
