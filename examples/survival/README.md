@@ -40,8 +40,12 @@ callback. The contract's declarative chart spec draws points, lines, bars, histo
 boxes, but a forest plot needs confidence-interval bars, a log axis and a reference line
 at HR = 1. So the demo apps pass `forest_chart` as a chart render callback (spec §8.5):
 `chart_render={"forest_plot": forest_chart}` in Python, and
-`render = list(forest_plot = forest_chart)` in R. Without the callback, the SAShiny view
-falls back to the hazard ratios as points.
+`render = list(forest_plot = forest_chart)` in R. Without the callback (other hosts, or
+if the demo app cannot load the file, which it reports as a warning), the SAShiny view
+falls back to the contract's declarative chart: the hazard ratios as points, titled as
+point estimates, with the intervals in the hazard ratios table. `Python/tests/test_survival_charts.py`
+and `R/tests/testthat/test-survival-charts.R` check both callbacks against the same value
+and layout.
 
 ## Data
 

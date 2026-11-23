@@ -258,6 +258,8 @@ outputs:
         kind: scatter
         x: hazard_ratio
         y: term
+        title: Hazard ratios (point estimates)
+        subtitle: Confidence intervals are in the hazard ratios table
         xlab: Hazard ratio
         ylab: Term
   cox_fit:

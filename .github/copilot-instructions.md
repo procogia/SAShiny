@@ -27,7 +27,7 @@ contract (`<program>.sashiny.yml`) declares inputs and outputs. Read these befor
 | `R/` | R package root (CRAN). Code in `R/R/`, tests in `R/tests/testthat/` |
 | `Python/` | Python library root (PyPI). Code in `Python/src/sashiny/`, tests in `Python/tests/` |
 | `spec/` | Contract spec, schema, fixtures; `spec/tools/` = reference oracle + checkers (never shipped) |
-| `examples/` | general / pharma / aml demo programs + contracts + synthetic data |
+| `examples/` | general / pharma / aml / forecasting / survival demo programs + contracts + synthetic data |
 
 Planned modules (same names in both languages where possible): contract (load + validate), values (validate +
 render), wrapper (reset + main code), lint (L001–L006), engines (mock, saspy), pool, run, result, Shiny modules

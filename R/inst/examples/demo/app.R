@@ -67,8 +67,20 @@ contracts <- lapply(tracks, function(t) sas_contract(t[[2]]))
 
 # Chart render callbacks per track (spec 8.5): the forest plot needs CI bars and
 # a log axis, which the declarative chart spec does not draw.
-source(file.path(examples_dir, "survival", "survival_charts.R"), local = TRUE)
-chart_render <- list(survival = list(forest_plot = forest_chart))
+# If the callback file cannot be loaded, warn and fall back to the contract's
+# declarative chart instead of stopping the app.
+survival_render <- tryCatch(
+  {
+    source(file.path(examples_dir, "survival", "survival_charts.R"), local = TRUE)
+    list(forest_plot = forest_chart)
+  },
+  error = function(e) {
+    warning("survival forest-plot callback not loaded (", conditionMessage(e),
+            "); using the declarative chart", call. = FALSE)
+    NULL
+  }
+)
+chart_render <- list(survival = survival_render)
 
 profiles <- c(
   "SAS ODA (OnDemand for Academics)" = "oda",

@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import warnings
 from pathlib import Path
 from typing import Any
 
@@ -55,20 +56,31 @@ TRACKS = {
 }
 
 
-def _survival_charts() -> Any:
-    """Load the survival example's chart callbacks (examples/survival/survival_charts.py)."""
+def _survival_charts() -> dict[str, Any]:
+    """Load the survival example's chart callbacks (examples/survival/survival_charts.py).
+
+    If the file cannot be loaded, warn and return no callbacks: the forest plot
+    then falls back to the contract's declarative spec instead of stopping the app.
+    """
     path = EXAMPLES / "survival" / "survival_charts.py"
-    spec = importlib.util.spec_from_file_location("survival_charts", path)
-    if spec is None or spec.loader is None:
-        raise ImportError(f"cannot load {path}")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+    try:
+        spec = importlib.util.spec_from_file_location("survival_charts", path)
+        if spec is None or spec.loader is None:
+            raise ImportError(f"cannot load {path}")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return {"forest_plot": module.forest_chart}
+    except Exception as exc:  # any failure means "use the fallback"
+        warnings.warn(
+            f"survival forest-plot callback not loaded ({exc}); using the declarative chart",
+            stacklevel=1,
+        )
+        return {}
 
 
 # Chart render callbacks per track (spec 8.5): the forest plot needs CI bars and
 # a log axis, which the declarative chart spec does not draw.
-CHART_RENDER = {"survival": {"forest_plot": _survival_charts().forest_chart}}
+CHART_RENDER = {"survival": _survival_charts()}
 
 PROFILES = {
     "oda": "SAS ODA (OnDemand for Academics)",
