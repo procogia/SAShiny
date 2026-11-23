@@ -4,6 +4,17 @@ All notable changes to the Python library are documented here. The format follow
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- plotnine charts render on worker threads on Windows and macOS (#171). They were saved
+  through `pyplot.figure()`, which uses matplotlib's default GUI backend (`TkAgg` on Windows,
+  `macosx` on macOS); that backend only works on the main thread, while Shiny and Streamlit
+  draw charts on worker threads. On Windows the process crashed, and on macOS every chart
+  failed with `RuntimeError`. Charts are now drawn on an off-screen Agg figure, still 8 x 6 in
+  at 150 dpi. The app's global matplotlib backend and the caller's plot object are not changed.
+
 ## [0.4.1] - 2026-11-22
 
 ### Changed
