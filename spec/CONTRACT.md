@@ -1,6 +1,17 @@
 # SAShiny Contract Specification — Version 1
 
 Status: **Draft 1 (phase 1)**. Spec release: **1.7**. This document is normative for both the R package and the Python library.
+
+R and Python MUST behave identically wherever both implement a feature. Four features are
+deliberately **Python only**, because the platform they target has no R runtime; R rejects them
+with a clear error instead of offering a partial copy (#116):
+
+| Feature | Section | Why Python only | R instead |
+|---|---|---|---|
+| In-session engine (PROC PYTHON) | 6.5, 6.6 | PROC PYTHON runs Python inside the SAS job | a saspy backend; an R in-session engine via PROC R is tracked in #146 |
+| `streamlit_snowflake` target | 6.8.5 | Streamlit in Snowflake runs Python only | `posit_snowflake` or `container` |
+| `databricks_apps` target | 6.8.6 | Databricks Apps run Python or Node.js only | `container` |
+| Streamlit front end | 6.9 | Streamlit is a Python framework | the Shiny module (`sas_program_ui()` / `sas_program_server()`) |
 The key words MUST, MUST NOT, SHOULD and MAY are used as described in RFC 2119.
 
 The machine-readable structure is [`sashiny.schema.json`](sashiny.schema.json) (JSON Schema 2020-12).
