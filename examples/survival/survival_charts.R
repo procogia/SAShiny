@@ -30,7 +30,7 @@ forest_chart <- function(value, spec, ...) {
     stringsAsFactors = FALSE
   )
   df <- df[!is.na(df$hr) & df$hr > 0, , drop = FALSE]
-  if (nrow(df) == 0L) stop("no hazard ratios to plot")
+  if (nrow(df) == 0L) return(.forest_note(column("hr_ci")))
   df$lower[is.na(df$lower)] <- df$hr[is.na(df$lower)]
   df$upper[is.na(df$upper)] <- df$hr[is.na(df$upper)]
   df$hr_ci[is.na(df$hr_ci)] <- sprintf("%.2f", df$hr[is.na(df$hr_ci)])
@@ -74,4 +74,18 @@ forest_chart <- function(value, spec, ...) {
     ggplot2::theme_bw() +
     ggplot2::theme(panel.grid.minor = ggplot2::element_blank(),
                    panel.grid.major.y = ggplot2::element_blank())
+}
+
+# The program's note (for example "Cox model not fitted: ...") when there are no
+# hazard ratios to plot.
+.forest_note <- function(notes) {
+  notes <- notes[!is.na(notes) & nzchar(notes)]
+  text <- if (length(notes)) as.character(notes[[1]]) else "No hazard ratios to plot."
+  if (length(notes) && !startsWith(tolower(text), "cox model not fitted")) {
+    text <- paste("Cox model not fitted:", text)
+  }
+  ggplot2::ggplot() +
+    ggplot2::annotate("text", x = 0, y = 0, label = text, size = 4) +
+    ggplot2::labs(title = "Hazard ratios") +
+    ggplot2::theme_void()
 }

@@ -29,8 +29,6 @@ def _forest_frame(value: dict[str, Any]) -> Any:
     for col in ("hazard_ratio", "hr_lower", "hr_upper"):
         df[col] = pd.to_numeric(df[col], errors="coerce")
     df = df[df["hazard_ratio"] > 0].reset_index(drop=True)
-    if df.empty:
-        raise ValueError("no hazard ratios to plot")
     # First model term on top, as in the SAS graph.
     df["pos"] = list(range(len(df), 0, -1))
     if "hr_ci" not in df:
@@ -58,6 +56,8 @@ def forest_chart(value: dict[str, Any], spec: dict[str, Any] | None) -> Any:
     )
 
     df = _forest_frame(value)
+    if df.empty:
+        return _note_chart(value)
     header = next(
         (
             c.get("label") or "HR (CI)"
@@ -96,6 +96,27 @@ def forest_chart(value: dict[str, Any], spec: dict[str, Any] | None) -> Any:
         )
         + theme_bw()
         + theme(panel_grid_minor=element_blank(), panel_grid_major_y=element_blank())
+    )
+
+
+def _note_chart(value: dict[str, Any]) -> Any:
+    """Draw the program's note (for example "Cox model not fitted: ...") when there are no hazard ratios."""
+    from plotnine import annotate, ggplot, labs, theme_void  # noqa: PLC0415
+
+    names = [str(c["name"]).lower() for c in value.get("columns", [])]
+    notes = [
+        str(row[names.index("hr_ci")])
+        for row in value.get("rows", [])
+        if "hr_ci" in names and row[names.index("hr_ci")]
+    ]
+    text = notes[0] if notes else "No hazard ratios to plot."
+    if not text.lower().startswith("cox model not fitted"):
+        text = f"Cox model not fitted: {text}" if notes else text
+    return (
+        ggplot()
+        + annotate("text", x=0, y=0, label=text, size=11)
+        + labs(title="Hazard ratios")
+        + theme_void()
     )
 
 

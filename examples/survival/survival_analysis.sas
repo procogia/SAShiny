@@ -721,6 +721,13 @@
   quit;
 
 %km_lml:
+  /* Graphs are collected by position (select: in the contract), so when the Cox model
+     was skipped (one arm, or PROC PHREG failed) its forest plot is still graph 2. */
+  %if not &cox_ok %then %do;
+    ods graphics on / width=8in height=3in;
+    %_sv_blank(%str(2. Hazard ratios), %str(Cox model not fitted: &msg))
+  %end;
+
   /* Log(-log(survival)) by treatment arm: parallel curves support PH */
   ods graphics off;
   proc lifetest data=work.survival outsurv=work._kmt noprint;
@@ -773,13 +780,15 @@
   %end;
   %else %do;
     ods graphics on / width=8in height=3in;
-    %_sv_blank(%str(2. Hazard ratios), %str(Cox model not fitted: &msg))
     %_sv_blank(%str(4. Treatment effect over time), %str(Cox model not fitted: &msg))
     %_sv_blank(%str(5. Deviance residuals), %str(Cox model not fitted: &msg))
+    /* Same columns as the fitted table, so the forest plot's chart columns resolve. */
     data work.cox_estimates;
-      length term $80 hr_ci $30;
-      term = 'Cox model not fitted'; hr_ci = "&msg"; hazard_ratio = .;
-      label term = 'Term' hr_ci = 'Note' hazard_ratio = 'Hazard ratio';
+      length term $80 hr_ci $120;
+      term = 'Cox model not fitted'; hr_ci = "&msg";
+      hazard_ratio = .; hr_lower = .; hr_upper = .; p_value = .;
+      label term = 'Term' hazard_ratio = 'Hazard ratio' hr_lower = "Lower &conf_level% limit"
+            hr_upper = "Upper &conf_level% limit" hr_ci = 'Note' p_value = 'p value';
     run;
     data work.cox_fit;
       length section $24 item $40 value $80;

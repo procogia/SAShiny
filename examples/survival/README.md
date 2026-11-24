@@ -131,8 +131,11 @@ them) and choose **Study: All studies in the files**.
 6. **Run status.** One summary table with the key numbers and any notes.
 
 If only one treatment arm is selected, Kaplan-Meier results are still produced. The Cox
-model and its diagnostics are skipped with a `WARNING`, and the three graphs that depend
-on them show a short note instead, so the graph order stays fixed.
+model and its diagnostics are skipped with a `WARNING`. The three graphs that depend on
+the Cox model (hazard ratios, treatment effect over time, deviance residuals) show a short
+note instead, in their usual positions, because the app picks SAS graphs by position. The
+log(-log(survival)) plot doesn't need the Cox model and is still drawn. The SAShiny forest
+view shows the same note.
 
 ## Outputs in the app
 
@@ -198,7 +201,7 @@ On ODA these combinations ran with no unexpected log messages:
 - stage groups with the Wilcoxon test, 90% intervals, no bands or risk table, a 24-month cutoff and Breslow ties
 - a small subgroup (stage I women, all randomized subjects, `RX101-NULL`) with an empty custom covariate list
 - all studies with a 6-month cutoff, region groups, reference stage III and exact ties
-- one arm only: `warning` status, Kaplan-Meier kept, Cox skipped
+- one arm only: `warning` status, Kaplan-Meier and log(-log(survival)) kept, Cox skipped, every card in its place
 - an uploaded ADTTE with no events: a clear `ERROR` message
 
 ## Scope of this first version

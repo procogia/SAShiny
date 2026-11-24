@@ -74,10 +74,35 @@ def test_frame_fills_missing_ci_text() -> None:
     assert list(_module()._forest_frame(value)["hr_ci"]) == ["0.50"]
 
 
-def test_frame_without_hazard_ratios_is_an_error() -> None:
+# work.cox_estimates when the Cox model is skipped (one treatment arm): one row,
+# no hazard ratios, and the program's message in hr_ci.
+NOT_FITTED: dict[str, Any] = {
+    **VALUE,
+    "rows": [
+        [
+            "Cox model not fitted",
+            None,
+            None,
+            None,
+            "The Cox model needs both treatment arms in the analysis data.",
+        ]
+    ],
+}
+
+
+def test_frame_without_hazard_ratios_is_empty() -> None:
     value = {**VALUE, "rows": [["a", None, None, None, None], ["b", 0, 0, 0, "0"]]}
-    with pytest.raises(ValueError, match="no hazard ratios"):
-        _module()._forest_frame(value)
+    assert _module()._forest_frame(value).empty
+
+
+def test_forest_chart_shows_the_note_when_cox_is_not_fitted() -> None:
+    pytest.importorskip("plotnine")
+    plot = _module().forest_chart(NOT_FITTED, None)
+    label = plot.layers[0].geom.aes_params["label"]
+    assert label == (
+        "Cox model not fitted: The Cox model needs both treatment arms in the analysis data."
+    )
+    assert plot.draw() is not None
 
 
 def test_forest_chart_layout_and_render() -> None:

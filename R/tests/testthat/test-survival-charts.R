@@ -57,7 +57,7 @@ test_that("the forest plot keeps the model order, drops missing rows and uses th
   expect_no_error(ggplot2::ggplot_build(p))
 })
 
-test_that("the forest plot fills a missing CI column and rejects no hazard ratios", {
+test_that("the forest plot fills a missing CI column and handles no hazard ratios", {
   env <- survival_charts_env()
   value <- list(
     columns = list(survival_col("term", "character"), survival_col("hazard_ratio"),
@@ -67,5 +67,21 @@ test_that("the forest plot fills a missing CI column and rejects no hazard ratio
   p <- env$forest_chart(value, NULL)
   expect_equal(p$data$hr_ci, "0.50")
   value$rows <- list(list("a", NULL, NULL, NULL), list("b", 0, 0, 0))
-  expect_error(env$forest_chart(value, NULL), "no hazard ratios")
+  p <- env$forest_chart(value, NULL)
+  expect_equal(p$layers[[1]]$aes_params$label, "No hazard ratios to plot.")
+})
+
+test_that("the forest plot shows the note when the Cox model is not fitted", {
+  env <- survival_charts_env()
+  value <- survival_value
+  # work.cox_estimates when the Cox model is skipped (one treatment arm).
+  value$rows <- list(list("Cox model not fitted", NULL, NULL, NULL,
+                          "The Cox model needs both treatment arms in the analysis data."))
+  p <- env$forest_chart(value, NULL)
+  expect_s3_class(p, "ggplot")
+  expect_equal(
+    p$layers[[1]]$aes_params$label,
+    "Cox model not fitted: The Cox model needs both treatment arms in the analysis data."
+  )
+  expect_no_error(ggplot2::ggplot_build(p))
 })
