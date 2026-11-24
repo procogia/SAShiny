@@ -20,6 +20,7 @@ from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
+from types import MethodType
 from typing import Any
 
 from htmltools import HTMLDependency
@@ -426,26 +427,50 @@ def _offscreen_plotnine(plot: Any, dpi: int) -> Any:
     already has a figure, so the copy gets its own Agg figure. The app's global
     backend is left alone and the caller's plot object is not changed.
 
-    The figure is created outside plotnine's rcParams context, so it does not
-    pick up the plot's dpi from there; ``dpi`` sets it explicitly.
+    Set the dpi explicitly because the pre-attached figure is created outside
+    plotnine's rcParams context.
 
-    Returns ``plot`` unchanged when plotnine's internals differ from the ones
-    this relies on (plotnine < 0.14).
+    Older plotnine releases create their figure in the facet instead of on
+    ggplot. Replace that factory on the copied facet and leave panel layout
+    to plotnine.
     """
     try:
         from matplotlib.backends.backend_agg import FigureCanvasAgg  # noqa: PLC0415
         from matplotlib.figure import Figure  # noqa: PLC0415
         from plotnine import ggplot  # noqa: PLC0415 - optional dependency
-        from plotnine._mpl.gridspec import p9GridSpec  # noqa: PLC0415
     except ImportError:
         return plot
-    if not isinstance(plot, ggplot) or not hasattr(plot, "_create_figure"):
+
+    if not isinstance(plot, ggplot):
         return plot
+
+    def agg_figure() -> Figure:
+        figure = Figure(dpi=dpi)
+        FigureCanvasAgg(figure)
+        return figure
+
     plot = copy.deepcopy(plot)
-    figure = Figure(dpi=dpi)
-    FigureCanvasAgg(figure)
-    plot.figure = figure
-    plot._gridspec = p9GridSpec(1, 1, figure)
+    if hasattr(plot, "_create_figure"):
+        from plotnine._mpl.gridspec import p9GridSpec  # noqa: PLC0415
+
+        figure = agg_figure()
+        plot.figure = figure
+        plot._gridspec = p9GridSpec(1, 1, figure)
+    else:
+        from matplotlib.gridspec import GridSpec  # noqa: PLC0415
+
+        # A previously drawn plot carries a shallow copy of its old figure.
+        # Rebuild it with the off-screen factory on this copy.
+        if hasattr(plot, "figure"):
+            del plot.figure
+
+        def facet_figure(facet: Any) -> tuple[Figure, GridSpec]:
+            figure = agg_figure()
+            return figure, GridSpec(facet.nrow, facet.ncol, figure=figure)
+
+        # save() deep-copies the plot again. A bound method follows the copy
+        # so the dimensions come from the facet that lays out the panels.
+        plot.facet._make_figure = MethodType(facet_figure, plot.facet)
     return plot
 
 

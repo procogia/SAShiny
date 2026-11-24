@@ -214,7 +214,8 @@ def test_plotnine_renders_on_a_worker_thread() -> None:
     assert _png_size(out["png"]) == (1200, 900)
 
 
-def test_plotnine_png_never_uses_pyplot(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("facet", [None, "SEX"])
+def test_plotnine_png_never_uses_pyplot(monkeypatch: pytest.MonkeyPatch, facet: str | None) -> None:
     # Issue #171: pyplot.figure() goes through matplotlib's default backend, a
     # GUI backend on Windows and macOS that fails off the main thread. Linux CI
     # falls back to Agg, so assert pyplot is not used at all instead.
@@ -228,7 +229,7 @@ def test_plotnine_png_never_uses_pyplot(monkeypatch: pytest.MonkeyPatch) -> None
         raise AssertionError("pyplot.figure() was called")
 
     monkeypatch.setattr(plt, "figure", no_pyplot)
-    plot = render_chart(_class_value(), _spec("bar", fill="SEX"), backend="plotnine")
+    plot = render_chart(_class_value(), _spec("bar", fill="SEX", facet=facet), backend="plotnine")
     assert _png_size(_plot_to_png(plot)) == (1200, 900)
     assert plt.get_fignums() == []
 
