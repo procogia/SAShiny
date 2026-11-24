@@ -178,6 +178,103 @@ def test_plotnine_facets() -> None:
     assert len(_plot_to_png(plot)) > 1000
 
 
+def _png_size(b64: str) -> tuple[int, int]:
+    """Width and height of a base64 PNG, from its IHDR chunk."""
+    import base64  # noqa: PLC0415
+    import struct  # noqa: PLC0415
+
+    raw = base64.b64decode(b64)
+    assert raw[:8] == b"\x89PNG\r\n\x1a\n"
+    width, height = struct.unpack(">II", raw[16:24])
+    return width, height
+
+
+def test_plotnine_renders_on_a_worker_thread() -> None:
+    # Issue #171: Shiny and Streamlit draw charts on worker threads. The PNG must
+    # come back at the usual 8 x 6 in, 150 dpi size (1200 x 900 px).
+    pytest.importorskip("plotnine")
+    pytest.importorskip("shiny")
+    import threading  # noqa: PLC0415
+
+    from sashiny.modules import _plot_to_png  # noqa: PLC0415 - needs the shiny extra
+
+    plot = render_chart(_class_value(), _spec("scatter", color="SEX"), backend="plotnine")
+    out: dict = {}
+
+    def work() -> None:
+        try:
+            out["png"] = _plot_to_png(plot)
+        except Exception as e:  # report it on the main thread
+            out["error"] = e
+
+    thread = threading.Thread(target=work)
+    thread.start()
+    thread.join()
+    assert "error" not in out, out.get("error")
+    assert _png_size(out["png"]) == (1200, 900)
+
+
+@pytest.mark.parametrize("facet", [None, "SEX"])
+def test_plotnine_png_never_uses_pyplot(monkeypatch: pytest.MonkeyPatch, facet: str | None) -> None:
+    # Issue #171: pyplot.figure() goes through matplotlib's default backend, a
+    # GUI backend on Windows and macOS that fails off the main thread. Linux CI
+    # falls back to Agg, so assert pyplot is not used at all instead.
+    pytest.importorskip("plotnine")
+    pytest.importorskip("shiny")
+    import matplotlib.pyplot as plt  # noqa: PLC0415
+
+    from sashiny.modules import _plot_to_png  # noqa: PLC0415 - needs the shiny extra
+
+    def no_pyplot(*args: object, **kwargs: object) -> None:
+        raise AssertionError("pyplot.figure() was called")
+
+    monkeypatch.setattr(plt, "figure", no_pyplot)
+    plot = render_chart(_class_value(), _spec("bar", fill="SEX", facet=facet), backend="plotnine")
+    # Compare with the count before, so a figure left open by another test
+    # does not fail this one: rendering must not add to pyplot's registry.
+    before = len(plt.get_fignums())
+    assert _png_size(_plot_to_png(plot)) == (1200, 900)
+    assert len(plt.get_fignums()) == before
+
+
+def test_plotnine_without_an_offscreen_hook_warns(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    # If a plotnine release removes both hooks the fix relies on, the chart
+    # still renders (through pyplot, as before) but a warning says so, so #171
+    # cannot come back silently. plotnine 0.15 has no facet factory, so hiding
+    # ggplot._create_figure leaves neither hook.
+    pytest.importorskip("plotnine")
+    pytest.importorskip("shiny")
+    from plotnine import ggplot  # noqa: PLC0415
+
+    from sashiny import modules  # noqa: PLC0415 - needs the shiny extra
+
+    plot = render_chart(_class_value(), _spec("scatter"), backend="plotnine")
+    if hasattr(plot.facet, "_make_figure"):
+        pytest.skip("this plotnine has a facet figure factory")
+    monkeypatch.delattr(ggplot, "_create_figure")
+    modules._warn_no_offscreen_hook.cache_clear()
+    with caplog.at_level("WARNING", logger="sashiny.modules"):
+        assert modules._offscreen_plotnine(plot, 150) is plot
+        modules._offscreen_plotnine(plot, 150)
+    warnings = [r for r in caplog.records if "no known off-screen figure hook" in r.getMessage()]
+    assert len(warnings) == 1  # once per process, not once per chart
+    modules._warn_no_offscreen_hook.cache_clear()
+
+
+def test_plotnine_png_leaves_the_plot_unchanged() -> None:
+    # The off-screen figure goes on a copy, so the caller can still draw or
+    # save their own plot afterwards.
+    pytest.importorskip("plotnine")
+    pytest.importorskip("shiny")
+    from sashiny.modules import _plot_to_png  # noqa: PLC0415 - needs the shiny extra
+
+    plot = render_chart(_class_value(), _spec("scatter"), backend="plotnine")
+    _plot_to_png(plot)
+    assert not hasattr(plot, "figure")
+
+
 @pytest.mark.parametrize("kind", KINDS)
 def test_matplotlib_draws_every_kind(kind: str) -> None:
     pytest.importorskip("matplotlib")

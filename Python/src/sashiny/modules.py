@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import copy
 import dataclasses
+import functools
 import io
 import logging
 import time
@@ -19,6 +21,7 @@ from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
+from types import MethodType
 from typing import Any
 
 from htmltools import HTMLDependency
@@ -415,11 +418,94 @@ def _plotly_tag(fig: Any) -> TagChild:
     return ui.TagList(dep, ui.HTML(html))
 
 
+@functools.cache
+def _warn_no_offscreen_hook(version: str) -> None:
+    """Warn once per plotnine version that charts cannot be drawn off-screen (#171)."""
+    logger.warning(
+        "plotnine %s has no known off-screen figure hook; plotnine charts may fail "
+        "off the main thread on Windows and macOS (#171)",
+        version,
+    )
+
+
+def _offscreen_plotnine(plot: Any, dpi: int) -> Any:
+    """Return a copy of a plotnine plot that draws on an off-screen Agg figure.
+
+    plotnine creates its figure with ``pyplot.figure()``, which uses matplotlib's
+    default backend: a GUI backend on Windows (TkAgg) and macOS (macosx) that
+    only works on the main thread, while Shiny and Streamlit draw charts on
+    worker threads (#171). plotnine skips ``pyplot.figure()`` when the plot
+    already has a figure, so the copy gets its own Agg figure. The app's global
+    backend is left alone and the caller's plot object is not changed.
+
+    Set the dpi explicitly because the pre-attached figure is created outside
+    plotnine's rcParams context.
+
+    Older plotnine releases create their figure in the facet instead of on
+    ggplot. Replace that factory on the copied facet and leave panel layout
+    to plotnine.
+
+    If plotnine has neither hook, log a warning (once per process) and return
+    ``plot`` unchanged, so a plotnine change cannot bring #171 back silently.
+    """
+    try:
+        import plotnine  # noqa: PLC0415 - optional dependency
+        from matplotlib.backends.backend_agg import FigureCanvasAgg  # noqa: PLC0415
+        from matplotlib.figure import Figure  # noqa: PLC0415
+        from plotnine import ggplot  # noqa: PLC0415
+    except ImportError:
+        return plot
+
+    if not isinstance(plot, ggplot):
+        return plot
+
+    p9_gridspec: Any = None
+    if hasattr(plot, "_create_figure"):  # plotnine 0.15 and later
+        try:
+            from plotnine._mpl.gridspec import p9GridSpec  # noqa: PLC0415
+        except ImportError:
+            pass
+        else:
+            p9_gridspec = p9GridSpec
+    facet_factory = hasattr(getattr(plot, "facet", None), "_make_figure")  # plotnine 0.13, 0.14
+    if p9_gridspec is None and not facet_factory:
+        _warn_no_offscreen_hook(str(getattr(plotnine, "__version__", "unknown")))
+        return plot
+
+    def agg_figure() -> Figure:
+        figure = Figure(dpi=dpi)
+        FigureCanvasAgg(figure)
+        return figure
+
+    plot = copy.deepcopy(plot)
+    if p9_gridspec is not None:
+        figure = agg_figure()
+        plot.figure = figure
+        plot._gridspec = p9_gridspec(1, 1, figure)
+    else:
+        from matplotlib.gridspec import GridSpec  # noqa: PLC0415
+
+        # A previously drawn plot carries a shallow copy of its old figure.
+        # Rebuild it with the off-screen factory on this copy.
+        if hasattr(plot, "figure"):
+            del plot.figure
+
+        def facet_figure(facet: Any) -> tuple[Figure, GridSpec]:
+            figure = agg_figure()
+            return figure, GridSpec(facet.nrow, facet.ncol, figure=figure)
+
+        # save() deep-copies the plot again. A bound method follows the copy
+        # so the dimensions come from the facet that lays out the panels.
+        plot.facet._make_figure = MethodType(facet_figure, plot.facet)
+    return plot
+
+
 def _plot_to_png(plot: Any) -> str:
     """Serialize a plotnine or matplotlib plot object to a base64 PNG.
 
     Charts are drawn at 8 x 6 inches and 150 dpi (1200 x 900 pixels), the same
     as the R module, so they stay sharp when a card scales them to its width.
+    plotnine plots are drawn off-screen, so this works on any thread (#171).
     """
     buf = io.BytesIO()
     if hasattr(plot, "savefig"):
@@ -427,6 +513,7 @@ def _plot_to_png(plot: Any) -> str:
         plot.savefig(buf, format="png", dpi=_CHART_DPI)
     elif hasattr(plot, "save"):
         width, height = _CHART_INCHES
+        plot = _offscreen_plotnine(plot, _CHART_DPI)
         plot.save(buf, format="png", width=width, height=height, dpi=_CHART_DPI, verbose=False)
     else:
         raise TypeError(f"cannot render a {type(plot).__name__} as a chart")
