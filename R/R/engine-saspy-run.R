@@ -200,13 +200,31 @@ print.sashiny_engine_saspy <- function(x, ...) {
   # session lost here would otherwise leak (spec section 6.5).
   engine$sas <- sas
   tryCatch(
-    sas$submit(.sashiny_session_setup_code, results = "TEXT"),
+    {
+      .sashiny_check_saspy_session(sas)
+      setup <- sas$submit(.sashiny_session_setup_code, results = "TEXT")
+      .sashiny_check_saspy_session(sas, setup$LOG %||% "")
+    },
     error = function(e) {
       .sashiny_discard_session(engine)
       stop(e)
     }
   )
   engine$sas
+}
+
+#' Fail before submitting to a dead saspy session.
+#' @noRd
+.sashiny_check_saspy_session <- function(sas, log = "") {
+  has_pid <- if (inherits(sas, "python.builtin.object")) {
+    reticulate::py_has_attr(sas, "SASpid")
+  } else {
+    "SASpid" %in% names(sas)
+  }
+  if (!has_pid || isTRUE(nzchar(sas$SASpid %||% ""))) return(invisible(NULL))
+  if (!nzchar(log)) log <- tryCatch(sas$saslog(), error = function(e) "") %||% ""
+  detail <- if (nzchar(log)) paste0(": ", trimws(log)) else ""
+  .sashiny_abort("engine", "could not start a SAS session: no SAS process attached", detail)
 }
 
 #' Submitted once per new SAS session (spec section 6.1).
@@ -365,10 +383,13 @@ sas_engine_choices.sashiny_engine_saspy <- function(engine, contract) {
 #' Run the choices query (spec section 6.4) and read the result.
 #' @noRd
 .sashiny_read_choices <- function(engine, source) {
-  on.exit(try(.sashiny_submit(
-    engine,
-    "proc datasets library=work nolist nowarn; delete _sx_choices; quit;"
-  ), silent = TRUE), add = TRUE)
+  sas <- .sashiny_saspy_session(engine)
+  on.exit({
+    if (identical(engine$sas, sas)) try(.sashiny_submit(
+      engine,
+      "proc datasets library=work nolist nowarn; delete _sx_choices; quit;"
+    ), silent = TRUE)
+  }, add = TRUE)
   .sashiny_submit(engine, .sashiny_choices_code(source))
   df <- .sashiny_saspy_session(engine)$sd2df(table = "_sx_choices", libref = "work")
   if (is.null(df)) {

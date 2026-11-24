@@ -642,7 +642,7 @@ class SaspyEngine(Engine):
             if not license_acknowledged(self.license_ack):
                 raise LicenseError(LICENSE_MESSAGE)
             if self._factory is not None:
-                self._sas = self._factory()
+                sas = self._factory()
             else:
                 credentials = env_credentials(self.cfg)
                 if isinstance(self.cfg, dict):
@@ -654,12 +654,36 @@ class SaspyEngine(Engine):
                     cfgfile = str(_write_cfgfile(self.cfg, self.cfgname, Path(self._tmp.name)))
                 else:
                     cfgfile = str(self.cfg)
-                self._sas = saspy.SASsession(
+                sas = saspy.SASsession(
                     cfgfile=cfgfile, cfgname=self.cfgname, results="HTML", **credentials
                 )
-            # Session setup (spec 6.1): ODA starts with NONOTES, which hides the sentinels.
-            self._sas.submit(SESSION_SETUP_CODE, results="TEXT")
+            if generation is not None and generation != self._generation:
+                with suppress(Exception):
+                    sas.endsas()
+                raise EngineRuntimeError("run was cancelled (timeout)")
+            self._sas = sas
+            try:
+                self._check_session(sas)
+                # ODA starts with NONOTES, which hides the run sentinels (spec 6.1).
+                setup = sas.submit(SESSION_SETUP_CODE, results="TEXT")
+                self._check_session(sas, setup.get("LOG", ""))
+            except Exception:
+                if self._sas is sas:
+                    self._discard_session(background=True)
+                raise
         return self._sas
+
+    @staticmethod
+    def _check_session(sas: Any, log: str = "") -> None:
+        # SASpid is a string for a live saspy session. Internal test doubles
+        # that do not model this attribute can still test the run protocol.
+        if getattr(sas, "SASpid", True):
+            return
+        if not log:
+            with suppress(Exception):
+                log = sas.saslog()
+        message = "could not start a SAS session: no SAS process attached"
+        raise EngineRuntimeError(f"{message}: {log.strip()}" if log else message)
 
     def _submit(self, code: str, results: str = "TEXT") -> dict[str, str]:
         res: dict[str, str] = self._session().submit(code, results=results)
@@ -739,6 +763,7 @@ class SaspyEngine(Engine):
     def _read_choices(self, source: dict[str, Any]) -> list[dict[str, str]]:
         value = source["value_column"]
         label = source.get("label_column")
+        sas = self._session()
         try:
             self._submit(choices_code(source))
             df = self._session().sd2df("_sx_choices", "work")
@@ -751,7 +776,8 @@ class SaspyEngine(Engine):
             )
             return [{"value": v, "label": lab or v} for v, lab in zip(values, labels, strict=True)]
         finally:
-            self._submit("proc datasets library=work nolist nowarn; delete _sx_choices; quit;")
+            if self._sas is sas:
+                self._submit("proc datasets library=work nolist nowarn; delete _sx_choices; quit;")
 
     # ------------------------------------------------------------------ run
 

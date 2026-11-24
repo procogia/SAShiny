@@ -8,6 +8,7 @@ import json
 import time
 from datetime import date
 from pathlib import Path
+from threading import Event
 
 import pytest
 
@@ -134,6 +135,33 @@ def test_new_session_turns_notes_on_first(contract: sashiny.Contract) -> None:
     _engine(fake).run(contract, {"min_age": 30, "make": "BMW"}, today=TODAY)
     assert fake.submitted[0] == saspy_mod.SESSION_SETUP_CODE
     assert fake.submitted.count(saspy_mod.SESSION_SETUP_CODE) == 1
+
+
+def test_dead_session_returns_connection_error_without_submitting(
+    contract: sashiny.Contract,
+) -> None:
+    ended = Event()
+
+    class Dead:
+        SASpid = None
+
+        def saslog(self) -> str:
+            return "The workspace server rejected the connection."
+
+        def submit(self, code: str, results: str = "HTML") -> dict[str, str]:
+            pytest.fail("a dead session must not receive setup or program code")
+
+        def endsas(self) -> None:
+            ended.set()
+
+    sessions = iter((Dead(), _fake()))
+    engine = fake_engine(lambda: next(sessions))
+    result = engine.run(contract, {"min_age": 30}, today=TODAY)
+    assert result.status == "error"
+    assert "workspace server rejected the connection" in result.metadata["engine_error"]
+    assert engine._sas is None
+    assert ended.wait(1)
+    assert engine.run(contract, {"min_age": 30}, today=TODAY).status == "success"
 
 
 def test_full_run_collects_every_output(contract: sashiny.Contract) -> None:
