@@ -8,7 +8,9 @@ container in Snowpark Container Services instead, use the `snowflake_spcs` targe
 The app reaches SAS at these host:port pairs; `snowflake/egress.sql` allows them for Connect:
 
 - odaws01-usw2.oda.sas.com:8591
+- odaws01-usw2.oda.sas.com:8800-8999
 - odaws02-usw2.oda.sas.com:8591
+- odaws02-usw2.oda.sas.com:8800-8999
 
 The profile uses IOM, which needs Java 17 in the Connect runtime image. Check this with your Posit
 Team administrator.

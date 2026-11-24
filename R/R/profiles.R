@@ -76,7 +76,10 @@ sas_profile <- function(profile, name = NULL) {
     }
     out$kind <- "oda"
     out$oda_region <- region
-    out$endpoints <- paste0(.sashiny_oda_hosts[[region]], ":8591")
+    # The workspace range observed during ODA deployment verification (#177).
+    out$endpoints <- unlist(lapply(.sashiny_oda_hosts[[region]], function(host) {
+      paste0(host, c(":8591", ":8800-8999"))
+    }), use.names = FALSE)
     out$env <- c(SASHINY_LICENSE_ACK = "true", SASHINY_PROFILE = "oda", SASHINY_ODA_REGION = region)
   } else if (identical(method, "iom")) {
     if (is.null(profile$iomhost)) {

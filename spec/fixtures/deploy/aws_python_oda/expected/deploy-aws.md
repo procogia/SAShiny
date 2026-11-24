@@ -9,9 +9,19 @@ which Shiny needs.
 The app reaches SAS at these host:port pairs; allow outbound traffic to them:
 
 - odaws01-usw2.oda.sas.com:8591
+- odaws01-usw2.oda.sas.com:8800-8999
 - odaws02-usw2.oda.sas.com:8591
+- odaws02-usw2.oda.sas.com:8800-8999
 
-The tasks run in the private subnets, which reach these endpoints through a NAT gateway.
+The tasks use the same public subnets as the load balancer. Supply subnets with a
+route to an internet gateway in PublicSubnetIds. Tasks get public IP addresses,
+which is less private. The task security group admits only the load balancer.
+
+Both roles use the configured permissions boundary. Use an existing managed policy
+that permits the actions these roles need and satisfies your account guardrails.
+
+The role name prefix gives both roles fixed names for account guardrails.
+Choose a prefix unique to the stack and acknowledge CAPABILITY_NAMED_IAM.
 
 ## 1. Store the SAS credentials in Secrets Manager
 
@@ -35,9 +45,9 @@ docker push <account>.dkr.ecr.<region>.amazonaws.com/sashiny-app:<image-tag>
 
 ```sh
 aws cloudformation deploy --stack-name sashiny-app \
-  --template-file infra/template.yaml --capabilities CAPABILITY_IAM \
+  --template-file infra/template.yaml --capabilities CAPABILITY_NAMED_IAM \
   --parameter-overrides ImageUri=<account>.dkr.ecr.<region>.amazonaws.com/sashiny-app:<image-tag> \
-  VpcId=<vpc-id> PublicSubnetIds=<subnet-a>,<subnet-b> PrivateSubnetIds=<subnet-c>,<subnet-d> \
+  VpcId=<vpc-id> PublicSubnetIds=<subnet-a>,<subnet-b> \
   CertificateArn=<acm-certificate-arn> \
   SasUserSecretArn=<sas-user-secret-arn> SasPasswordSecretArn=<sas-password-secret-arn>
 ```

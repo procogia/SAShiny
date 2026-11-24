@@ -267,8 +267,14 @@ def test_azure_doctor(monkeypatch: pytest.MonkeyPatch) -> None:
     assert d.doctor("azure_container_apps", runner=lambda a, e: 0) == []
 
 
-def test_aws_apply_runs_commands_through_runner(tmp_path: Path) -> None:
+@pytest.mark.parametrize("public_ip", [False, True])
+def test_aws_apply_runs_commands_through_runner(tmp_path: Path, public_ip: bool) -> None:
     app = _staged_app(FIX / "aws_python_oda", tmp_path, {})
+    options = (
+        {"public_ip": True, "role_name_prefix": "sashiny-app-"}
+        if public_ip
+        else {"private_subnet_ids": "subnet-c,subnet-d"}
+    )
     calls: list[list[str]] = []
 
     def runner(args, env):  # type: ignore[no-untyped-def]
@@ -287,16 +293,22 @@ def test_aws_apply_runs_commands_through_runner(tmp_path: Path) -> None:
         image_uri=image,
         vpc_id="vpc-1",
         public_subnet_ids=["subnet-a", "subnet-b"],
-        private_subnet_ids="subnet-c,subnet-d",
         certificate_arn="arn:aws:acm:us-east-1:1:certificate/x",
         sas_user_secret_arn="arn:aws:secretsmanager:us-east-1:1:secret:u",  # noqa: S106
         sas_password_secret_arn="arn:aws:secretsmanager:us-east-1:1:secret:p",  # noqa: S106
+        **options,
     )
     out = str(res.out_dir)
     assert calls[0] == ["docker", "build", "--platform", "linux/amd64", "-t", image, out]
     assert calls[1] == ["docker", "push", image]
     assert calls[2][:5] == ["aws", "cloudformation", "deploy", "--stack-name", "sashiny-app"]
     assert "PublicSubnetIds=subnet-a,subnet-b" in calls[2]
+    if public_ip:
+        assert "CAPABILITY_NAMED_IAM" in calls[2]
+        assert not any(arg.startswith("PrivateSubnetIds=") for arg in calls[2])
+    else:
+        assert "CAPABILITY_IAM" in calls[2]
+        assert "PrivateSubnetIds=subnet-c,subnet-d" in calls[2]
     assert "SasPasswordSecretArn=arn:aws:secretsmanager:us-east-1:1:secret:p" in calls[2]
     assert res.commands == calls
 

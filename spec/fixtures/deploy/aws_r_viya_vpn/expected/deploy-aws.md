@@ -12,7 +12,7 @@ The app reaches SAS at these host:port pairs; allow outbound traffic to them:
 
 The tasks run in the private subnets, which reach these endpoints through a NAT gateway.
 
-The SAS profile is reachable only over a private network. Route the private subnets to it through
+The SAS profile is reachable only over a private network. Route the task subnets to it through
 a Site-to-Site VPN or a Transit Gateway attachment before deploying.
 
 ## 1. Store the SAS credentials in Secrets Manager

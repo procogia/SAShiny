@@ -165,6 +165,14 @@ Resources:
           Image: !Ref ImageUri
           User: '10001'
           Essential: true
+          HealthCheck:
+            Command:
+              - CMD-SHELL
+              - 'curl -fsS http://127.0.0.1:3838/ > /dev/null || exit 1'
+            Interval: 30
+            Timeout: 5
+            Retries: 3
+            StartPeriod: 60
           PortMappings:
             - ContainerPort: 3838
               Protocol: tcp

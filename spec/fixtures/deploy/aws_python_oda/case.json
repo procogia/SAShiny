@@ -1,10 +1,14 @@
 {
-  "description": "aws_ecs_express, Python app on ODA: standard ECS + ALB with stickiness and a 3600 s idle timeout, Secrets Manager ARNs, egress on 443 and 8591.",
+  "description": "aws_ecs_express, Python app on ODA: standard ECS + ALB with stickiness and a 3600 s idle timeout, Secrets Manager ARNs, ODA workspace egress, named IAM roles with a boundary, and public task IPs.",
   "add_files": {".authinfo": "placeholder credential file\n"},
   "target": "aws_ecs_express",
   "version": "0.0.0",
   "license_ack": true,
-  "options": {},
+  "options": {
+    "role_name_prefix": "sashiny-app-",
+    "permissions_boundary": "arn:aws:iam::123456789012:policy/sashiny-boundary",
+    "public_ip": true
+  },
   "profile": {"name": "oda", "method": "iom", "oda_region": "us1"},
   "expected": {
     "language": "python",
@@ -21,6 +25,6 @@
     "excluded": [".authinfo"],
     "env": [["SASHINY_LICENSE_ACK", "true"], ["SASHINY_PROFILE", "oda"], ["SASHINY_ODA_REGION", "us1"]],
     "secrets": ["SASHINY_SAS_USER", "SASHINY_SAS_PASSWORD"],
-    "endpoints": ["odaws01-usw2.oda.sas.com:8591", "odaws02-usw2.oda.sas.com:8591"]
+    "endpoints": ["odaws01-usw2.oda.sas.com:8591", "odaws01-usw2.oda.sas.com:8800-8999", "odaws02-usw2.oda.sas.com:8591", "odaws02-usw2.oda.sas.com:8800-8999"]
   }
 }
