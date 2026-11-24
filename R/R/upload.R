@@ -287,7 +287,16 @@
 #' @noRd
 .sashiny_read_upload <- function(upload, spec) {
   .sashiny_check_upload(upload, spec)
-  read <- tryCatch(.sashiny_read_file(upload),
+  read <- tryCatch(withCallingHandlers(.sashiny_read_file(upload),
+    warning = function(w) {
+      # openxlsx first warns while unzipping a malformed workbook. Report the
+      # extraction failure through the same upload error path as reader errors.
+      if (identical(tolower(tools::file_ext(upload$name)), "xlsx") &&
+          grepl("in extracting from zip file", conditionMessage(w), fixed = TRUE)) {
+        stop(conditionMessage(w), call. = FALSE)
+      }
+    }
+  ),
     sashiny_upload_error = function(e) stop(e),
     error = function(e) {
       .sashiny_upload_error("could not read ", upload$name, ": ", conditionMessage(e))
