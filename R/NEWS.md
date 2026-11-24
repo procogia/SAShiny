@@ -1,3 +1,14 @@
+# SAShiny (development version)
+
+## Demo
+
+* The demo app has a fifth tab, **Survival** (`examples/survival`):
+  progression-free survival in a simulated two-arm cancer trial, with
+  Kaplan-Meier curves and tests (`PROC LIFETEST`), Cox regression with
+  selectable covariates and reference levels (`PROC PHREG`), and proportional
+  hazards diagnostics. The sample data hold three scenarios: a standard trial,
+  no treatment effect and a delayed, non-proportional effect.
+
 # SAShiny 0.4.1
 
 * The maintainer's email address is now meharpratap.singh@procogia.com (same

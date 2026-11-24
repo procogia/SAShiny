@@ -51,7 +51,8 @@ examples <- list(
   general = "examples/general/cars_explorer.sashiny.yml",
   pharma = "examples/pharma/ae_summary.sashiny.yml",
   aml = "examples/aml/cash_aggregation_tuning.sashiny.yml",
-  forecasting = "examples/forecasting/arima_forecast.sashiny.yml"
+  forecasting = "examples/forecasting/arima_forecast.sashiny.yml",
+  survival = "examples/survival/survival_analysis.sashiny.yml"
 )
 
 for (name in names(examples)) {
