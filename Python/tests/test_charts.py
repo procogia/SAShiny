@@ -230,8 +230,37 @@ def test_plotnine_png_never_uses_pyplot(monkeypatch: pytest.MonkeyPatch, facet: 
 
     monkeypatch.setattr(plt, "figure", no_pyplot)
     plot = render_chart(_class_value(), _spec("bar", fill="SEX", facet=facet), backend="plotnine")
+    # Compare with the count before, so a figure left open by another test
+    # does not fail this one: rendering must not add to pyplot's registry.
+    before = len(plt.get_fignums())
     assert _png_size(_plot_to_png(plot)) == (1200, 900)
-    assert plt.get_fignums() == []
+    assert len(plt.get_fignums()) == before
+
+
+def test_plotnine_without_an_offscreen_hook_warns(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    # If a plotnine release removes both hooks the fix relies on, the chart
+    # still renders (through pyplot, as before) but a warning says so, so #171
+    # cannot come back silently. plotnine 0.15 has no facet factory, so hiding
+    # ggplot._create_figure leaves neither hook.
+    pytest.importorskip("plotnine")
+    pytest.importorskip("shiny")
+    from plotnine import ggplot  # noqa: PLC0415
+
+    from sashiny import modules  # noqa: PLC0415 - needs the shiny extra
+
+    plot = render_chart(_class_value(), _spec("scatter"), backend="plotnine")
+    if hasattr(plot.facet, "_make_figure"):
+        pytest.skip("this plotnine has a facet figure factory")
+    monkeypatch.delattr(ggplot, "_create_figure")
+    modules._warn_no_offscreen_hook.cache_clear()
+    with caplog.at_level("WARNING", logger="sashiny.modules"):
+        assert modules._offscreen_plotnine(plot, 150) is plot
+        modules._offscreen_plotnine(plot, 150)
+    warnings = [r for r in caplog.records if "no known off-screen figure hook" in r.getMessage()]
+    assert len(warnings) == 1  # once per process, not once per chart
+    modules._warn_no_offscreen_hook.cache_clear()
 
 
 def test_plotnine_png_leaves_the_plot_unchanged() -> None:

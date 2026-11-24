@@ -13,7 +13,10 @@ All notable changes to the Python library are documented here. The format follow
   `macosx` on macOS); that backend only works on the main thread, while Shiny and Streamlit
   draw charts on worker threads. On Windows the process crashed, and on macOS every chart
   failed with `RuntimeError`. Charts are now drawn on an off-screen Agg figure, still 8 x 6 in
-  at 150 dpi. The app's global matplotlib backend and the caller's plot object are not changed.
+  at 150 dpi, with every supported plotnine (0.13 and later). The app's global matplotlib
+  backend and the caller's plot object are not changed. If a plotnine release offers neither
+  of the figure hooks this relies on, a warning is logged once and charts fall back to the old
+  behaviour.
 
 ## [0.4.1] - 2026-11-22
 

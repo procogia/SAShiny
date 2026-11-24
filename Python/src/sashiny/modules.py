@@ -12,6 +12,7 @@ import asyncio
 import base64
 import copy
 import dataclasses
+import functools
 import io
 import logging
 import time
@@ -417,6 +418,16 @@ def _plotly_tag(fig: Any) -> TagChild:
     return ui.TagList(dep, ui.HTML(html))
 
 
+@functools.cache
+def _warn_no_offscreen_hook(version: str) -> None:
+    """Warn once per plotnine version that charts cannot be drawn off-screen (#171)."""
+    logger.warning(
+        "plotnine %s has no known off-screen figure hook; plotnine charts may fail "
+        "off the main thread on Windows and macOS (#171)",
+        version,
+    )
+
+
 def _offscreen_plotnine(plot: Any, dpi: int) -> Any:
     """Return a copy of a plotnine plot that draws on an off-screen Agg figure.
 
@@ -433,15 +444,32 @@ def _offscreen_plotnine(plot: Any, dpi: int) -> Any:
     Older plotnine releases create their figure in the facet instead of on
     ggplot. Replace that factory on the copied facet and leave panel layout
     to plotnine.
+
+    If plotnine has neither hook, log a warning (once per process) and return
+    ``plot`` unchanged, so a plotnine change cannot bring #171 back silently.
     """
     try:
+        import plotnine  # noqa: PLC0415 - optional dependency
         from matplotlib.backends.backend_agg import FigureCanvasAgg  # noqa: PLC0415
         from matplotlib.figure import Figure  # noqa: PLC0415
-        from plotnine import ggplot  # noqa: PLC0415 - optional dependency
+        from plotnine import ggplot  # noqa: PLC0415
     except ImportError:
         return plot
 
     if not isinstance(plot, ggplot):
+        return plot
+
+    p9_gridspec: Any = None
+    if hasattr(plot, "_create_figure"):  # plotnine 0.15 and later
+        try:
+            from plotnine._mpl.gridspec import p9GridSpec  # noqa: PLC0415
+        except ImportError:
+            pass
+        else:
+            p9_gridspec = p9GridSpec
+    facet_factory = hasattr(getattr(plot, "facet", None), "_make_figure")  # plotnine 0.13, 0.14
+    if p9_gridspec is None and not facet_factory:
+        _warn_no_offscreen_hook(str(getattr(plotnine, "__version__", "unknown")))
         return plot
 
     def agg_figure() -> Figure:
@@ -450,12 +478,10 @@ def _offscreen_plotnine(plot: Any, dpi: int) -> Any:
         return figure
 
     plot = copy.deepcopy(plot)
-    if hasattr(plot, "_create_figure"):
-        from plotnine._mpl.gridspec import p9GridSpec  # noqa: PLC0415
-
+    if p9_gridspec is not None:
         figure = agg_figure()
         plot.figure = figure
-        plot._gridspec = p9GridSpec(1, 1, figure)
+        plot._gridspec = p9_gridspec(1, 1, figure)
     else:
         from matplotlib.gridspec import GridSpec  # noqa: PLC0415
 
