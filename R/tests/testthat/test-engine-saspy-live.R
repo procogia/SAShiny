@@ -34,6 +34,29 @@ test_that("a new session turns notes on first (ODA starts with NONOTES)", {
   expect_identical(sum(fake$submitted == .sashiny_session_setup_code), 1L)
 })
 
+test_that("a dead session reports the connection failure and is discarded", {
+  ended <- FALSE
+  dead <- list(
+    SASpid = NULL,
+    saslog = function() "The workspace server rejected the connection.",
+    submit = function(...) stop("a dead session must not receive setup or program code"),
+    endsas = function() ended <<- TRUE
+  )
+  sessions <- list(dead, fake_session())
+  opened <- 0L
+  engine <- test_saspy_engine(session_factory = function() {
+    opened <<- opened + 1L
+    sessions[[opened]]
+  })
+  run <- function() sas_engine_run(engine, fake_contract(), list(min_age = 30), today = .sashiny_today)
+  result <- run()
+  expect_identical(result$status, "error")
+  expect_match(result$metadata$engine_error, "workspace server rejected the connection")
+  expect_null(engine$sas)
+  expect_true(ended)
+  expect_identical(run()$status, "success")
+})
+
 test_that("a full run collects every output type", {
   fake <- fake_session()
   contract <- fake_contract()
