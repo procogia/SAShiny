@@ -92,6 +92,14 @@
   paste(out, collapse = "\n")
 }
 
+#' The profile's endpoints with a single port (spec section 6.8). Port ranges are left out
+#' until Snowflake network rules are verified to accept them (#188).
+#' @noRd
+.sashiny_sf_endpoints <- function(ctx) {
+  eps <- ctx$profile$endpoints
+  eps[!grepl("-", sub("^.*:", "", eps), fixed = TRUE)]
+}
+
 .sashiny_sf_setup <- function(ctx, n) {
   paste(c(
     .sashiny_sf_header(ctx, "--"),
@@ -110,7 +118,7 @@
     sprintf("CREATE OR REPLACE NETWORK RULE %s_SAS_EGRESS", n$service),
     "  TYPE = HOST_PORT",
     "  MODE = EGRESS",
-    sprintf("  VALUE_LIST = (%s);", paste0("'", ctx$profile$endpoints, "'", collapse = ", ")),
+    sprintf("  VALUE_LIST = (%s);", paste0("'", .sashiny_sf_endpoints(ctx), "'", collapse = ", ")),
     "",
     sprintf("CREATE OR REPLACE EXTERNAL ACCESS INTEGRATION %s_SAS_ACCESS", n$service),
     sprintf("  ALLOWED_NETWORK_RULES = (%s_SAS_EGRESS)", n$service),
@@ -164,7 +172,7 @@
     "",
     "The app reaches SAS at these host:port pairs; `spcs/setup.sql` allows them in a network rule:",
     "",
-    paste("-", prof$endpoints),
+    paste("-", .sashiny_sf_endpoints(ctx)),
     ""
   )
   if (isTRUE(ctx$options$private_connectivity)) {

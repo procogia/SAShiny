@@ -114,8 +114,16 @@ def service_spec(ctx: _Context) -> str:
     return "\n".join(out)
 
 
+def _endpoints(ctx: _Context) -> list[str]:
+    """Return the profile's endpoints that have a single port (spec §6.8).
+
+    Port ranges are left out until Snowflake network rules are verified to accept them (#188).
+    """
+    return [e for e in ctx.profile.endpoints if "-" not in e.rsplit(":", 1)[1]]
+
+
 def _setup_sql(ctx: _Context, n: _Names) -> str:
-    rules = ", ".join(f"'{e}'" for e in ctx.profile.endpoints)
+    rules = ", ".join(f"'{e}'" for e in _endpoints(ctx))
     return "\n".join(
         [
             _header(ctx, "--"),
@@ -191,7 +199,7 @@ def _guide(ctx: _Context, n: _Names) -> str:
         "The app reaches SAS at these host:port pairs; `spcs/setup.sql` allows them in a network"
         " rule:",
         "",
-        *[f"- {e}" for e in prof.endpoints],
+        *[f"- {e}" for e in _endpoints(ctx)],
         "",
     ]
     if ctx.options.get("private_connectivity"):

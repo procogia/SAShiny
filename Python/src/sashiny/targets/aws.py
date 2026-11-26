@@ -8,7 +8,9 @@ standard ECS and Elastic Load Balancing resources.
 
 from __future__ import annotations
 
+import re
 import shutil
+from dataclasses import dataclass
 
 from ..deploy import DeployResult, Runner, Target, _Context, _generate_container, register
 from ..errors import DeployError
@@ -23,22 +25,73 @@ def _param(var: str) -> str:
     return "SasUserSecretArn" if var.endswith("USER") else "SasPasswordSecretArn"
 
 
-def _options(ctx: _Context) -> tuple[str, int]:
+def _health_command(language: str, port: int) -> str:
+    """Return the task health check, quoted for YAML: the probe of the image's ``HEALTHCHECK``.
+
+    The Python image has no ``curl``, so it probes with Python; the R image uses ``curl``.
+    """
+    if language == "python":
+        return (
+            "'python -c \"import urllib.request; "
+            f"urllib.request.urlopen(''http://127.0.0.1:{port}/'', timeout=4)\"'"
+        )
+    return f"'curl -fsS http://127.0.0.1:{port}/ > /dev/null || exit 1'"
+
+
+@dataclass(frozen=True)
+class _AwsOptions:
+    name: str
+    count: int
+    public_ip: bool
+    prefix: str | None
+    boundary: str | None
+
+    @property
+    def capability(self) -> str:
+        return "CAPABILITY_NAMED_IAM" if self.prefix else "CAPABILITY_IAM"
+
+    def role_lines(self, suffix: str) -> list[str]:
+        lines = [f"      RoleName: '{self.prefix}{suffix}'"] if self.prefix else []
+        if self.boundary:
+            lines.append(f"      PermissionsBoundary: '{self.boundary}'")
+        return lines
+
+
+def _options(ctx: _Context) -> _AwsOptions:
     name = validate_app_name(ctx.options.get("app_name", "sashiny-app"))
     count = ctx.options.get("desired_count", 1)
     if isinstance(count, bool) or not isinstance(count, int) or not 1 <= count <= _MAX_TASKS:
         raise DeployError("desired_count must be an integer from 1 to 10")
-    return name, count
+    public_ip = ctx.options.get("public_ip", False)
+    if not isinstance(public_ip, bool):
+        raise DeployError("public_ip must be a boolean")
+    prefix = ctx.options.get("role_name_prefix")
+    boundary = ctx.options.get("permissions_boundary")
+    if prefix is not None and (
+        not isinstance(prefix, str) or not re.fullmatch(r"[A-Za-z0-9_+=,.@-]{1,55}", prefix)
+    ):
+        raise DeployError("role_name_prefix must be 1 to 55 IAM role name characters")
+    if boundary is not None and (
+        not isinstance(boundary, str)
+        or not re.fullmatch(r"arn:aws(?:-[a-z0-9-]+)?:iam::[0-9]{12}:policy/[!-~]+", boundary)
+        or "'" in boundary
+    ):
+        raise DeployError("permissions_boundary must be an IAM managed policy ARN")
+    return _AwsOptions(name, count, public_ip, prefix, boundary)
 
 
-def _sas_ports(ctx: _Context) -> list[int]:
-    ports = {int(e.rsplit(":", 1)[1]) for e in ctx.profile.endpoints}
-    return sorted(p for p in ports if p != 443)  # noqa: PLR2004
+def _sas_ports(ctx: _Context) -> list[tuple[int, int]]:
+    ports = set()
+    for endpoint in ctx.profile.endpoints:
+        first, _, last = endpoint.rsplit(":", 1)[1].partition("-")
+        ports.add((int(first), int(last or first)))
+    return sorted(ports - {(443, 443)})
 
 
 def template(ctx: _Context) -> str:
     """Return ``infra/template.yaml`` (spec §6.8.2), byte-exact."""
-    name, count = _options(ctx)
+    opts = _options(ctx)
+    name = opts.name
     port = int(ctx.options.get("port", 8000))
     secrets = ctx.profile.secrets
     extra_ports = _sas_ports(ctx)
@@ -62,9 +115,16 @@ def template(ctx: _Context) -> str:
         "    Type: List<AWS::EC2::Subnet::Id>",
         "    Description: Subnets of the internet-facing load balancer, in at least two"
         " Availability Zones.",
-        "  PrivateSubnetIds:",
-        "    Type: List<AWS::EC2::Subnet::Id>",
-        "    Description: Subnets of the tasks, with outbound access to SAS through a NAT gateway.",
+        *(
+            []
+            if opts.public_ip
+            else [
+                "  PrivateSubnetIds:",
+                "    Type: List<AWS::EC2::Subnet::Id>",
+                "    Description: Subnets of the tasks, with outbound access to SAS"
+                " through a NAT gateway.",
+            ]
+        ),
         "  CertificateArn:",
         "    Type: String",
         "    Description: ACM certificate ARN of the HTTPS listener.",
@@ -99,6 +159,7 @@ def template(ctx: _Context) -> str:
         "  ExecutionRole:",
         "    Type: AWS::IAM::Role",
         "    Properties:",
+        *opts.role_lines("execution"),
         *_assume_role(),
         "      ManagedPolicyArns:",
         "        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy",
@@ -120,6 +181,7 @@ def template(ctx: _Context) -> str:
         "  TaskRole:",
         "    Type: AWS::IAM::Role",
         "    Properties:",
+        *opts.role_lines("task"),
         *_assume_role(),
         "",
         "  LoadBalancerSecurityGroup:",
@@ -140,8 +202,8 @@ def template(ctx: _Context) -> str:
         "      SecurityGroupEgress:",
         *_rule(443, "CidrIp: 0.0.0.0/0"),
     ]
-    for p in extra_ports:
-        out += _rule(p, "CidrIp: !Ref SasEgressCidr")
+    for first, last in extra_ports:
+        out += _rule(first, "CidrIp: !Ref SasEgressCidr", last)
     out += [
         "",
         "  LoadBalancer:",
@@ -208,6 +270,14 @@ def template(ctx: _Context) -> str:
         "          Image: !Ref ImageUri",
         "          User: '10001'",
         "          Essential: true",
+        "          HealthCheck:",
+        "            Command:",
+        "              - CMD-SHELL",
+        f"              - {_health_command(ctx.language, port)}",
+        "            Interval: 30",
+        "            Timeout: 5",
+        "            Retries: 3",
+        "            StartPeriod: 60",
         "          PortMappings:",
         f"            - ContainerPort: {port}",
         "              Protocol: tcp",
@@ -234,13 +304,17 @@ def template(ctx: _Context) -> str:
         f"      ServiceName: {name}",
         "      Cluster: !Ref Cluster",
         "      LaunchType: FARGATE",
-        f"      DesiredCount: {count}",
+        f"      DesiredCount: {opts.count}",
         "      TaskDefinition: !Ref TaskDefinition",
         "      HealthCheckGracePeriodSeconds: 120",
         "      NetworkConfiguration:",
         "        AwsvpcConfiguration:",
-        "          AssignPublicIp: DISABLED",
-        "          Subnets: !Ref PrivateSubnetIds",
+        (
+            "          AssignPublicIp: ENABLED"
+            if opts.public_ip
+            else "          AssignPublicIp: DISABLED"
+        ),
+        f"          Subnets: !Ref {'PublicSubnetIds' if opts.public_ip else 'PrivateSubnetIds'}",
         "          SecurityGroups:",
         "            - !Ref ServiceSecurityGroup",
         "      LoadBalancers:",
@@ -272,17 +346,18 @@ def _assume_role() -> list[str]:
     ]
 
 
-def _rule(port: int, source: str) -> list[str]:
+def _rule(port: int, source: str, last: int | None = None) -> list[str]:
     return [
         "        - IpProtocol: tcp",
         f"          FromPort: {port}",
-        f"          ToPort: {port}",
+        f"          ToPort: {port if last is None else last}",
         f"          {source}",
     ]
 
 
 def _guide(ctx: _Context) -> str:
-    name, _count = _options(ctx)
+    opts = _options(ctx)
+    name = opts.name
     prof = ctx.profile
     registry = "<account>.dkr.ecr.<region>.amazonaws.com"
     image = f"{registry}/{name}:<image-tag>"
@@ -302,12 +377,35 @@ def _guide(ctx: _Context) -> str:
         "",
         *[f"- {e}" for e in prof.endpoints],
         "",
-        "The tasks run in the private subnets, which reach these endpoints through a NAT gateway.",
-        "",
     ]
+    if opts.public_ip:
+        lines += [
+            "The tasks use the same public subnets as the load balancer. Supply subnets with a",
+            "route to an internet gateway in PublicSubnetIds. Tasks get public IP addresses,",
+            "which is less private. The task security group admits only the load balancer.",
+            "",
+        ]
+    else:
+        lines += [
+            "The tasks run in the private subnets, which reach these endpoints"
+            " through a NAT gateway.",
+            "",
+        ]
+    if opts.boundary:
+        lines += [
+            "Both roles use the configured permissions boundary. Use an existing managed policy",
+            "that permits the actions these roles need and satisfies your account guardrails.",
+            "",
+        ]
+    if opts.prefix:
+        lines += [
+            "The role name prefix gives both roles fixed names for account guardrails.",
+            "Choose a prefix unique to the stack and acknowledge CAPABILITY_NAMED_IAM.",
+            "",
+        ]
     if ctx.options.get("private_network"):
         lines += [
-            "The SAS profile is reachable only over a private network. Route the private subnets"
+            "The SAS profile is reachable only over a private network. Route the task subnets"
             " to it through",
             "a Site-to-Site VPN or a Transit Gateway attachment before deploying.",
             "",
@@ -341,10 +439,10 @@ def _guide(ctx: _Context) -> str:
         "",
         "```sh",
         f"aws cloudformation deploy --stack-name {name} \\",
-        "  --template-file infra/template.yaml --capabilities CAPABILITY_IAM \\",
+        f"  --template-file infra/template.yaml --capabilities {opts.capability} \\",
         f"  --parameter-overrides ImageUri={image} \\",
         "  VpcId=<vpc-id> PublicSubnetIds=<subnet-a>,<subnet-b>"
-        " PrivateSubnetIds=<subnet-c>,<subnet-d> \\",
+        + (" \\" if opts.public_ip else " PrivateSubnetIds=<subnet-c>,<subnet-d> \\"),
     ]
     if prof.secrets:
         lines += [
@@ -389,25 +487,28 @@ def _ids(value: object) -> str:
 
 def _apply(ctx: _Context, result: DeployResult, runner: Runner) -> list[list[str]]:
     opts = ctx.options
-    need = ["image_uri", "vpc_id", "public_subnet_ids", "private_subnet_ids", "certificate_arn"]
+    config = _options(ctx)
+    need = ["image_uri", "vpc_id", "public_subnet_ids", "certificate_arn"]
+    if not config.public_ip:
+        need.insert(3, "private_subnet_ids")
     if ctx.profile.secrets:
         need += ["sas_user_secret_arn", "sas_password_secret_arn"]
     missing = [k for k in need if not opts.get(k)]
     if missing:
         raise DeployError("apply needs the options " + ", ".join(missing))
-    name, _count = _options(ctx)
+    name = config.name
     out = str(result.out_dir)
     image = str(opts["image_uri"])
     deploy = [
         "aws", "cloudformation", "deploy",
         "--stack-name", str(opts.get("stack_name") or name),
         "--template-file", f"{out}/infra/template.yaml",
-        "--capabilities", "CAPABILITY_IAM",
+        "--capabilities", config.capability,
         "--parameter-overrides",
         f"ImageUri={image}",
         f"VpcId={opts['vpc_id']}",
         f"PublicSubnetIds={_ids(opts['public_subnet_ids'])}",
-        f"PrivateSubnetIds={_ids(opts['private_subnet_ids'])}",
+        *([] if config.public_ip else [f"PrivateSubnetIds={_ids(opts['private_subnet_ids'])}"]),
         f"CertificateArn={opts['certificate_arn']}",
     ]  # fmt: skip
     if ctx.profile.secrets:
@@ -442,7 +543,16 @@ register(
         id="aws_ecs_express",
         label="Amazon ECS (Fargate) with an Application Load Balancer",
         languages=("python", "r"),
-        options=("port", "language", "app_name", "desired_count", "private_network"),
+        options=(
+            "port",
+            "language",
+            "app_name",
+            "desired_count",
+            "private_network",
+            "permissions_boundary",
+            "role_name_prefix",
+            "public_ip",
+        ),
         generate=generate,
         apply=_apply,
         doctor=_doctor,

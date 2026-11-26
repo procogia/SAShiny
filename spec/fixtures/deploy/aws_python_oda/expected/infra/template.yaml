@@ -15,9 +15,6 @@ Parameters:
   PublicSubnetIds:
     Type: List<AWS::EC2::Subnet::Id>
     Description: Subnets of the internet-facing load balancer, in at least two Availability Zones.
-  PrivateSubnetIds:
-    Type: List<AWS::EC2::Subnet::Id>
-    Description: Subnets of the tasks, with outbound access to SAS through a NAT gateway.
   CertificateArn:
     Type: String
     Description: ACM certificate ARN of the HTTPS listener.
@@ -47,6 +44,8 @@ Resources:
   ExecutionRole:
     Type: AWS::IAM::Role
     Properties:
+      RoleName: 'sashiny-app-execution'
+      PermissionsBoundary: 'arn:aws:iam::123456789012:policy/sashiny-boundary'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -70,6 +69,8 @@ Resources:
   TaskRole:
     Type: AWS::IAM::Role
     Properties:
+      RoleName: 'sashiny-app-task'
+      PermissionsBoundary: 'arn:aws:iam::123456789012:policy/sashiny-boundary'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -107,6 +108,10 @@ Resources:
         - IpProtocol: tcp
           FromPort: 8591
           ToPort: 8591
+          CidrIp: !Ref SasEgressCidr
+        - IpProtocol: tcp
+          FromPort: 8800
+          ToPort: 8999
           CidrIp: !Ref SasEgressCidr
 
   LoadBalancer:
@@ -173,6 +178,14 @@ Resources:
           Image: !Ref ImageUri
           User: '10001'
           Essential: true
+          HealthCheck:
+            Command:
+              - CMD-SHELL
+              - 'python -c "import urllib.request; urllib.request.urlopen(''http://127.0.0.1:8000/'', timeout=4)"'
+            Interval: 30
+            Timeout: 5
+            Retries: 3
+            StartPeriod: 60
           PortMappings:
             - ContainerPort: 8000
               Protocol: tcp
@@ -207,8 +220,8 @@ Resources:
       HealthCheckGracePeriodSeconds: 120
       NetworkConfiguration:
         AwsvpcConfiguration:
-          AssignPublicIp: DISABLED
-          Subnets: !Ref PrivateSubnetIds
+          AssignPublicIp: ENABLED
+          Subnets: !Ref PublicSubnetIds
           SecurityGroups:
             - !Ref ServiceSecurityGroup
       LoadBalancers:

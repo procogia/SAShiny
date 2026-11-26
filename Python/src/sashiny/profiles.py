@@ -25,6 +25,8 @@ _UNSAFE = re.compile(r"[\s\x00-\x1f\x7f\"'\\$`]")
 _UNSAFE_PATH = re.compile(r"[\t\n\r\x00-\x1f\x7f\"'\\$`]")
 _MAX_PORT = 65535
 _DEFAULT_IOM_PORT = 8591
+# The workspace range observed during ODA deployment verification (#177).
+_ODA_PORTS = (_DEFAULT_IOM_PORT, "8800-8999")
 
 
 @dataclass(frozen=True)
@@ -55,9 +57,9 @@ class Profile:
 
     @property
     def endpoints(self) -> list[str]:
-        """The ``host:port`` pairs the deployed app must reach."""
+        """The hosts and TCP ports or port ranges the deployed app must reach."""
         if self.oda_region:
-            return [f"{h}:{_DEFAULT_IOM_PORT}" for h in ODA_HOSTS[self.oda_region]]
+            return [f"{host}:{port}" for host in ODA_HOSTS[self.oda_region] for port in _ODA_PORTS]
         if self.method == "iom":
             return [f"{self.iomhost}:{self.iomport}"]
         if self.method == "http":

@@ -623,15 +623,23 @@ error starting with `profile <name>: `, when:
   (`saspath` may contain spaces). Such values could not be written safely into generated files.
 
 A profile with `oda_region` is ODA. Its **kind** is `oda`; other `iom` and `ssh` profiles are `sas94`,
-and `http` profiles are `viya`. Its **egress endpoints**, the `host:port` pairs the app must reach,
-are derived as follows:
+and `http` profiles are `viya`. Its **egress endpoints**, the `host:port` or `host:first-last` entries the app
+must reach, are derived as follows:
 
 | Profile | Endpoints |
 |---|---|
-| ODA (`oda_region`) | each ODA host of the region, port 8591, in the order of §6.6 |
+| ODA (`oda_region`) | each ODA host in §6.6 order, with TCP 8591 (IOM login) then TCP 8800–8999 (workspace session) |
 | `iom` | `iomhost:iomport` |
 | `http` | the URL host, with the URL port, or 443 for `https` and 80 for `http` |
 | `ssh` | `host:22` |
+
+ODA workspace ports 8800–8999 reflect the range used successfully during deployment verification.
+SAS documents port 8591 for the IOM login. Confirm firewall requirements with SAS Support if a
+region redirects sessions outside the verified workspace range.
+
+The Snowflake targets (§6.8.3–§6.8.5) use only the endpoints with a single port, in their network
+rules and in their guides. Whether Snowflake network rules accept a port range is not yet verified
+(issue #188).
 
 **Java.** A profile with method `iom` (including ODA) needs Java 17 in the runtime. A target whose
 runtime cannot provide Java MUST reject `iom` profiles with an error naming the target and the profile.
@@ -858,8 +866,11 @@ guide says so. The target writes the `container` artifacts, plus `infra/template
 |---|---|---|
 | `port` | 8000 | as for `container` |
 | `app_name` | `sashiny-app` | as for `azure_container_apps`; it names the cluster, service, load balancer and target group |
+| `permissions_boundary` | none | ARN of an existing IAM managed policy added to both roles |
+| `role_name_prefix` | none | Prefix for the fixed role names `<prefix>execution` and `<prefix>task`. Choose a prefix unique to the stack. |
+| `public_ip` | false | Place tasks in `PublicSubnetIds` with public IPs and an internet gateway route. This supports VPCs without a NAT gateway. |
 | `desired_count` | 1 | Number of tasks, 1–10 |
-| `private_network` | false | `true` confirms that the private subnets route to the SAS network (VPN or Transit Gateway); the private-network option of this target |
+| `private_network` | false | `true` confirms that the task subnets route to the SAS network (VPN or Transit Gateway); the private-network option of this target |
 
 The template:
 - declares an internet-facing ALB in `PublicSubnetIds`, with an HTTPS listener using `CertificateArn`
@@ -867,15 +878,23 @@ The template:
 - declares a target group of type `ip` with a health check on `/` and `lb_cookie` stickiness for
   86400 s;
 - declares a Fargate service (2 vCPU / 4 GiB, `X86_64`, container user `10001`) in
-  `PrivateSubnetIds` without public IP addresses;
+  `PrivateSubnetIds` without public IP addresses by default. With `public_ip: true`, tasks use
+  `PublicSubnetIds` and `PrivateSubnetIds` is omitted;
+- declares a task container health check independently of the load balancer. ECS runs
+  `CMD-SHELL` with the probe of the `Dockerfile` `HEALTHCHECK` (§6.8) every 30 seconds, with a
+  5-second timeout, 3 retries and a 60-second start period. For language `python` the probe is
+  `python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:<port>/', timeout=4)"`,
+  because the Python image has no `curl`; for `r` it is
+  `curl -fsS http://127.0.0.1:<port>/ > /dev/null || exit 1`;
 - declares a log group, a task role, and an execution role. When the profile has secrets, the
   execution role may read only the two secret ARNs.
 
 The service security group allows inbound traffic on the port from the load balancer only. Outbound,
 it allows TCP 443 to `0.0.0.0/0` (AWS APIs, and the SAS endpoints on port 443), and each other
-distinct SAS port to the parameter `SasEgressCidr` (default `0.0.0.0/0`), in ascending port order.
+distinct SAS port or port range to the parameter `SasEgressCidr` (default `0.0.0.0/0`),
+in ascending port order.
 `SasEgressCidr` is declared only when there is such a port. The load balancer accepts TCP 443 from
-anywhere. With `private_network: true`, `deploy-aws.md` adds a paragraph on routing the private
+anywhere. With `private_network: true`, `deploy-aws.md` adds a paragraph on routing the task
 subnets to the SAS network.
 
 The plain environment of §6.8 is written as the container's `Environment`, with values in single
@@ -892,9 +911,13 @@ by `spec/fixtures/deploy/aws_*`.
    PublicSubnetIds=<ids> PrivateSubnetIds=<ids> CertificateArn=<arn> [SasUserSecretArn=<arn>
    SasPasswordSecretArn=<arn>]`
 
+With `role_name_prefix`, use `CAPABILITY_NAMED_IAM`. With `public_ip: true`, omit
+`PrivateSubnetIds`. Public task addresses reduce network isolation. The task security group
+continues to accept incoming traffic only from the load balancer.
+
 The apply options are:
-- `image_uri`, `vpc_id`, `public_subnet_ids`, `private_subnet_ids` and `certificate_arn`, all
-  required;
+- `image_uri`, `vpc_id`, `public_subnet_ids` and `certificate_arn`, all required;
+- `private_subnet_ids`, required when `public_ip` is false;
 - `stack_name`, default `app_name`;
 - for profiles with secrets, `sas_user_secret_arn` and `sas_password_secret_arn`.
 

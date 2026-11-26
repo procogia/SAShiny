@@ -35,7 +35,8 @@
 #'
 #' Checks a profile (for example one entry of a connections file read with
 #' [sas_load_profiles()]) against spec section 6.8 and derives what a
-#' deployment target needs: the profile kind, the `host:port` egress endpoints,
+#' deployment target needs: the profile kind, the egress endpoints (`host:port`
+#' or `host:first-last`),
 #' whether Java 17 is needed, the plain runtime environment variables and the
 #' names of the secret variables.
 #'
@@ -76,7 +77,10 @@ sas_profile <- function(profile, name = NULL) {
     }
     out$kind <- "oda"
     out$oda_region <- region
-    out$endpoints <- paste0(.sashiny_oda_hosts[[region]], ":8591")
+    # The workspace range observed during ODA deployment verification (#177).
+    out$endpoints <- unlist(lapply(.sashiny_oda_hosts[[region]], function(host) {
+      paste0(host, c(":8591", ":8800-8999"))
+    }), use.names = FALSE)
     out$env <- c(SASHINY_LICENSE_ACK = "true", SASHINY_PROFILE = "oda", SASHINY_ODA_REGION = region)
   } else if (identical(method, "iom")) {
     if (is.null(profile$iomhost)) {

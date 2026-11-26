@@ -6,7 +6,7 @@
       "profile": {"name": "oda", "method": "iom", "oda_region": "us1", "iomport": 8591, "authkey": "oda", "label": "SAS OnDemand for Academics"},
       "expected": {
         "kind": "oda",
-        "endpoints": ["odaws01-usw2.oda.sas.com:8591", "odaws02-usw2.oda.sas.com:8591"],
+        "endpoints": ["odaws01-usw2.oda.sas.com:8591", "odaws01-usw2.oda.sas.com:8800-8999", "odaws02-usw2.oda.sas.com:8591", "odaws02-usw2.oda.sas.com:8800-8999"],
         "needs_java": true,
         "requires_vpn": false,
         "env": [["SASHINY_LICENSE_ACK", "true"], ["SASHINY_PROFILE", "oda"], ["SASHINY_ODA_REGION", "us1"]],
@@ -18,7 +18,7 @@
       "profile": {"name": "oda_eu", "method": "iom", "oda_region": "eu1"},
       "expected": {
         "kind": "oda",
-        "endpoints": ["odaws01-euw1.oda.sas.com:8591", "odaws02-euw1.oda.sas.com:8591"],
+        "endpoints": ["odaws01-euw1.oda.sas.com:8591", "odaws01-euw1.oda.sas.com:8800-8999", "odaws02-euw1.oda.sas.com:8591", "odaws02-euw1.oda.sas.com:8800-8999"],
         "needs_java": true,
         "requires_vpn": false,
         "env": [["SASHINY_LICENSE_ACK", "true"], ["SASHINY_PROFILE", "oda"], ["SASHINY_ODA_REGION", "eu1"]],
