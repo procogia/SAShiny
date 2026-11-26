@@ -156,5 +156,7 @@ test_that("xlsx and xpt uploads are read", {
   expect_identical(read$df$USUBJID, "S1")
   bad <- file.path(dir, "bad.xlsx")
   writeLines("not a workbook", bad)
-  expect_error(.sashiny_read_upload(.sashiny_upload_file(bad), upload_spec), "could not read")
+  expect_no_warning(
+    expect_error(.sashiny_read_upload(.sashiny_upload_file(bad), upload_spec), "could not read")
+  )
 })

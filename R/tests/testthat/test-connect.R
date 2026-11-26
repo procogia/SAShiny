@@ -2,7 +2,11 @@
 
 # Tests for the SAS connection selection (issue #6).
 
+# The first tests deliberately exercise the old profile API. An explicit test
+# below verifies the deprecation warning separately.
+
 test_that("sas_connect oda builds the config", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   engine <- sas_connect("oda", region = "us1")
   expect_identical(engine$cfg$iomhost, .sashiny_oda_hosts$us1)
   expect_identical(engine$cfg$iomport, 8591L)
@@ -11,14 +15,17 @@ test_that("sas_connect oda builds the config", {
 })
 
 test_that("sas_connect oda rejects an unknown region", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   expect_error(sas_connect("oda", region = "xx9"), "unknown ODA region")
 })
 
 test_that("sas_connect viya requires url", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   expect_error(sas_connect("viya"), "url is required")
 })
 
 test_that("sas_connect viya builds the config", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   engine <- sas_connect("viya", url = "https://viya.example.com",
                         context = "SAS Studio compute context")
   expect_identical(engine$cfg$url, "https://viya.example.com")
@@ -27,6 +34,7 @@ test_that("sas_connect viya builds the config", {
 })
 
 test_that("sas_connect sas94 IOM builds the config", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   engine <- sas_connect("sas94", host = "sas.example.com", port = 8591L)
   expect_identical(engine$cfg$iomhost, "sas.example.com")
   expect_identical(engine$cfg$iomport, 8591L)
@@ -34,6 +42,7 @@ test_that("sas_connect sas94 IOM builds the config", {
 })
 
 test_that("sas_connect sas94 SSH builds the config", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   engine <- sas_connect("sas94", host = "sas.example.com",
                         saspath = "/opt/sas/sas_u8", ssh_user = "me")
   expect_identical(engine$cfg$saspath, "/opt/sas/sas_u8")
@@ -42,14 +51,17 @@ test_that("sas_connect sas94 SSH builds the config", {
 })
 
 test_that("sas_connect sas94 requires host", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   expect_error(sas_connect("sas94"), "host is required")
 })
 
 test_that("sas_connect rejects an unknown profile", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   expect_error(sas_connect("bogus"), "unknown profile")
 })
 
 test_that("each profile maps to a supported backend (spec section 6.6)", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   expect_identical(sas_connect("oda")$backend, "oda")
   expect_identical(sas_connect("viya", url = "https://v.example.com")$backend, "viya")
   expect_identical(sas_connect("sas94", host = "h.example.com")$backend, "sas94-iom")
