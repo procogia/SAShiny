@@ -35,7 +35,8 @@
 #'
 #' Checks a profile (for example one entry of a connections file read with
 #' [sas_load_profiles()]) against spec section 6.8 and derives what a
-#' deployment target needs: the profile kind, the `host:port` egress endpoints,
+#' deployment target needs: the profile kind, the egress endpoints (`host:port`
+#' or `host:first-last`),
 #' whether Java 17 is needed, the plain runtime environment variables and the
 #' names of the secret variables.
 #'

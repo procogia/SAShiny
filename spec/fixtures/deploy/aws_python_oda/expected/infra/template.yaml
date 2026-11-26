@@ -181,7 +181,7 @@ Resources:
           HealthCheck:
             Command:
               - CMD-SHELL
-              - 'curl -fsS http://127.0.0.1:8000/ > /dev/null || exit 1'
+              - 'python -c "import urllib.request; urllib.request.urlopen(''http://127.0.0.1:8000/'', timeout=4)"'
             Interval: 30
             Timeout: 5
             Retries: 3

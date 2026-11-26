@@ -22,7 +22,8 @@ in spec order) and \code{secrets} (a character vector of names).
 \description{
 Checks a profile (for example one entry of a connections file read with
 \code{\link[=sas_load_profiles]{sas_load_profiles()}}) against spec section 6.8 and derives what a
-deployment target needs: the profile kind, the \code{host:port} egress endpoints,
+deployment target needs: the profile kind, the egress endpoints (\code{host:port}
+or \code{host:first-last}),
 whether Java 17 is needed, the plain runtime environment variables and the
 names of the secret variables.
 }

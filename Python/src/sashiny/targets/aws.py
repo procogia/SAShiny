@@ -25,6 +25,19 @@ def _param(var: str) -> str:
     return "SasUserSecretArn" if var.endswith("USER") else "SasPasswordSecretArn"
 
 
+def _health_command(language: str, port: int) -> str:
+    """Return the task health check, quoted for YAML: the probe of the image's ``HEALTHCHECK``.
+
+    The Python image has no ``curl``, so it probes with Python; the R image uses ``curl``.
+    """
+    if language == "python":
+        return (
+            "'python -c \"import urllib.request; "
+            f"urllib.request.urlopen(''http://127.0.0.1:{port}/'', timeout=4)\"'"
+        )
+    return f"'curl -fsS http://127.0.0.1:{port}/ > /dev/null || exit 1'"
+
+
 @dataclass(frozen=True)
 class _AwsOptions:
     name: str
@@ -260,7 +273,7 @@ def template(ctx: _Context) -> str:
         "          HealthCheck:",
         "            Command:",
         "              - CMD-SHELL",
-        f"              - 'curl -fsS http://127.0.0.1:{port}/ > /dev/null || exit 1'",
+        f"              - {_health_command(ctx.language, port)}",
         "            Interval: 30",
         "            Timeout: 5",
         "            Retries: 3",

@@ -637,6 +637,10 @@ ODA workspace ports 8800–8999 reflect the range used successfully during deplo
 SAS documents port 8591 for the IOM login. Confirm firewall requirements with SAS Support if a
 region redirects sessions outside the verified workspace range.
 
+The Snowflake targets (§6.8.3–§6.8.5) use only the endpoints with a single port, in their network
+rules and in their guides. Whether Snowflake network rules accept a port range is not yet verified
+(issue #188).
+
 **Java.** A profile with method `iom` (including ODA) needs Java 17 in the runtime. A target whose
 runtime cannot provide Java MUST reject `iom` profiles with an error naming the target and the profile.
 
@@ -877,8 +881,11 @@ The template:
   `PrivateSubnetIds` without public IP addresses by default. With `public_ip: true`, tasks use
   `PublicSubnetIds` and `PrivateSubnetIds` is omitted;
 - declares a task container health check independently of the load balancer. ECS runs
-  `CMD-SHELL` with `curl -fsS http://127.0.0.1:<port>/ > /dev/null || exit 1` every 30 seconds,
-  with a 5-second timeout, 3 retries and a 60-second start period;
+  `CMD-SHELL` with the probe of the `Dockerfile` `HEALTHCHECK` (§6.8) every 30 seconds, with a
+  5-second timeout, 3 retries and a 60-second start period. For language `python` the probe is
+  `python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:<port>/', timeout=4)"`,
+  because the Python image has no `curl`; for `r` it is
+  `curl -fsS http://127.0.0.1:<port>/ > /dev/null || exit 1`;
 - declares a log group, a task role, and an execution role. When the profile has secrets, the
   execution role may read only the two secret ARNs.
 

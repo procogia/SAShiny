@@ -73,6 +73,19 @@
   "            Action: sts:AssumeRole"
 )
 
+#' The task health check, quoted for YAML: the same probe as the image's HEALTHCHECK.
+#' The Python image has no curl, so it probes with Python; the R image uses curl.
+#' @noRd
+.sashiny_aws_health_command <- function(language, port) {
+  if (identical(language, "python")) {
+    return(sprintf(paste0(
+      "'python -c \"import urllib.request; ",
+      "urllib.request.urlopen(''http://127.0.0.1:%d/'', timeout=4)\"'"
+    ), port))
+  }
+  sprintf("'curl -fsS http://127.0.0.1:%d/ > /dev/null || exit 1'", port)
+}
+
 #' The `infra/template.yaml` text (spec section 6.8.2), byte-exact.
 #' @noRd
 .sashiny_aws_template <- function(ctx) {
@@ -262,7 +275,7 @@
     "          HealthCheck:",
     "            Command:",
     "              - CMD-SHELL",
-    sprintf("              - 'curl -fsS http://127.0.0.1:%d/ > /dev/null || exit 1'", port),
+    paste0("              - ", .sashiny_aws_health_command(ctx$language, port)),
     "            Interval: 30",
     "            Timeout: 5",
     "            Retries: 3",

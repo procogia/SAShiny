@@ -16,7 +16,7 @@ import shutil
 
 from ..deploy import DeployResult, Runner, Target, _Context, register
 from ..errors import DeployError
-from .snowflake import _ident, _snow
+from .snowflake import _endpoints, _ident, _snow
 
 __all__ = ["generate"]
 
@@ -51,7 +51,7 @@ def _header(ctx: _Context) -> str:
 
 
 def _rules(ctx: _Context, n: dict[str, str]) -> list[tuple[str, str, list[str]]]:
-    eps = ctx.profile.endpoints
+    eps = _endpoints(ctx)
     if ctx.options.get("private_connectivity"):
         return [
             (f"{n['fq']}.{n['app']}_SAS_PRIVATE_{i}", "PRIVATE_HOST_PORT", [e])
@@ -197,7 +197,7 @@ def _guide(ctx: _Context, n: dict[str, str]) -> str:
         "The app reaches SAS at these host:port pairs; `snowflake/setup.sql` allows them in a"
         " network rule:",
         "",
-        *[f"- {e}" for e in ctx.profile.endpoints],
+        *[f"- {e}" for e in _endpoints(ctx)],
         "",
     ]
     if ctx.options.get("private_connectivity"):

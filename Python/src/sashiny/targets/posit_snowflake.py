@@ -15,7 +15,7 @@ from typing import Any
 
 from ..deploy import DeployResult, Runner, Target, _Context, register
 from ..errors import DeployError
-from .snowflake import _ident
+from .snowflake import _endpoints, _ident
 
 __all__ = ["egress_sql", "generate"]
 
@@ -47,7 +47,7 @@ def egress_sql(ctx: _Context) -> str:
         f"DESCRIBE EXTERNAL ACCESS INTEGRATION {integration};",
         "",
     ]
-    endpoints = ctx.profile.endpoints
+    endpoints = _endpoints(ctx)
     if private:
         rules = [(f"{app}_SASHINY_SAS_PRIVATE_{i}", [e]) for i, e in enumerate(endpoints, 1)]
         kind = "PRIVATE_HOST_PORT"
@@ -88,7 +88,7 @@ def _guide(ctx: _Context) -> str:
         "The app reaches SAS at these host:port pairs; `snowflake/egress.sql` allows them for"
         " Connect:",
         "",
-        *[f"- {e}" for e in prof.endpoints],
+        *[f"- {e}" for e in _endpoints(ctx)],
         "",
     ]
     if ctx.options.get("private_connectivity"):
